@@ -3,7 +3,7 @@
 ## 1. 目标版本
 
 - 默认目标版本：Stata 17
-- 当前验证路径基准：`D:\Software\Stata.v17.0`
+- 当前验证路径基准：`D:\Software\Stata17`
 
 若后续切换 Stata 版本，必须新增 ADR，并更新本文件中的差异说明。
 

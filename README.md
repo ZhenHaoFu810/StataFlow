@@ -61,6 +61,6 @@ QwenCode 不应自行决定项目边界、公开 API 变化或统计等价标准
 ## 当前默认约束
 
 - 目标 Stata 版本：17
-- 默认验证安装路径：`D:\Software\Stata.v17.0`
+- 默认验证安装路径：`D:\Software\Stata17`
 - 第一阶段公开范围：`regress`、`vce(robust)`、`vce(cluster)`、单向 FE 基础
 - 第一阶段不承诺：GLM、IV、RE、双向/高维 FE 完整公开接口

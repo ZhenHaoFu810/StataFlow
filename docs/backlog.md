@@ -12,10 +12,10 @@
 
 | 能力 | 优先级 | 状态 | 依赖 | 验收文档 |
 | --- | --- | --- | --- | --- |
-| 项目骨架与包结构 | P0 | ready | 无 | `docs/phases/phase-0-bootstrap.md` |
-| Stata runner 最小链路 | P0 | ready | 项目骨架 | `docs/phases/phase-0-bootstrap.md` |
-| 结果 schema 与序列化 | P0 | ready | 项目骨架 | `docs/architecture/result-schema.md` |
-| 首个 OLS 双跑样例 | P0 | ready | runner, schema | `docs/phases/phase-0-bootstrap.md` |
+| 项目骨架与包结构 | P0 | done | 无 | `docs/phases/phase-0-bootstrap.md` |
+| Stata runner 最小链路 | P0 | done | 项目骨架 | `docs/phases/phase-0-bootstrap.md` |
+| 结果 schema 与序列化 | P0 | done | 项目骨架 | `docs/architecture/result-schema.md` |
+| 首个 OLS 双跑样例 | P0 | done | runner, schema | `docs/phases/phase-0-bootstrap.md` |
 | OLS | P1 | planned | Phase 0 | `docs/phases/phase-1-linear-core.md` |
 | `vce(robust)` | P1 | planned | OLS | `docs/phases/phase-1-linear-core.md` |
 | `vce(cluster)` 单聚类 | P1 | planned | OLS | `docs/phases/phase-1-linear-core.md` |

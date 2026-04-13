@@ -19,7 +19,7 @@
 
 | case_id | phase | command | python_api | source | risk_focus | stata_artifacts | python_test | comparison_mode | status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `p0_min_ols_auto` | Phase 0 | `regress` | `OLS.fit(vce="ols")` | Stata 官方最小样例或手工构造数据 | runner 打通、结构化导出、字段对齐 | 待创建 | 待创建 | strict | planned |
+| `p0_min_ols_auto` | Phase 0 | `regress` | `OLS.fit(vce="ols")` | Stata 官方最小样例或手工构造数据 | runner 打通、结构化导出、字段对齐 | `stata/cases/p0_min_ols_auto.do`, `stata/output/` | `tests/golden/test_p0_min_ols_auto.py`, `tests/golden/run_dual_test.py` | strict | done |
 | `p1_ols_basic` | Phase 1 | `regress` | `OLS.fit(vce="ols")` | 官方线性样例 | 系数、自由度、R2 | 待创建 | 待创建 | strict | planned |
 | `p1_robust_hc1` | Phase 1 | `regress, vce(robust)` | `OLS.fit(vce="robust")` | 官方或手工构造 | robust 协方差 | 待创建 | 待创建 | strict | planned |
 | `p1_cluster_firm` | Phase 1 | `regress, vce(cluster firm_id)` | `OLS.fit(vce="cluster", cluster="firm_id")` | firm-year panel | 单聚类修正、群组计数 | 待创建 | 待创建 | strict | planned |

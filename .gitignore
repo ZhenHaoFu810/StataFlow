@@ -1,38 +1,41 @@
 # Python
 __pycache__/
 *.py[cod]
-*.pyd
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-.coverage
-htmlcov/
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
 
 # Virtual environments
 .venv/
 venv/
 env/
 
-# Build artifacts
-build/
-dist/
-*.egg-info/
-
-# IDE / OS
-.idea/
+# IDE
 .vscode/
-Thumbs.db
-Desktop.ini
+.idea/
+*.swp
+*.swo
+.qwen/
+QWEN.md
 
-# Stata temporary or local outputs
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Stata temporary files
+*.dta
 *.log
-*.smcl
-*.ster
-*.stpr
-*.tmp
-tmp/
-temp/
+*.raw
+*.gph
+*.lyg
 
-# Local environment files
-.env
-.python-version
+# Workspace reports
+workspace/qwencode-current/*report*.md
+
+# OS
+.DS_Store
+Thumbs.db

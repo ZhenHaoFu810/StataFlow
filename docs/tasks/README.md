@@ -31,4 +31,4 @@
 
 ## 当前任务
 
-- `phase-0-task-001-stata-runner-and-first-ols.md`
+- `phase-1-task-001-ols-core-and-sample-rules.md`
