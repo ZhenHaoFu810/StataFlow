@@ -13,6 +13,10 @@ QwenCode 不得：
 
 ## 2. 每次接任务前必须阅读
 
+优先入口：
+
+0. 若存在 `workspace/qwencode-current/INSTRUCTIONS.md`，先从该文件进入本轮任务
+
 1. `docs/project-charter.md`
 2. `docs/architecture/overview.md`
 3. `docs/architecture/public-api.md`
@@ -22,6 +26,8 @@ QwenCode 不得：
 7. `docs/backlog.md`
 8. `docs/phases/` 下对应阶段手册
 9. 对应的 `docs/tasks/*.md` 任务卡
+
+若工作区目录内存在本轮回报模板，则完成后应优先按该模板回报。
 
 ## 3. 开工前检查表
 
@@ -68,6 +74,7 @@ QwenCode 可以更新：
 - `docs/backlog.md` 的状态字段
 - `docs/testing/test-case-catalog.md` 的样例状态与实际产物路径
 - `docs/phases/` 下阶段手册中的执行状态或证据链接
+- `workspace/qwencode-current/` 下的回报类文件
 
 QwenCode 不可以直接修改：
 

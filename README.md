@@ -25,6 +25,7 @@ Stata2Python 是一个面向金融与经济学实证研究的计量工具包项�
 - 执行层：
   - 阶段手册目录：`docs/phases/`
   - 派工任务目录：`docs/tasks/`
+  - QwenCode 当前工作区：`workspace/qwencode-current/`
 - 规则层：
   - QwenCode 操作手册：`docs/operations/qwencode-playbook.md`
   - 阶段门禁：`docs/operations/review-gates.md`
@@ -54,6 +55,7 @@ QwenCode 不应自行决定项目边界、公开 API 变化或统计等价标准
 - 在 `docs/backlog.md` 确认目标能力已登记
 - 在 `docs/testing/test-case-catalog.md` 确认测试样例计划
 - 阅读 `docs/phases/` 下对应阶段手册与 `docs/tasks/` 下对应任务卡
+- 需要快速进入本轮任务时，优先从 `workspace/qwencode-current/INSTRUCTIONS.md` 开始
 - 不得跳过测试门禁
 
 ## 当前默认约束
