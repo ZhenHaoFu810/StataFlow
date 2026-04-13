@@ -31,4 +31,4 @@
 
 ## 当前任务
 
-- `phase-1-task-001-ols-core-and-sample-rules.md`
+- `phase-1-task-002-robust-vce.md`

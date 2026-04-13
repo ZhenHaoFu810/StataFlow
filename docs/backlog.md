@@ -16,11 +16,11 @@
 | Stata runner 最小链路 | P0 | done | 项目骨架 | `docs/phases/phase-0-bootstrap.md` |
 | 结果 schema 与序列化 | P0 | done | 项目骨架 | `docs/architecture/result-schema.md` |
 | 首个 OLS 双跑样例 | P0 | done | runner, schema | `docs/phases/phase-0-bootstrap.md` |
-| OLS | P1 | planned | Phase 0 | `docs/phases/phase-1-linear-core.md` |
+| OLS | P1 | done | Phase 0 | `docs/phases/phase-1-linear-core.md` |
 | `vce(robust)` | P1 | planned | OLS | `docs/phases/phase-1-linear-core.md` |
 | `vce(cluster)` 单聚类 | P1 | planned | OLS | `docs/phases/phase-1-linear-core.md` |
-| 样本筛选与缺失值规则 | P1 | planned | OLS | `docs/phases/phase-1-linear-core.md` |
-| 常数项与共线性处理 | P1 | planned | OLS | `docs/phases/phase-1-linear-core.md` |
+| 样本筛选与缺失值规则 | P1 | done | OLS | `docs/phases/phase-1-linear-core.md` |
+| 常数项与共线性处理 | P1 | done | OLS | `docs/phases/phase-1-linear-core.md` |
 | `aweight` | P2 | planned | Phase 1 | `docs/phases/phase-2-weights-fe.md` |
 | 单向 FE | P2 | planned | Phase 1 | `docs/phases/phase-2-weights-fe.md` |
 | `areg` 内部吸收基础 | P3 | planned | Phase 2 | 后续文档待补 |

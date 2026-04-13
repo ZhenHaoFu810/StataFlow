@@ -20,10 +20,12 @@
 | case_id | phase | command | python_api | source | risk_focus | stata_artifacts | python_test | comparison_mode | status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `p0_min_ols_auto` | Phase 0 | `regress` | `OLS.fit(vce="ols")` | Stata 官方最小样例或手工构造数据 | runner 打通、结构化导出、字段对齐 | `stata/cases/p0_min_ols_auto.do`, `stata/output/` | `tests/golden/test_p0_min_ols_auto.py`, `tests/golden/run_dual_test.py` | strict | done |
-| `p1_ols_basic` | Phase 1 | `regress` | `OLS.fit(vce="ols")` | 官方线性样例 | 系数、自由度、R2 | 待创建 | 待创建 | strict | planned |
+| `p1_ols_basic` | Phase 1 | `regress` | `OLS.fit(vce="ols")` | 手工构造数据（seed=54321） | 系数、自由度、R2 | 由 `tests/golden/test_p1_ols_basic.py` 动态生成 | `tests/golden/test_p1_ols_basic.py` | strict | done |
+| `p1_ols_missing_drop` | Phase 1 | `regress` | `OLS.fit(vce="ols")` | 手工构造（含缺失值） | 样本筛选、缺失值剔除 | 由 `tests/golden/test_p1_ols_missing_drop.py` 动态生成 | `tests/golden/test_p1_ols_missing_drop.py` | strict | done |
+| `p1_ols_noconstant` | Phase 1 | `regress, noconstant` | `OLS(..., add_constant=False)` | 手工构造 | 无常数项时 TSS/R2/df_model 语义 | 由 `tests/golden/test_p1_ols_noconstant.py` 动态生成 | `tests/golden/test_p1_ols_noconstant.py` | strict | done |
+| `p1_collinearity_drop` | Phase 1 | `regress` | `OLS.fit(vce="ols")` | 手工构造（共线变量） | 共线变量识别与剔除 | 由 `tests/golden/test_p1_collinearity_drop.py` 动态生成 | `tests/golden/test_p1_collinearity_drop.py` | strict | done |
 | `p1_robust_hc1` | Phase 1 | `regress, vce(robust)` | `OLS.fit(vce="robust")` | 官方或手工构造 | robust 协方差 | 待创建 | 待创建 | strict | planned |
 | `p1_cluster_firm` | Phase 1 | `regress, vce(cluster firm_id)` | `OLS.fit(vce="cluster", cluster="firm_id")` | firm-year panel | 单聚类修正、群组计数 | 待创建 | 待创建 | strict | planned |
-| `p1_collinearity_drop` | Phase 1 | `regress` | `OLS.fit(vce="ols")` | 手工构造 | 共线变量剔除 | 待创建 | 待创建 | strict | planned |
 | `p2_aweight_basic` | Phase 2 | `regress [aweight=...]` | `OLS(..., weights=..., weight_type="aweight")` | 横截面样例 | 权重语义 | 待创建 | 待创建 | strict | planned |
 | `p2_fe_basic` | Phase 2 | `xtreg ..., fe` | `FixedEffectsOLS.fit(vce="ols")` | 面板样例 | within 转换、FE 自由度 | 待创建 | 待创建 | strict | planned |
 | `p2_fe_cluster` | Phase 2 | `xtreg ..., fe vce(cluster firm_id)` | `FixedEffectsOLS.fit(vce="cluster", cluster="firm_id")` | 面板样例 | FE + cluster | 待创建 | 待创建 | strict | planned |
