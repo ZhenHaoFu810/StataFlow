@@ -32,9 +32,11 @@ htmlcov/
 *.raw
 *.gph
 *.lyg
+stata/output/
 
 # Workspace reports
 workspace/qwencode-current/*report*.md
+workspace/qwencode-current/review-*.md
 
 # OS
 .DS_Store
