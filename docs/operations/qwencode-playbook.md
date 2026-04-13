@@ -20,7 +20,8 @@ QwenCode 不得：
 5. `docs/architecture/stata-compatibility.md`
 6. `docs/roadmap.md`
 7. `docs/backlog.md`
-8. 对应阶段执行手册
+8. `docs/phases/` 下对应阶段手册
+9. 对应的 `docs/tasks/*.md` 任务卡
 
 ## 3. 开工前检查表
 
@@ -66,7 +67,7 @@ QwenCode 可以更新：
 
 - `docs/backlog.md` 的状态字段
 - `docs/testing/test-case-catalog.md` 的样例状态与实际产物路径
-- 阶段执行手册中的执行状态或证据链接
+- `docs/phases/` 下阶段手册中的执行状态或证据链接
 
 QwenCode 不可以直接修改：
 
@@ -101,7 +102,7 @@ QwenCode 不可以直接修改：
 
 ### 标准循环
 
-1. Codex 从 `docs/backlog.md` 选择下一项工作，并更新阶段手册或任务卡。
+1. Codex 从 `docs/backlog.md` 选择下一项工作，并更新阶段手册或在 `docs/tasks/` 中创建任务卡。
 2. QwenCode 阅读操作手册、阶段手册和相关架构文档后开始实施。
 3. QwenCode 提交结果，至少包含修改文件、测试、Stata 双跑结果、风险和待决问题。
 4. Codex 审查结果并执行三类判断：
@@ -115,3 +116,4 @@ QwenCode 不可以直接修改：
 - QwenCode 未提交测试证据时，Codex 不得判定任务通过。
 - Codex 未更新文档状态前，QwenCode 不得默认下一项已开放。
 - 用户未批准的范围扩张不得进入实现。
+- 若存在明确任务卡，QwenCode 必须优先以任务卡为直接执行依据。

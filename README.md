@@ -13,15 +13,23 @@ Stata2Python 是一个面向金融与经济学实证研究的计量工具包项�
 
 ## 文档导航
 
-- 项目章程：`docs/project-charter.md`
-- 总体架构：`docs/architecture/overview.md`
-- 公共 API 规范：`docs/architecture/public-api.md`
-- 结果 schema：`docs/architecture/result-schema.md`
-- Stata 对齐规范：`docs/architecture/stata-compatibility.md`
-- 总体路线图：`docs/roadmap.md`
-- 全局任务池：`docs/backlog.md`
-- 测试策略：`docs/testing/testing-strategy.md`
-- QwenCode 操作手册：`docs/operations/qwencode-playbook.md`
+- 原则层：
+  - 项目章程：`docs/project-charter.md`
+  - 总体架构：`docs/architecture/overview.md`
+  - 公共 API 规范：`docs/architecture/public-api.md`
+  - 结果 schema：`docs/architecture/result-schema.md`
+  - Stata 对齐规范：`docs/architecture/stata-compatibility.md`
+- 管理层：
+  - 总体路线图：`docs/roadmap.md`
+  - 全局任务池：`docs/backlog.md`
+- 执行层：
+  - 阶段手册目录：`docs/phases/`
+  - 派工任务目录：`docs/tasks/`
+- 规则层：
+  - QwenCode 操作手册：`docs/operations/qwencode-playbook.md`
+  - 阶段门禁：`docs/operations/review-gates.md`
+  - Git 工作流：`docs/operations/git-workflow.md`
+  - 测试策略：`docs/testing/testing-strategy.md`
 
 ## 阅读顺序
 
@@ -33,8 +41,10 @@ Stata2Python 是一个面向金融与经济学实证研究的计量工具包项�
 4. 阅读 `docs/architecture/result-schema.md`
 5. 阅读 `docs/architecture/stata-compatibility.md`
 6. 阅读 `docs/roadmap.md` 与 `docs/backlog.md`
-7. 阅读对应阶段执行手册
-8. 开始实施具体任务
+7. 阅读 `docs/operations/qwencode-playbook.md`
+8. 阅读 `docs/operations/review-gates.md`
+9. 阅读对应阶段手册与任务卡
+10. 开始实施具体任务
 
 ## QwenCode 入口
 
@@ -43,7 +53,8 @@ QwenCode 不应自行决定项目边界、公开 API 变化或统计等价标准
 - 先阅读 `docs/operations/qwencode-playbook.md`
 - 在 `docs/backlog.md` 确认目标能力已登记
 - 在 `docs/testing/test-case-catalog.md` 确认测试样例计划
-- 按阶段手册执行，不得跳过测试门禁
+- 阅读 `docs/phases/` 下对应阶段手册与 `docs/tasks/` 下对应任务卡
+- 不得跳过测试门禁
 
 ## 当前默认约束
 
