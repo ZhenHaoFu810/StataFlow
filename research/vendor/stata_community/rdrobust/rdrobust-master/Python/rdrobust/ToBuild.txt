@@ -1,0 +1,23 @@
+# change the version number in the config file (.cfg)
+# version = X.X.X
+
+# To build the package, type (where the .toml file is located)
+python3 -m build
+
+# To install a local package
+python3 -m pip install ./dist/rdrobust-X.X.X.tar.gz
+
+# To upload to PyPI (Test Version)
+python3 -m twine upload --repository testpypi dist/*
+
+# To upload to PyPI (Official Version)
+python3 -m twine upload dist/*
+
+# To install (Test Version)
+pip install -i https://test.pypi.org/simple/ rdrobust==0.0.XX
+
+# To install (Official Version)
+pip install rdrobust
+
+# To uninstall
+pip uninstall rdrobust

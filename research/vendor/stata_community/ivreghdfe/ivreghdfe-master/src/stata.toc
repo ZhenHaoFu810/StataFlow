@@ -1,0 +1,2 @@
+v 3
+p ivreghdfe ivreghdfe - ivreg2 augmented with absorb()

@@ -1,100 +1,108 @@
-# 总体架构
+# 总体架构说明
 
-## 1. 架构目标
+## 1. 目标
 
-项目采用分层内核路线。设计目标是让 Stata 对齐逻辑、统计估计逻辑、结果对象和测试验证逻辑相互解耦，避免每扩展一个命令就重新发明一套实现与验收流程。
+项目架构不再围绕少量线性模型命令展开，而是围绕“Stata 命令映射平台”展开。平台需要兼顾：
 
-## 2. 核心分层
+- Python 原生接口的长期可维护性
+- Stata 命令迁移时的低摩擦使用体验
+- 规则来源与对齐证据的可追踪性
+- synthetic 与真实数据双线验证
 
-### `stata_runner`
+## 2. 四层结构
 
-职责：
-
-- 调用本机 Stata 17 可执行文件
-- 生成临时 `.do`、输入数据与输出文件
-- 收集 Stata 执行日志、退出状态与结构化结果
-
-禁止事项：
-
-- 不直接暴露为最终用户的主入口
-- 不包含计量估计算法
-- 不嵌入结果比较逻辑
-
-### `result_spec`
+### `core`
 
 职责：
 
-- 定义统一结果对象 schema
-- 承载 Stata 和 Python 两侧的可比字段
-- 作为测试、展示与序列化的共享契约
+- 提供稳定的 Python 原生估计器
+- 定义公共结果对象与统一拟合接口
+- 不直接绑定具体 Stata 命令字符串
 
-禁止事项：
+典型对象：
 
-- 不负责估计
-- 不负责调用 Stata
+- `OLS`
+- `FixedEffectsOLS`
+- `AbsorbingOLS`
+- `IV2SLS`
+- `Poisson`
+- `Logit`
+- `Probit`
 
-### `estimators.linear`
-
-职责：
-
-- 实现线性计量估计主干
-- 负责 OLS、加权 OLS 子集、robust、cluster、单向 FE 基础
-- 将预处理、点估计、协方差估计和输出对象拼装起来
-
-禁止事项：
-
-- 不直接执行 Stata
-- 不以内嵌文本方式定义测试金标准
-
-### `testing_harness`
+### `compat.stata`
 
 职责：
 
-- 驱动 Stata-Python 双跑
-- 执行字段级结果比较
-- 输出详细 diff 报告
-- 提供 CI 可用的验收入口
+- 提供常见 Stata 命令的兼容映射层
+- 复用 `core`，但命名、默认值和字段尽量贴近 Stata
 
-禁止事项：
+典型函数：
 
-- 不承担业务 API
-- 不直接修改估计器逻辑
+- `regress()`
+- `xtreg_fe()`
+- `areg()`
+- `reghdfe()`
+- `ivregress_2sls()`
+- `ivreghdfe()`
+- `poisson()`
+- `ppmlhdfe()`
+
+### `research`
+
+职责：
+
+- 保存官方手册、公开源码、返回值、自由度、修正因子、样例设计与已知差异
+- 为每个新命令提供实现前的规则依据
+
+组成：
+
+- 命令族规划
+- 源码清单
+- 逐命令研究档案
+- 公开数据集目录
+- 本地源码镜像区
+
+### `validation`
+
+职责：
+
+- 管理 synthetic 黄金样例
+- 管理真实公开数据样例
+- 驱动 Stata 双跑
+- 输出字段级 diff 报告
 
 ## 3. 依赖方向
 
-允许的依赖方向如下：
+- `compat.stata` 依赖 `core`
+- `validation` 依赖 `core` 与 `compat.stata`
+- `research` 不依赖估计器实现，但为其提供依据
 
-- `estimators.linear -> result_spec`
-- `testing_harness -> stata_runner`
-- `testing_harness -> result_spec`
-- `testing_harness -> estimators.linear`
+禁止：
 
-禁止的依赖方向如下：
+- 用 `compat.stata` 反向约束 `core` 内部结构
+- 在无研究档案时直接实现新命令
+- 用真实数据测试替代 synthetic 规则测试
 
-- `result_spec -> estimators.linear`
-- `result_spec -> stata_runner`
-- `stata_runner -> estimators.linear`
-- 任意层绕过 `result_spec` 直接比对原始对象
+## 4. 当前默认主线
 
-## 4. 横切关注点
+近期默认主线为：
 
-以下逻辑必须以独立模块或清晰职责形式存在，不得散落在命令封装中：
+- `Panel / FE / HDFE`
 
-- 样本筛选
-- 缺失值处理
-- 常数项管理
-- 共线性识别与变量剔除
-- 权重语义
-- 聚类索引构造
-- FE 残差化
+这条线的关键中间层是：
 
-## 5. 扩展位点
+- `AbsorbingOLS` 或等价吸收式内核
 
-为后续阶段预留但 v1 不完全公开的扩展位点：
+该内核后续将同时服务：
 
-- 双向 FE 与高维 FE 吸收
-- 离散选择模型
-- IV / GMM
-- DID 封装与事件研究接口
+- `areg`
+- 双向 FE
+- `reghdfe`
+- `ivreghdfe`
+- `ppmlhdfe`
 
-扩展时必须优先复用已有结果 schema、测试框架和样本规则，不允许平行造新体系。
+## 5. 执行约束
+
+- 研究档案先于实现
+- 双线验证先于 `done`
+- 社区命令默认作为扩展兼容层，不直接混入核心稳定 API 承诺

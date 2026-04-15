@@ -56,6 +56,18 @@ def test_stata_runner_generate_min_do():
     assert "clear all" in do_content
 
 
+def test_stata_runner_build_cmd_command():
+    """Test cmd command generation for non-interactive execution."""
+    runner = StataRunner()
+    command = runner._build_cmd_command(
+        r"D:\tmp\out",
+        r"D:\tmp\out\run_123.do",
+    )
+
+    assert 'cd /d "D:\\tmp\\out"' in command
+    assert f'"{runner.resolved_stata_path}" /e do run_123.do' in command
+
+
 def test_stata_runner_run_min_do():
     """Test running minimal .do file through Stata."""
     runner = StataRunner()

@@ -1,0 +1,98 @@
+---
+title: "GLM Benchmarks"
+output:
+  md_document:
+    variant: markdown_github
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+```{r}
+rm(list=ls())
+#install.packages("glm2")
+#install.packages("alpaca")
+#install.packages("FENmlm")
+library(alpaca)
+library(glm2)
+library(FENmlm)
+setwd("C:/Git/ppml_hdfe_demo/guides")
+```
+
+# Base R: `glm`
+
+```{r}
+rm(list=ls())
+data <- read.csv(file="csv/example1.csv", header=TRUE, sep=",")
+formula <- y ~ x1 + x2 + x3 + x4
+mod <- glm(formula, data, family=poisson())
+summary(mod)
+```
+
+
+```{r}
+rm(list=ls())
+data <- read.csv(file="csv/example2.csv", header=TRUE, sep=",")
+formula <- y ~ x1 + x2 + x3 + x4
+mod <- glm(formula, data, family=poisson())
+summary(mod)
+```
+
+# `glm2`
+
+```{r}
+rm(list=ls())
+data <- read.csv(file="csv/example1.csv", header=TRUE, sep=",")
+formula <- y ~ x1 + x2 + x3 + x4
+mod <- glm2(formula, data, family=poisson())
+summary(mod)
+```
+
+
+```{r}
+rm(list=ls())
+data <- read.csv(file="csv/example2.csv", header=TRUE, sep=",")
+formula <- y ~ x1 + x2 + x3 + x4
+mod <- glm2(formula, data, family=poisson())
+summary(mod)
+```
+
+# `alpaca`
+
+
+```{r}
+rm(list=ls())
+data <- read.csv(file="csv/fe1.csv", header=TRUE, sep=",")
+formula <- y ~ x1 + x2 | i + j
+mod <- feglm(formula, data, family=poisson())
+summary(mod)
+```
+
+
+```{r}
+rm(list=ls())
+data <- read.csv(file="csv/fe2.csv", header=TRUE, sep=",")
+formula <- y ~ x1 | i + j
+try(mod <- feglm(formula, data, family=poisson()))
+#summary(mod)
+```
+
+# `FENmlm`
+
+```{r}
+rm(list=ls())
+data <- read.csv(file="csv/fe1.csv", header=TRUE, sep=",")
+formula <- y ~ x1 + x2 | i + j
+mod <- FENmlm::femlm(formula, data, family="poisson")
+summary(mod)
+```
+
+
+```{r}
+rm(list=ls())
+data <- read.csv(file="csv/fe2.csv", header=TRUE, sep=",")
+formula <- y ~ x1 | i + j
+try(mod <- FENmlm::femlm(formula, data, family="poisson"))
+#summary(mod)
+#diagnostic(mod)
+```

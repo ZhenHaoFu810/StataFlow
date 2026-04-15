@@ -1,118 +1,166 @@
 # 总体路线图
 
-## Phase 0: Bootstrap
+## 路线图原则
 
-目标：
+项目后续不再以“单个命令补丁式推进”为主，而按命令族和研究层共同推进。每一波工作都要同时建设：
 
-- 初始化项目骨架
-- 建立 Stata runner 最小可用链路
-- 打通第一条 OLS 双跑测试
+- 估计器或兼容命令
+- 研究档案
+- synthetic 黄金样例
+- 真实公开数据样例
 
-完成标志：
+执行节奏固定为“每个 wave 三轮”，详见：
 
-- 能从 Python 触发 Stata 运行一个最小 `.do`
-- 能读取 Stata 结构化输出
-- 能执行一条 Python vs Stata 的字段级比较
+- `docs/roadmap-execution-rounds.md`
 
-前置条件：
+## Wave 0：已完成的原型验证
 
-- 本机可访问 Stata 17
-- 基础 Python 项目结构已建立
+已验证能力：
 
-风险：
-
-- Stata 批处理调用方式不稳定
-- 结构化导出设计过早绑定具体实现
-
-不纳入项：
-
-- 完整估计器实现
-- 完整 CI 覆盖
-
-## Phase 1: Linear Core
-
-目标：
-
-- OLS
+- `regress`
 - `vce(robust)`
 - `vce(cluster)`
-- 样本筛选、常数项、共线性处理
-
-完成标志：
-
-- 对上述能力有稳定公开 API
-- 每项能力都有至少一组双跑黄金测试
-
-前置条件：
-
-- Phase 0 完成
-- 结果 schema 稳定
-
-风险：
-
-- 自由度和修正因子规则不清晰
-- 共线性处理与 Stata 细节偏差
-
-不纳入项：
-
-- 权重
-- FE
-
-## Phase 2: Weights And Single FE
-
-目标：
-
 - `aweight`
-- 单向 FE
-- FE 边界情况样例库
+- `xtreg, fe`
+- FE + cluster
 
-完成标志：
+这一波的意义是证明 Python 端可在机器可验证框架下复现 Stata 结果。
 
-- `aweight` 与单向 FE 均有稳定实现与双跑样例
-- FE 转换路径与显式哑变量回归结果可互证
-
-前置条件：
-
-- Phase 1 完成
-
-风险：
-
-- FE 自由度与 summary 语义难以完全复刻
-- 面板非平衡样本的样本掩码规则复杂
-
-不纳入项：
-
-- 双向 FE
-- `areg` 对外接口
-
-## Phase 3: Absorption Foundation
+## Wave 1：Panel / FE / HDFE
 
 目标：
 
-- 稳定内部吸收/投影接口
-- 为 `areg`、双向 FE、`reghdfe` 风格扩展清除架构障碍
+- `areg`
+- 双向 FE 的核心吸收内核
+- `reghdfe` 兼容层最小可用子集
+
+默认三轮拆法：
+
+1. 研究基础建设
+2. `areg` 最小实现
+3. `areg` 真实数据验证与收口
 
 完成标志：
 
-- 内核层可以复用残差化组件
-- 不破坏现有 API 与测试基线
-
-前置条件：
-
-- Phase 2 完成
+- `AbsorbingOLS` 或等价核心内核稳定
+- `areg` 至少有一组 synthetic + real-data 双跑
+- `reghdfe` 源码研究档案完成，并具备进入独立优先 wave 的前置条件
 
 风险：
 
-- 性能优化冲动压倒正确性
-- 为未来扩展过度设计
+- singleton、nested FE、DoF 修正复杂
+- `reghdfe` 吸收算法与输出行为需要分层实现
 
-不纳入项：
+## Priority Wave：`reghdfe`
 
-- 全量高维 FE 公开支持
+目标：
 
-## 后续候选 Phase
+- `reghdfe` 最小兼容实现
+- 多吸收 FE 的最小可用子集
+- `reghdfe` 在 synthetic 与真实公开数据上的独立收口
 
-- 离散选择模型：`logit`、`probit`、`poisson`
-- IV / GMM
-- DID 与事件研究封装
-- 多维聚类与更复杂协方差估计
+默认三轮拆法：
+
+1. `reghdfe` 研究收束与实现边界确认
+2. `reghdfe` 最小实现轮
+3. `reghdfe` 真实数据验证与 hardening 轮
+
+完成标志：
+
+- `reghdfe` 至少完成 `absorb(1-2 组 FE)` 的最小实现
+- 支持 `vce(ols)` 与单 `cluster`
+- 至少一组 synthetic 与一组 real-data 双跑通过
+- 对 singleton、`df_a`、cluster 修正的当前口径有文档化说明
+
+风险：
+
+- 多 FE 吸收与 `df_a` 计算是最容易与 Stata 偏离的部分
+- singleton 处理、nested FE 与 cluster 修正需要严格门禁
+- 该 wave 不应顺势膨胀到 `ivreghdfe` 或 `ppmlhdfe`
+
+## Wave 2：IV / GMM 与 HDFE 联动
+
+目标：
+
+- `ivregress 2sls`
+- `ivreghdfe`
+
+完成标志：
+
+- 核心层具备稳定 IV 接口
+- HDFE 与 IV 共享吸收、cluster 与结果对象框架
+- 社区源码研究和双跑验证链路打通
+
+默认三轮拆法：
+
+1. `ivregress` / `ivreghdfe` 研究轮
+2. `ivregress 2sls` 最小实现轮
+3. 真实数据验证与 HDFE 联动收口轮
+
+## Wave 3：Binary / Count
+
+目标：
+
+- `logit`
+- `probit`
+- `poisson`
+- `ppmlhdfe`
+
+完成标志：
+
+- 官方内建命令通过手册 + 双跑路径完成最小交付
+- `ppmlhdfe` 源码研究与兼容层最小子集建立
+
+默认三轮拆法：
+
+1. `logit/probit/poisson/ppmlhdfe` 研究轮
+2. 官方内建离散与计数命令最小实现轮
+3. 真实数据验证 + `ppmlhdfe` 最小子集收口轮
+
+## Wave 4：DID / Event Study Extensions
+
+目标：
+
+- `did_imputation`
+- `eventstudyinteract`
+- `csdid`
+
+完成标志：
+
+- 作为扩展兼容层独立成组
+- 每个高频 DID 工具至少有研究档案与最小样例
+
+默认三轮拆法：
+
+1. DID / event study 命令研究轮
+2. 最优先 DID 命令最小实现轮
+3. 真实数据验证与扩展兼容层收口轮
+
+## Wave 5：Postestimation
+
+目标：
+
+- `predict`
+- 高频 `margins` 子集
+- 更完整的 Stata 风格输出与 metadata
+
+完成标志：
+
+- 常用 postestimation 路径不再依赖手工拼接
+
+默认三轮拆法：
+
+1. `predict` / `margins` 高频子集研究轮
+2. 最小 postestimation 实现轮
+3. 真实数据验证与输出层收口轮
+
+## 当前默认优先级
+
+当前主线默认锁定为：
+
+1. `Panel / FE / HDFE`
+2. `Priority Wave: reghdfe`
+3. `IV / GMM`
+4. `Binary / Count`
+
+在没有新的用户优先级调整前，不自动切换主线。

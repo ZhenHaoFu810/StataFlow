@@ -1,0 +1,7 @@
+v 0.0.1
+d Materials by Liyang Sun
+d https://github.com/lsun20/eventstudyinteract
+
+d 'eventstudyinteract': interaction weighted estimator for event study
+
+p eventstudyinteract

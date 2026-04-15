@@ -9,6 +9,7 @@ Stata JSON export, which was causing JSONDecodeError.
 """
 
 import re
+import tempfile
 import pytest
 import numpy as np
 import pandas as pd
@@ -25,6 +26,7 @@ PROJECT_STATA_CASES = PROJECT_ROOT / "stata" / "cases"
 
 # Ensure output directory exists
 PROJECT_STATA_OUTPUT.mkdir(parents=True, exist_ok=True)
+TEMP_DIR = Path(tempfile.mkdtemp(prefix="statapy_p0_"))
 
 
 def _generate_test_data() -> pd.DataFrame:
@@ -101,8 +103,8 @@ def _run_stata_ols(data: pd.DataFrame) -> dict:
     """Run Stata regress and return parsed results."""
     runner = StataRunner()
 
-    # Save data to project directory
-    dta_file = PROJECT_STATA_CASES / "p0_golden_test_data.dta"
+    # Save data to a unique temp file to avoid OneDrive/Windows file locking
+    dta_file = TEMP_DIR / "p0_golden_test_data.dta"
     data.to_stata(str(dta_file), write_index=False)
 
     # Create .do file

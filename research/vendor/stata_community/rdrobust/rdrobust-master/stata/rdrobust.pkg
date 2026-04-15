@@ -1,0 +1,35 @@
+v 3
+d STATA Package: RDROBUST
+d 
+d Authors: Sebastian Calonico, Graduate School of Management, University of California, Davis, scalonico@ucdavis.edu
+d          Matias D. Cattaneo, Operations Research and Financial Engineering, Princeton University, cattaneo@princeton.edu
+d          Max H. Farrell, Department of Economics, University of California, Santa Barbara, maxhfarrell@ucsb.edu
+d          Rocio Titiunik, Department of Politics, Princeton University, titiunik@princeton.edu
+d
+d Distribution-Date: 20250627
+d 
+f rdbwselect.ado
+f rdplot.ado
+f rdplot.sthlp
+f rdplot_illustration.do
+f rdbwselect.sthlp
+f rdrobust.ado
+f rdrobust.sthlp
+f rdrobust_bw.mo
+f rdrobust_functions.do
+f rdrobust_illustration.do
+f rdrobust_kweight.mo
+f rdrobust_senate.dta
+f rdrobust_res.mo
+f rdrobust_vce.mo
+f rdrobust_collapse.mo
+f rdrobust_median.mo
+f rdrobust_groupid.mo
+d -----------------------
+d BACK COMPATIBILITY:
+d -----------------------
+f rdbwselect_2014.ado
+f rdbwselect_2014.sthlp
+f rdbwselect_2014_functions.do
+f rdbwselect_2014_kconst.ado
+

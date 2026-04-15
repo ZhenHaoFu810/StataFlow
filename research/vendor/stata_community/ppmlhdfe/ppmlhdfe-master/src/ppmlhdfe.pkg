@@ -1,0 +1,45 @@
+v 3
+
+d 'PPMLHDFE': PPML/Poisson Regression with High-Dimensional Fixed Effects (Multi-Way Fixed Effects)
+d
+d ppmlhdfe implements Poisson pseudo-maximum likelihood regressions
+d (PPML) with multi-way fixed effects, as described by Correia, 
+d Guimarães, Zylkin (2019a). Advantages over standard Poisson
+d commands such as -glm- include:
+d  a) Support for any number of fixed effects, as in -reghdfe-
+d  b) Support for two- and multi-way clustering
+d  c) Robust to statistical separation and convergence issues
+d  e) Includes several algorithmic improvements aimed allowing its
+d     use with very large datasets
+d
+d KW: poisson
+d KW: pseudo maximum likelihood
+d KW: fixed effects
+d KW: panel data
+d KW: separation
+d
+d Requires: Stata version 13.1
+d
+d Required packages:
+d 	ftools
+d 	reghdfe
+d
+d Author: Sergio Correia. Federal Reserve Bank of Richmond
+d Support: sergio.correia@gmail.com
+d
+d Author: Paulo Guimarães. Banco de Portugal
+d Support: pfguimaraes@bportugal.pt
+d
+d Author: Thomas Zylkin. University of Richmond
+d Support: tzylkin@richmond.edu
+d
+d Distribution-Date: 20260111
+d
+f ppmlhdfe.ado
+f ppmlhdfe_header.ado
+f ppmlhdfe_p.ado
+f ppmlhdfe.mata
+f ppmlhdfe_functions.mata
+f ppmlhdfe_separation_simplex.mata
+f ppmlhdfe_separation_relu.mata
+f ppmlhdfe.sthlp

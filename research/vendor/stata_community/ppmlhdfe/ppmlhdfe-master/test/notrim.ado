@@ -1,0 +1,14 @@
+* Convenience function used b/c trim_cons renames e(b) into e(b_trim)
+
+cap pr drop notrim
+pr notrim, eclass
+args adjdof
+	matrix trim_b = e(b)
+	matrix trim_V = e(V)
+	if ("`adjdof'"!="") {
+		matrix trim_V = trim_V * `adjdof'
+		// ereturn scalar F = e(F) / `adjdof'
+	}
+	ereturn matrix trim_b = trim_b
+	ereturn matrix trim_V = trim_V
+end

@@ -20,6 +20,8 @@ class ModelInfo:
     vcetype: str = "ols"
     weight_type: Optional[str] = None
     fe_vars: list[str] = field(default_factory=list)
+    absorb_var: Optional[str] = None
+    absorb_vars: list[str] = field(default_factory=list)
     cluster_var: Optional[str] = None
     has_constant: bool = True
 
@@ -38,6 +40,7 @@ class FitInfo:
     """Fit statistics."""
     df_model: float = 0.0
     df_resid: float = 0.0
+    df_a: Optional[float] = None
     rank: int = 0
     rss: float = 0.0
     tss: float = 0.0
@@ -47,6 +50,9 @@ class FitInfo:
     r2_adj: float = 0.0
     f_stat: Optional[float] = None
     f_pvalue: Optional[float] = None
+    ll: Optional[float] = None
+    deviance: Optional[float] = None
+    pseudo_r2: Optional[float] = None
 
 
 @dataclass
@@ -115,6 +121,8 @@ class ResultSchema:
                 "vcetype": self.model.vcetype,
                 "weight_type": self.model.weight_type,
                 "fe_vars": self.model.fe_vars,
+                "absorb_var": self.model.absorb_var,
+                "absorb_vars": self.model.absorb_vars,
                 "cluster_var": self.model.cluster_var,
                 "has_constant": self.model.has_constant,
             },
@@ -127,6 +135,7 @@ class ResultSchema:
             "fit": {
                 "df_model": self.fit.df_model,
                 "df_resid": self.fit.df_resid,
+                "df_a": self.fit.df_a,
                 "rank": self.fit.rank,
                 "rss": self.fit.rss,
                 "tss": self.fit.tss,
@@ -136,6 +145,9 @@ class ResultSchema:
                 "r2_adj": self.fit.r2_adj,
                 "f_stat": self.fit.f_stat,
                 "f_pvalue": self.fit.f_pvalue,
+                "ll": self.fit.ll,
+                "deviance": self.fit.deviance,
+                "pseudo_r2": self.fit.pseudo_r2,
             },
             "coefficients": [
                 {

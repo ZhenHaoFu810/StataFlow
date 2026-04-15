@@ -1,0 +1,7 @@
+v 0.0.1
+d 'EVENTSTUDYINTERACT': interaction weighted estimator
+d Distribution-Date:   20210331
+d License: MIT
+d 
+F eventstudyinteract.ado
+F eventstudyinteract.sthlp

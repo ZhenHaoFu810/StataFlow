@@ -1,0 +1,6 @@
+v 3
+d RDROBUST: Inference and graphical procedures using local polynomial and partitioning regression methods.
+d           https://rdpackages.github.io/rdrobust
+d
+
+p rdrobust

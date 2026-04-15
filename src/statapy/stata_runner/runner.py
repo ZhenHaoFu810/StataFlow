@@ -4,7 +4,7 @@ Stata runner - calls local Stata 17 executable.
 Responsibilities:
 - Locate Stata 17 executable
 - Generate temporary .do files
-- Execute Stata in batch mode
+- Execute Stata in non-interactive mode
 - Collect exit status and output files
 
 Does NOT:
@@ -17,15 +17,19 @@ from __future__ import annotations
 
 import os
 import subprocess
-import tempfile
 import shutil
 from pathlib import Path
 from dataclasses import dataclass
 from typing import Optional
 
 
-# Default Stata 17 executable path (per project charter)
+# Default Stata 17 executable path
 DEFAULT_STATA_PATH = r"D:\Software\Stata17\StataMP-64.exe"
+
+# Common installation directories to search
+FALLBACK_STATA_DIRS = [
+    r"D:\Software\Stata17",
+]
 
 # Fallback paths to try if default is not found
 FALLBACK_STATA_NAMES = [
@@ -69,13 +73,15 @@ def find_stata_executable(custom_path: Optional[str] = None) -> str:
     if os.path.isfile(DEFAULT_STATA_PATH):
         return DEFAULT_STATA_PATH
     
-    # Try to find Stata base directory
-    stata_base = r"D:\Software\Stata17"
-    if os.path.isdir(stata_base):
-        for name in FALLBACK_STATA_NAMES:
-            candidate = os.path.join(stata_base, name)
-            if os.path.isfile(candidate):
-                return candidate
+    # Try common Stata installation directories
+    searched_dirs = []
+    for stata_base in FALLBACK_STATA_DIRS:
+        searched_dirs.append(stata_base)
+        if os.path.isdir(stata_base):
+            for name in FALLBACK_STATA_NAMES:
+                candidate = os.path.join(stata_base, name)
+                if os.path.isfile(candidate):
+                    return candidate
     
     # Try PATH
     for name in FALLBACK_STATA_NAMES:
@@ -86,7 +92,7 @@ def find_stata_executable(custom_path: Optional[str] = None) -> str:
     raise FileNotFoundError(
         f"Cannot find Stata executable. "
         f"Tried: {DEFAULT_STATA_PATH}, "
-        f"fallbacks in {stata_base}, and PATH. "
+        f"fallbacks in {searched_dirs}, and PATH. "
         f"Please set STATA_PATH environment variable or pass custom_path."
     )
 
@@ -115,6 +121,17 @@ class StataRunner:
             self._resolved_path = find_stata_executable(self.stata_path)
         return self._resolved_path
 
+    def _build_cmd_command(self, output_dir: str, do_file: str) -> str:
+        """
+        Build the Windows cmd command used for non-interactive Stata execution.
+
+        `/e do` avoids the final confirmation dialog shown by `/b do`, but it
+        expects the process to start in the directory where the `.do` file
+        lives so that Stata writes its auto-generated `.log` alongside it.
+        """
+        do_name = os.path.basename(do_file)
+        return f'cd /d "{output_dir}" && "{self.resolved_stata_path}" /e do {do_name}'
+
     def run_do_file(
         self,
         do_content: str,
@@ -122,10 +139,10 @@ class StataRunner:
         timeout: int = 300,
     ) -> StataResult:
         """
-        Run a Stata .do file using batch mode.
+        Run a Stata .do file using non-interactive mode.
 
-        Uses: StataMP-64.exe -b do <file>
-        Output files (.log) are created in output_dir.
+        Uses: cmd /c "cd /d <output_dir> && StataMP-64.exe /e do <do_file>"
+        Output files (.log) are written automatically by Stata in output_dir.
 
         Args:
             do_content: Content of the .do file.
@@ -153,26 +170,28 @@ class StataRunner:
         with open(do_file, "w", encoding="utf-8") as f:
             f.write(do_content)
 
-        # Build PowerShell command for Stata batch mode
-        # & "D:\Software\Stata17\StataMP-64.exe" -b do "<do_file>"
-        ps_cmd = f'& "{self.resolved_stata_path}" -b do "{do_file}"'
+        stata_log_file = do_file.replace(".do", ".log")
+        cmd_command = self._build_cmd_command(output_dir, do_file)
 
         try:
-            # Run Stata with working_dir set to output_dir
-            # This ensures the .log file is created in output_dir
+            startupinfo = None
+            if os.name == "nt":
+                startupinfo = subprocess.STARTUPINFO()
+                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                startupinfo.wShowWindow = 0
+
             result = subprocess.run(
-                ["powershell", "-Command", ps_cmd],
+                cmd_command,
                 capture_output=True,
                 text=True,
                 timeout=timeout,
                 encoding="utf-8",
                 errors="replace",
                 cwd=output_dir,
+                startupinfo=startupinfo,
+                shell=True,
             )
 
-            # Read Stata's log file (created automatically in batch mode)
-            # Log file has same name as .do file but .log extension
-            stata_log_file = do_file.replace(".do", ".log")
             log_content = None
             if os.path.exists(stata_log_file):
                 with open(stata_log_file, "r", encoding="utf-8", errors="replace") as f:

@@ -1,0 +1,11 @@
+v 3
+p ppmlhdfe PPML/Poisson Regression with High-Dimensional Fixed Effects (Multi-Way Fixed Effects)
+
+* Author: Sergio Correia. Board of Governors of the Federal Reserve System
+* Support: sergio.correia@gmail.com
+*
+* Author: Paulo Guimarães. Banco de Portugal
+* Support: pfguimaraes@bportugal.pt
+*
+* Author: Thomas Zylkin. University of Richmond
+* Support: tzylkin@richmond.edu

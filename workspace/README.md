@@ -2,22 +2,17 @@
 
 本目录用于承载执行代理的当前工作区说明、任务入口和反馈材料。
 
+## 当前约定
+
+- `workspace/current-task/`
+  - 中性执行入口
+  - 供 Claude Code 或后续其他执行代理使用
+- `workspace/qwencode-current/`
+  - 历史工作区
+  - 仅保留既有回报与 review 记录，不再作为默认入口
+
 ## 设计目的
 
-- 给 QwenCode 一个稳定、单一、低歧义的工作入口
-- 把“当前该做什么”和“做完后如何回报”集中到一个地方
-- 避免每轮都要人工重复转述相同步骤
-
-## 目录约定
-
-- `workspace/qwencode-current/`
-  - 当前指派给 QwenCode 的工作区
-  - 存放本轮任务指令、回报模板和必要的辅助说明
-
-后续如果并行推进多轮任务，可以扩展为：
-
-- `workspace/qwencode-phase0/`
-- `workspace/qwencode-phase1/`
-- `workspace/qwencode-experiments/`
-
-但在当前阶段，默认只维护一个 `qwencode-current` 即可。
+- 给执行代理一个稳定、单一、低歧义的工作入口
+- 集中保存当前任务指令、回报模板和辅助说明
+- 把旧的 QwenCode 时代材料与新的中性入口分开

@@ -1,5 +1,12 @@
 # QwenCode 操作手册
 
+本文件已进入兼容保留状态。后续统一执行入口为：
+
+- `docs/operations/executor-playbook.md`
+- `workspace/current-task/`
+
+若旧材料仍引用本文件，可暂继续阅读；但新的治理与派工应以通用执行代理手册为准。
+
 ## 1. 角色边界
 
 QwenCode 是执行代理，不是产品负责人或架构裁决者。其职责是严格按文档实施代码、测试、数据夹具和持续验证。
