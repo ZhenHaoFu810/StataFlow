@@ -6,19 +6,27 @@
 - 核心层保持 Python 原生风格
 - 兼容层使用 Stata 命令命名，但不承诺完整命令行解析
 - 社区高频命令默认放扩展兼容层
+- **不支持的参数必须硬报错，不允许静默忽略**
 
 ## 2. Core API
 
-### 已有或近期目标对象
+### 已有估计器
 
 ```python
-OLS(...)
-FixedEffectsOLS(...)
-AbsorbingOLS(...)
-IV2SLS(...)
-Poisson(...)
-Logit(...)
-Probit(...)
+from statapy import (
+    OLS,
+    FixedEffectsOLS,
+    AbsorbingOLS,
+    IV2SLS,
+    IVAbsorbingOLS,
+    Logit,
+    Probit,
+    Poisson,
+    PPMLHDFE,
+    DIDImputation,
+    EventStudyInteract,
+    CSDID,
+)
 ```
 
 设计要求：
@@ -29,7 +37,7 @@ Probit(...)
 
 ## 3. Stata 兼容层
 
-建议入口：
+### 正式入口
 
 ```python
 from statapy.compat.stata import (
@@ -39,20 +47,45 @@ from statapy.compat.stata import (
     reghdfe,
     ivregress_2sls,
     ivreghdfe,
+    logit,
+    probit,
     poisson,
     ppmlhdfe,
+    did_imputation,
+    eventstudyinteract,
+    csdid,
 )
 ```
 
-映射原则：
+### 命令映射表
+
+| Stata 命令 | Python 函数 | 核心类 |
+|-----------|-------------|--------|
+| `regress` | `regress(...)` | `OLS` |
+| `xtreg, fe` | `xtreg_fe(...)` | `FixedEffectsOLS` |
+| `areg` | `areg(...)` | `AbsorbingOLS` |
+| `reghdfe` | `reghdfe(...)` | `AbsorbingOLS` |
+| `ivregress 2sls` | `ivregress_2sls(...)` | `IV2SLS` |
+| `ivreghdfe` | `ivreghdfe(...)` | `IVAbsorbingOLS` |
+| `logit` | `logit(...)` | `Logit` |
+| `probit` | `probit(...)` | `Probit` |
+| `poisson` | `poisson(...)` | `Poisson` |
+| `ppmlhdfe` | `ppmlhdfe(...)` | `PPMLHDFE` |
+| `did_imputation` | `did_imputation(...)` | `DIDImputation` |
+| `eventstudyinteract` | `eventstudyinteract(...)` | `EventStudyInteract` |
+| `csdid` | `csdid(...)` | `CSDID` |
+
+### 映射原则
 
 - 优先贴近 Stata 常用命令与术语
 - 仅对高频参数做显式支持
 - 默认不追求完全字符串兼容
+- 所有 wrapper 通过 `**kwargs` 捕获并硬拒绝未知参数
+- 对已知但未实现的参数（如 `poisson` 的 `exposure`）显式抛出 `NotImplementedError`
 
 ## 4. 扩展兼容层定位
 
-以下命令默认作为扩展兼容层，而非核心稳定估计器承诺：
+以下命令作为扩展兼容层实现，其完整历史选项面不自动成为稳定 API 承诺：
 
 - `reghdfe`
 - `ivreghdfe`
@@ -61,7 +94,7 @@ from statapy.compat.stata import (
 - `eventstudyinteract`
 - `csdid`
 
-这些命令可以高优先级实现，但其完整历史选项面不自动成为稳定 API 承诺。
+每份命令的当前支持边界见 `docs/command-support-matrix/`。
 
 ## 5. 结果对象要求
 

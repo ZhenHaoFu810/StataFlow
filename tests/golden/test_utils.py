@@ -210,3 +210,38 @@ def tolerance_close(a, b, rtol=1e-6, atol=1e-8, name="value"):
         f"{'PASS' if passed else 'FAIL'}"
     )
     return passed, msg
+
+
+def run_stata_factor(do_content: str, output_dir: str = None) -> dict:
+    """Run Stata and parse results, including 'COEF <name> <beta> <se>' lines."""
+    runner = StataRunner()
+
+    if output_dir is None:
+        output_dir = str(PROJECT_STATA_OUTPUT)
+
+    result = runner.run_do_file(do_content, output_dir=output_dir)
+
+    if result.exit_code != 0:
+        raise RuntimeError(f"Stata failed: {result.error_message}")
+
+    if not result.output_content:
+        raise RuntimeError("Stata produced no output")
+
+    parsed = parse_stata_log(result.output_content)
+
+    # Override / augment coefficients from COEF lines (needed for factor syntax)
+    coef_pattern = r'^COEF\s+(.+?)\s+(-?[\d.]+)\s+(-?[\d.]+)$'
+    coefs_from_lines = []
+    for line in result.output_content.splitlines():
+        m = re.match(coef_pattern, line.strip())
+        if m:
+            coefs_from_lines.append({
+                "name": m.group(1).strip(),
+                "beta": float(m.group(2)),
+                "std_err": float(m.group(3)),
+            })
+
+    if coefs_from_lines:
+        parsed["coefficients"] = coefs_from_lines
+
+    return parsed

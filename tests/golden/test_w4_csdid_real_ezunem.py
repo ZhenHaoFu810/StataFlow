@@ -81,21 +81,23 @@ class TestW4CSDIDRealEzunem:
         return _parse_csdid_event_study_log(log_content)
 
     def test_coefficients_count(self, python_result, stata_result):
-        py_names = list(python_result.params.keys())
+        py_names = [c.name for c in python_result.coefficients]
         st_names = [c['name'] for c in stata_result['coefficients']]
         assert py_names == st_names, f"Names differ: Python={py_names}, Stata={st_names}"
 
     def test_coefficients_beta(self, python_result, stata_result):
+        py_coef_map = {c.name: c.beta for c in python_result.coefficients}
         for st_coef in stata_result['coefficients']:
             name = st_coef['name']
-            py_beta = python_result.params[name]
+            py_beta = py_coef_map[name]
             passed, msg = tolerance_close(py_beta, st_coef['beta'], name=f"beta[{name}]")
             assert passed, msg
 
     def test_coefficients_std_err(self, python_result, stata_result):
+        py_se_map = {c.name: c.std_err for c in python_result.coefficients}
         for st_coef in stata_result['coefficients']:
             name = st_coef['name']
-            py_se = python_result.bse[name]
+            py_se = py_se_map[name]
             if st_coef['std_err'] == 0:
                 continue
             passed, msg = tolerance_close(
@@ -104,5 +106,5 @@ class TestW4CSDIDRealEzunem:
             assert passed, msg
 
     def test_nobs(self, python_result, stata_result):
-        passed, msg = tolerance_close(python_result.nobs, stata_result['nobs'], name='nobs')
+        passed, msg = tolerance_close(python_result.sample.nobs, stata_result['nobs'], name='nobs')
         assert passed, msg

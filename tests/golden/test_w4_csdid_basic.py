@@ -87,13 +87,14 @@ display "CSDID_OK"
         if name_lower in event_names:
             stata_coefs[name_lower] = c
 
-    for key in py_event.params:
+    for coef_row in py_event.coefficients:
+        key = coef_row.name
         stata_name = key.lower()
         assert stata_name in stata_coefs, f"Missing Stata coefficient: {key}"
         stata_beta = float(stata_coefs[stata_name]["beta"])
         stata_se = float(stata_coefs[stata_name]["std_err"])
-        py_beta = py_event.params[key]
-        py_se = py_event.bse[key]
+        py_beta = coef_row.beta
+        py_se = coef_row.std_err
 
         passed_b, msg_b = tolerance_close(py_beta, stata_beta, rtol=1e-5, atol=1e-7, name=f"{key}_beta")
         passed_se, msg_se = tolerance_close(py_se, stata_se, rtol=5e-3, atol=1e-5, name=f"{key}_se")

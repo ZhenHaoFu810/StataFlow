@@ -408,22 +408,21 @@ class IVAbsorbingOLS:
         absorb: str | list[str],
         add_constant: bool = True,
         missing: str = "drop",
+        drop_singletons: bool = True,
     ):
         self.data = data
         self.y = y
         self.x_exog = list(x_exog)
         self.x_endog = list(x_endog)
         self.instruments = list(instruments)
-        if isinstance(absorb, str):
-            self.absorb_vars = [absorb]
-            self._reghdfe_mode = False
-        else:
-            self.absorb_vars = list(absorb)
-            self._reghdfe_mode = True
+        self.absorb_vars = [absorb] if isinstance(absorb, str) else list(absorb)
+        self._reghdfe_mode = True  # ivreghdfe semantics regardless of absorb count
         self.add_constant = add_constant
         self.missing = missing
+        self.drop_singletons = drop_singletons
 
         # Internal state
+        self._is_fitted: bool = False
         self._design_matrix: Optional[np.ndarray] = None
         self._dep_var: Optional[np.ndarray] = None
         self._sample_mask: Optional[list[bool]] = None
@@ -433,6 +432,16 @@ class IVAbsorbingOLS:
         self._n_input_rows: int = 0
         self._df_a: float = 0.0
         self._cluster_arr: Optional[np.ndarray] = None
+        self._beta_full: Optional[np.ndarray] = None
+        self._beta_reported: Optional[np.ndarray] = None
+        self._cov_reported: Optional[np.ndarray] = None
+        self._fe_dummy_indices_reduced: list[list[int]] = []
+        self._dummy_info: list[dict] = []
+        self._constant_idx_reduced: Optional[int] = None
+        self._x_exog_indices_in_full: list[int] = []
+        self._x_endog_indices_in_full: list[int] = []
+        self._x_endog_start: int = 0
+        self._inst_start: int = 0
 
     def _drop_singletons(self, df: pd.DataFrame) -> tuple[pd.DataFrame, int]:
         """Iteratively drop singleton observations across all absorb variables."""
@@ -497,7 +506,10 @@ class IVAbsorbingOLS:
             raise ValueError(f"missing='{self.missing}' not supported")
 
         # Iterative singleton drop
-        df, num_singletons = self._drop_singletons(df)
+        if self.drop_singletons:
+            df, num_singletons = self._drop_singletons(df)
+        else:
+            num_singletons = 0
         self._num_singletons = num_singletons
 
         # Build sample mask
@@ -677,6 +689,7 @@ class IVAbsorbingOLS:
         self._design_matrix = X_full
         self._dep_var = y
         self._sample_mask = sample_mask
+        self._df = df
 
         return X_full, Z_full, y, sample_mask, self._n_input_rows
 
@@ -687,8 +700,8 @@ class IVAbsorbingOLS:
         alpha: float = 0.05,
     ) -> ResultSchema:
         """Fit IV absorbing OLS model."""
-        if vce not in ("ols", "cluster"):
-            raise ValueError(f"vce='{vce}' not supported. Use 'ols' or 'cluster'.")
+        if vce not in ("ols", "robust", "cluster"):
+            raise ValueError(f"vce='{vce}' not supported. Use 'ols', 'robust', or 'cluster'.")
         if vce == "cluster" and cluster is None:
             raise ValueError("cluster variable required when vce='cluster'.")
         if vce != "cluster" and cluster is not None:
@@ -756,6 +769,8 @@ class IVAbsorbingOLS:
             unique_clusters = np.unique(self._cluster_arr)
             cluster_count = len(unique_clusters)
             df_resid = float(cluster_count - 1)
+        elif vce == "robust":
+            df_resid = float(n - k_x_full)
         else:
             df_resid = float(n - k_x_full)
 
@@ -771,6 +786,10 @@ class IVAbsorbingOLS:
         if vce == "ols":
             sigma2 = rss_struct / df_resid if df_resid > 0 else 0.0
             cov_full = sigma2 * M_inv
+        elif vce == "robust":
+            e_sq = residuals ** 2
+            XtOmegaX = (X_proj * e_sq[:, np.newaxis]).T @ X_proj
+            cov_full = M_inv @ XtOmegaX @ M_inv
         else:
             meat = np.zeros((k_x_full, k_x_full))
             for g in np.unique(self._cluster_arr):
@@ -812,6 +831,18 @@ class IVAbsorbingOLS:
         beta_reported = T @ beta_full
         cov_reported = T @ cov_full @ T.T
 
+        # Save internal state for post-estimation
+        self._is_fitted = True
+        self._beta_full = beta_full
+        self._beta_reported = beta_reported
+        self._cov_reported = cov_reported
+        self._T = T
+        self._x_proj = X_proj
+        self._W = W
+        self._y = y
+        self._tss_resid = tss_resid
+        self._rss_struct = rss_struct
+
         diag_cov = np.diag(cov_reported)
         diag_cov = np.maximum(diag_cov, 0)
         se = np.sqrt(diag_cov)
@@ -849,7 +880,7 @@ class IVAbsorbingOLS:
         result = ResultSchema()
         absorb_var = self.absorb_vars[0] if len(self.absorb_vars) == 1 else None
         result.model = ModelInfo(
-            command="ivreghdfe" if len(self.absorb_vars) > 1 else "areg",
+            command="ivreghdfe",
             estimator_family="iv_absorbing_ols",
             vcetype=vce,
             absorb_var=absorb_var,
@@ -902,7 +933,7 @@ class IVAbsorbingOLS:
             cluster_count=cluster_count,
             warnings=warnings,
         )
-        cmd_name = "ivreghdfe" if self._reghdfe_mode else "areg"
+        cmd_name = "ivreghdfe"
         endog_str = ' '.join(self.x_endog)
         exog_str = ' '.join(self.x_exog)
         inst_str = ' '.join(self.instruments)
@@ -913,3 +944,40 @@ class IVAbsorbingOLS:
         )
 
         return result
+
+    def predict(self, type: str = "xb") -> np.ndarray:
+        """Generate predictions after fitting."""
+        if not self._is_fitted:
+            raise ValueError("Model has not been fitted yet. Call fit() first.")
+        if type not in ("xb", "residuals", "d", "xbd", "dresiduals"):
+            raise ValueError(
+                f"type='{type}' not supported for IVAbsorbingOLS. "
+                "Use 'xb', 'residuals', 'd', 'xbd', or 'dresiduals'."
+            )
+
+        n = len(self._y)
+        # xbd = full design matrix @ full beta (includes constant + FEs + reported x)
+        xbd = self._design_matrix @ self._beta_full
+
+        if type == "xbd":
+            return xbd
+        if type == "residuals":
+            return self._y - xbd
+
+        # xb uses only reported coefficients (x_endog + x_exog + constant, excluding FEs)
+        X_reported_cols = []
+        for name in self._coef_names:
+            if name == "_cons":
+                X_reported_cols.append(np.ones(n))
+            elif name in self._df.columns:
+                X_reported_cols.append(self._df[name].values.astype(np.float64))
+        X_reported = np.column_stack(X_reported_cols) if X_reported_cols else np.zeros((n, 0))
+        xb_reported = X_reported @ self._beta_reported
+
+        if type == "xb":
+            return xb_reported
+        if type == "d":
+            return xbd - xb_reported
+        if type == "dresiduals":
+            return self._y - xb_reported
+        return xb_reported  # fallback

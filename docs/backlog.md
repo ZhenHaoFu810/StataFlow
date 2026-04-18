@@ -18,6 +18,7 @@
 | `Binary / Count` | P3 | done | Linear Base | `logit`、`probit`、`poisson`、`ppmlhdfe` |
 | `DID / Event Study Extensions` | P4 | done | Panel / FE / HDFE | `did_imputation`、`eventstudyinteract`、`csdid` 已完成 |
 | `Postestimation` | P5 | done | 前述命令族稳定 | `predict`、`margins` 子集、输出层已完成 |
+| `RD / Local Polynomial` | P5 | done | Linear Base | `rdrobust` minimal subset (Sharp RD) 已完成 |
 
 ## High-Value Commands
 
@@ -40,6 +41,7 @@
 | `did_imputation` | DID / Event Study Extensions | P4 | done | 公开源码 + 双跑 |
 | `eventstudyinteract` | DID / Event Study Extensions | P4 | done | 公开源码 + 双跑 |
 | `csdid` | DID / Event Study Extensions | P4 | done | 公开源码 + 双跑 |
+| `rdrobust` | RD / Local Polynomial | P5 | done | 公开源码 + 双跑 |
 | `predict` 高频子集 | Postestimation | P5 | done | 手册 + 双跑 |
 | `margins` 高频子集 | Postestimation | P5 | done | 手册 + 双跑 |
 

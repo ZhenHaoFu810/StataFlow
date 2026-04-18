@@ -59,7 +59,11 @@ class PPMLHDFE:
         missing: str = "drop",
         max_iter: int = 100,
         tol: float = 1e-8,
+        offset: Optional[str] = None,
+        exposure: Optional[str] = None,
     ):
+        if offset is not None and exposure is not None:
+            raise ValueError("Only one of offset or exposure can be specified.")
         self.data = data
         self.y = y
         self.x = list(x)
@@ -68,6 +72,18 @@ class PPMLHDFE:
         self.missing = missing
         self.max_iter = max_iter
         self.tol = tol
+        self.offset_var = offset
+        self.exposure_var = exposure
+
+        # Load offset vector (exposure is converted to log offset)
+        self._offset_vec: Optional[np.ndarray] = None
+        if exposure is not None:
+            vals = data[exposure].values.astype(np.float64)
+            if np.any(vals <= 0):
+                raise ValueError("exposure() must be greater than zero.")
+            self._offset_vec = np.log(vals)
+        elif offset is not None:
+            self._offset_vec = data[offset].values.astype(np.float64)
 
         # Fitted state
         self._is_fitted: bool = False
@@ -90,7 +106,11 @@ class PPMLHDFE:
         )
 
     def _irls_fit(
-        self, X: np.ndarray, y: np.ndarray, gamma_init: Optional[np.ndarray] = None
+        self,
+        X: np.ndarray,
+        y: np.ndarray,
+        gamma_init: Optional[np.ndarray] = None,
+        offset: Optional[np.ndarray] = None,
     ) -> tuple[np.ndarray, np.ndarray, bool]:
         """
         Run IRLS for Poisson PML on LSDV matrix.
@@ -99,6 +119,8 @@ class PPMLHDFE:
         ----------
         gamma_init : np.ndarray, optional
             Initial coefficients. If None, uses OLS of log(y+1) on X.
+        offset : np.ndarray, optional
+            Offset vector to add to linear predictor.
 
         Returns
         -------
@@ -114,6 +136,8 @@ class PPMLHDFE:
         else:
             # Better starting guess: OLS of log(y+1) on X
             y_log = np.log(y + 1)
+            if offset is not None:
+                y_log = y_log - offset
             try:
                 gamma = np.linalg.lstsq(X, y_log, rcond=None)[0]
             except Exception:
@@ -123,6 +147,8 @@ class PPMLHDFE:
 
         for _ in range(self.max_iter):
             eta = X @ gamma
+            if offset is not None:
+                eta = eta + offset
             mu = np.exp(np.clip(eta, -700, 700))
             mu = np.clip(mu, 1e-15, 1e12)
 
@@ -144,6 +170,8 @@ class PPMLHDFE:
             gamma_new = gamma_step
             for _halve in range(10):
                 eta_new = X @ gamma_new
+                if offset is not None:
+                    eta_new = eta_new + offset
                 mu_new = np.exp(np.clip(eta_new, -700, 700))
                 mu_new = np.clip(mu_new, 1e-15, 1e12)
                 from scipy.special import gammaln
@@ -171,6 +199,8 @@ class PPMLHDFE:
             ll_old = ll_new
 
         eta = X @ gamma
+        if offset is not None:
+            eta = eta + offset
         mu = np.exp(np.clip(eta, -700, 700))
         mu = np.clip(mu, 1e-15, 1e12)
         return gamma, mu, converged
@@ -182,6 +212,7 @@ class PPMLHDFE:
         For PPMLHDFE, the reported constant follows the reghdfe formula:
         b0 = weighted_mean(log(mu), weights=mu) - sum_j weighted_mean(x_j, weights=mu) * b_j
         which is equivalent to gamma_const + weighted_mean(FE_dummies, weights=mu) @ gamma_FE.
+        If an offset is present, its weighted mean is subtracted from the constant.
         """
         X_full = self._abs_ols._design_matrix
         k_x = len([name for name in self._abs_ols._coef_names if name != "_cons"])
@@ -204,6 +235,9 @@ class PPMLHDFE:
             for i, full_idx in enumerate(self._abs_ols._x_indices_in_full):
                 mean_xj = np.sum(X_full[:, full_idx] * w)
                 T[cons_row, full_idx] -= mean_xj
+            # subtract weighted mean of offset if present
+            if self._offset_vec is not None:
+                T[cons_row, :] -= np.sum(self._offset_vec[self._abs_ols._sample_mask] * w)
 
         return T
 
@@ -280,6 +314,11 @@ class PPMLHDFE:
         k_full = X_full.shape[1]
         cluster_arr = self._abs_ols._cluster_arr
 
+        # Align offset vector with the retained sample
+        offset_vec = None
+        if self._offset_vec is not None:
+            offset_vec = self._offset_vec[self._abs_ols._sample_mask]
+
         # Standardize x variable columns for numerical stability in IRLS
         x_indices = list(self._abs_ols._x_indices_in_full)
         x_stds = np.ones(len(x_indices))
@@ -293,7 +332,7 @@ class PPMLHDFE:
                 x_means[idx_pos] = np.mean(col)
                 X_std[:, col_idx] = (col - x_means[idx_pos]) / std
 
-        gamma_std, mu, converged = self._irls_fit(X_std, y)
+        gamma_std, mu, converged = self._irls_fit(X_std, y, offset=offset_vec)
 
         # Rescale LSDV coefficients back to original x scale
         gamma = gamma_std.copy()
@@ -305,12 +344,27 @@ class PPMLHDFE:
 
         # Recompute mu on original scale to ensure consistency
         eta = X_full @ gamma
+        if offset_vec is not None:
+            eta = eta + offset_vec
         mu = np.exp(np.clip(eta, -700, 700))
         mu = np.clip(mu, 1e-15, 1e12)
 
         # Log-likelihood
         from scipy.special import gammaln
         ll_model = float(np.sum(y * np.log(mu) - mu - gammaln(y + 1)))
+
+        # Deviance: 2 * Σ [μ - y + y * log(y/μ)]  (with 0*log(0) = 0)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            deviance_terms = (mu - y) + y * np.log(y / mu)
+        deviance_terms = np.where(y == 0, mu, deviance_terms)
+        deviance = float(2.0 * np.sum(deviance_terms))
+        if deviance < 0:
+            deviance = 0.0
+
+        # Pseudo log-likelihood of constant-only model
+        y_mean = float(np.mean(y))
+        ll_0 = float(np.sum(y * np.log(y_mean) - y_mean - gammaln(y + 1)))
+        pseudo_r2 = 1.0 - ll_model / ll_0 if ll_0 != 0 else None
 
         # Degrees of freedom
         k_x = len([name for name in self._abs_ols._coef_names if name != "_cons"])
@@ -365,6 +419,8 @@ class PPMLHDFE:
             df_a=df_a,
             rank=k_full,
             ll=ll_model,
+            deviance=deviance,
+            pseudo_r2=pseudo_r2,
         )
         result.coefficients = [
             CoefficientRow(
@@ -417,13 +473,17 @@ class PPMLHDFE:
         """Generate predictions after fitting."""
         if not self._is_fitted:
             raise ValueError("Model has not been fitted yet. Call fit() first.")
-        if type not in ("xb", "mu"):
-            raise ValueError(f"type='{type}' not supported for PPMLHDFE. Use 'xb' or 'mu'.")
+        if type not in ("xb", "mu", "residuals"):
+            raise ValueError(f"type='{type}' not supported for PPMLHDFE. Use 'xb', 'mu', or 'residuals'.")
         if newdata is not None:
             raise NotImplementedError("Out-of-sample prediction for PPMLHDFE not yet implemented.")
         if type == "xb":
             return self._eta
-        return self._mu
+        if type == "mu":
+            return self._mu
+        # residuals: y - mu
+        y = self._abs_ols._dep_var
+        return y - self._mu
 
     def margins(self, type: str = "dydx") -> SimpleNamespace:
         """Compute marginal effects."""

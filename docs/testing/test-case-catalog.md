@@ -40,6 +40,7 @@
 | `p3_reghdfe_basic` | Panel / FE / HDFE | `reghdfe` | synthetic | `AbsorbingOLS(..., absorb=["entity_id"]).fit(vce="ols")` | 手工样例 | 多 FE 吸收（1 FE）、系数对齐、`df_a` 含常数 | done |
 | `p3_reghdfe_two_fe` | Panel / FE / HDFE | `reghdfe` | synthetic | `AbsorbingOLS(..., absorb=["entity_id","time_id"]).fit(vce="ols")` | 手工样例 | 双向 FE、df_a = G1+G2-1 | done |
 | `p3_reghdfe_cluster` | Panel / FE / HDFE | `reghdfe` | synthetic | `AbsorbingOLS(..., absorb=["entity_id","time_id"]).fit(vce="cluster")` | 手工 panel 样例 | FE + cluster、singleton drop、cluster 嵌套 FE 时 df_a 扣减 | done |
+| `p3_reghdfe_keepsingletons` | Panel / FE / HDFE | `reghdfe` | synthetic | `reghdfe(..., absorb="g1", keepsingletons=True)` | 手工样例（含 singleton 组） | `keepsingletons` 样本保留、predict 子选项（xb/xbd/d/residuals/dresiduals）对齐 | done |
 | `p3_reghdfe_real_panel` | Panel / FE / HDFE | `reghdfe` | real_data | `AbsorbingOLS(..., absorb=["nr","year"]).fit(vce="cluster", cluster="nr")` | 本地 `wagepan` 数据 | 真实数据双向 FE + cluster、time-invariant 变量自动 omitted | done |
 | `w2_ivregress_basic` | IV / GMM | `ivregress 2sls` | synthetic | `IV2SLS(...).fit(vce="ols")` | 手工样例 | 2SLS 点估计、标准误 | done |
 | `w2_ivregress_cluster` | IV / GMM | `ivregress 2sls` | synthetic | `IV2SLS(...).fit(vce="cluster")` | 手工 panel 样例 | cluster-robust SE | done |
@@ -56,12 +57,17 @@
 | `w3_ppmlhdfe_basic` | Binary / Count | `ppmlhdfe` | synthetic | `PPMLHDFE(..., absorb=[...]).fit(vce="robust")` | 手工 panel 样例 | HDFE + IRLS 收敛、系数、ll | done |
 | `w3_ppmlhdfe_cluster` | Binary / Count | `ppmlhdfe` | synthetic | `PPMLHDFE(..., absorb=[...]).fit(vce="cluster")` | 手工 panel 样例 | 双 FE + cluster-robust SE | done |
 | `w3_ppmlhdfe_real_gravity` | Binary / Count | `ppmlhdfe` | real_data | `PPMLHDFE(..., absorb=[...]).fit(vce="robust")` | `countymurders` CA 县级面板 | 零值、HDFE、双向 FE | done |
+| `p3_ppmlhdfe_fit_stats` | Binary / Count | `ppmlhdfe` | synthetic | `PPMLHDFE(..., absorb=[...]).fit(vce="robust")` | 手工 panel 样例 | deviance、pseudo-R² 与 Stata 17 对齐 | done |
 | `w4_did_imputation_basic` | DID / Event Study Extensions | `did_imputation` | synthetic | `DIDImputation(...).fit(cluster="id", allhorizons=True, autosample=True)` | 手工 staggered adoption 样例 | imputation FE、事件时间系数、cluster SE | done |
 | `w4_eventstudyinteract_basic` | DID / Event Study Extensions | `eventstudyinteract` | synthetic | `EventStudyInteract(...).fit(vce="cluster", cluster="id")` | 手工 staggered adoption 样例 | IW estimator、双向FE、cluster SE | done |
 | `w4_csdid_basic` | DID / Event Study Extensions | `csdid` | synthetic | `CSDID(...).fit(method="reg")` | 手工 staggered adoption 样例 | group-time ATT、事件研究聚合 | done |
 | `w4_did_imputation_real_ezunem` | DID / Event Study Extensions | `did_imputation` | real_data | `DIDImputation(...).fit(cluster="city", allhorizons=True, autosample=True)` | Wooldridge `ezunem` 面板 (22 cities × 9 years) | 真实数据动态效应、 autosample 缺失处理 | done |
 | `w4_eventstudyinteract_real_ezunem` | DID / Event Study Extensions | `eventstudyinteract` | real_data | `EventStudyInteract(...).fit(vce="cluster", cluster="city")` | Wooldridge `ezunem` 面板 (22 cities × 9 years) | 真实数据IW估计、相对时间虚拟变量生成 | done |
 | `w4_csdid_real_ezunem` | DID / Event Study Extensions | `csdid` | real_data | `CSDID(...).fit(method="reg", vce="cluster", cluster="city")` | Wooldridge `ezunem` 面板 (22 cities × 9 years) | 真实数据group-time ATT、 never-treated 默认控制组 | done |
+| `a1_rdrobust_basic` | RD / Local Polynomial | `rdrobust` | synthetic | `rdrobust(..., h=...)` | 手工 Sharp RD 样例 | 局部多项式点估计、带宽内样本、nn VCE | done |
+| `a1_rdrobust_kernel` | RD / Local Polynomial | `rdrobust` | synthetic | `rdrobust(..., kernel=...)` | 手工 Sharp RD 样例 | triangular / epanechnikov / uniform 核对齐 | done |
+| `a1_rdrobust_bandwidth` | RD / Local Polynomial | `rdrobust` | synthetic | `rdrobust(..., h=...)` | 手工 Sharp RD 样例 | 带宽变化对有效样本量的影响 | done |
+| `a1_rdrobust_senate` | RD / Local Polynomial | `rdrobust` | real_data | `rdrobust(..., h=15.0)` | `rdrobust_senate.dta` (Cattaneo et al. 2015) | 真实选举数据 Sharp RD dual-run (Stata 17) | done |
 
 ## Wave 5 预登记样例（Postestimation）
 

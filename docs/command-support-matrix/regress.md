@@ -1,0 +1,67 @@
+# Support Matrix: `regress`
+
+## Command Target
+
+Ordinary least squares (OLS) linear regression, aligned with Stata 17 `regress`.
+
+## Python Entry
+
+```python
+from statapy.compat.stata import regress
+
+result = regress(data, y="depvar", x=["x1", "x2"], vce="robust")
+```
+
+## Supported Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `data` | `pd.DataFrame` | Input data |
+| `y` | `str` | Dependent variable |
+| `x` | `list[str]` | Independent variables |
+| `vce` | `str` | `"ols"`, `"robust"`, `"cluster"` |
+| `cluster` | `str` | Cluster variable (required when `vce="cluster"`) |
+| `aweight` | `str` | Variable name for analytical weights |
+| `noconstant` | `bool` | Drop constant term |
+| `missing` | `str` | `"drop"` only |
+
+## Supported Result Fields
+
+Coefficients, standard errors, t-statistics, p-values, confidence intervals, R-squared, adjusted R-squared, RMSE, F-statistic, residual and model SS.
+
+## Planned Parameters
+
+- `fweight`, `pweight`, `iweight`
+- `level` (confidence level other than 95%)
+- `beta` (standardized coefficients)
+- `hascons`, `tsscons`
+
+## Explicitly Unsupported Parameters
+
+Any other Stata options (e.g. `cformat`, `pformat`, `sformat`, `coeflegend`, `noheader`, `noretable`, `nodisplay`) are hard-rejected via `ValueError`.
+
+## Factor Variable Support
+
+The wrapper layer automatically expands Stata-style factor terms in `x`:
+
+- `c.x1`, `i.g`
+- `ib2.g`, `b2.g` (explicit base level)
+- `o2.g` (explicit omitted level)
+- `c.x1#c.x2`, `c.x1##c.x2`
+- `i.g1#i.g2`, `i.g1##i.g2`
+- `i.g1#c.x1`, `i.g1##c.x1`
+- `x1#x2`, `x1##x2` (bare variables inside `#` / `##` are treated as continuous)
+- `x1##i.g`, `i.g##x1` (mixed bare continuous and categorical)
+
+Unsupported factor syntax (`ib.` without level, `o.` without level, `b.` without level, time-series operators, three-way+ interactions) is hard-rejected with `ValueError`.
+
+## Alignment Evidence
+
+- Synthetic cases: `tests/golden/test_p1_ols_basic.py`, `tests/golden/test_p1_cluster_firm.py`
+- Factor-syntax cases: `tests/golden/test_a2_factor_regress_basic.py` — `regress y i.g##c.x1`; `tests/golden/test_a2_factor_regress_bare.py` — `regress y x1##x2` mapped to Stata `c.x1##c.x2`; `tests/golden/test_a2_factor_regress_base.py` — `regress y ib2.g##c.x1`
+- Real-data cases: `tests/golden/test_p1_ols_missing_drop.py` (Wooldridge wage1 subset)
+- Stata 17 dual-run verified for OLS, HC1 robust, and cluster-robust VCE
+
+## Core Implementation
+
+`src/statapy/estimators/ols.py`

@@ -9,5 +9,6 @@ from .ppmlhdfe import PPMLHDFE
 from .did_imputation import DIDImputation
 from .eventstudyinteract import EventStudyInteract
 from .csdid import CSDID
+from .rdrobust import RDRobust
 
-__all__ = ["OLS", "FixedEffectsOLS", "AbsorbingOLS", "IV2SLS", "IVAbsorbingOLS", "Logit", "Probit", "Poisson", "PPMLHDFE", "DIDImputation", "EventStudyInteract", "CSDID"]
+__all__ = ["OLS", "FixedEffectsOLS", "AbsorbingOLS", "IV2SLS", "IVAbsorbingOLS", "Logit", "Probit", "Poisson", "PPMLHDFE", "DIDImputation", "EventStudyInteract", "CSDID", "RDRobust"]

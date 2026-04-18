@@ -53,6 +53,7 @@ class AbsorbingOLS:
         absorb: str | list[str],
         add_constant: bool = True,
         missing: str = "drop",
+        drop_singletons: bool = True,
     ):
         self.data = data
         self.y = y
@@ -65,6 +66,7 @@ class AbsorbingOLS:
             self._reghdfe_mode = True
         self.add_constant = add_constant
         self.missing = missing
+        self.drop_singletons = drop_singletons
 
         # Internal state
         self._design_matrix: Optional[np.ndarray] = None
@@ -176,8 +178,14 @@ class AbsorbingOLS:
             raise ValueError(f"missing='{self.missing}' not supported")
 
         # Iterative singleton drop
-        df, num_singletons = self._drop_singletons(df)
-        self._num_singletons = num_singletons
+        if self.drop_singletons:
+            df, num_singletons = self._drop_singletons(df)
+            self._num_singletons = num_singletons
+        else:
+            self._num_singletons = 0
+
+        # Save filtered dataframe for postestimation
+        self._df = df.copy()
 
         # Build sample mask that reflects both missing drop and singleton drop
         sample_mask = [idx in df.index for idx in self.data.index]
@@ -327,8 +335,8 @@ class AbsorbingOLS:
         ResultSchema
             Fitted result object.
         """
-        if vce not in ("ols", "cluster"):
-            raise ValueError(f"vce='{vce}' not supported. Use 'ols' or 'cluster'.")
+        if vce not in ("ols", "robust", "cluster"):
+            raise ValueError(f"vce='{vce}' not supported. Use 'ols', 'robust', or 'cluster'.")
         if vce == "cluster" and cluster is None:
             raise ValueError("cluster variable required when vce='cluster'.")
         if vce != "cluster" and cluster is not None:
@@ -366,6 +374,8 @@ class AbsorbingOLS:
             unique_clusters = np.unique(self._cluster_arr)
             cluster_count = len(unique_clusters)
             df_resid = float(cluster_count - 1)
+        elif vce == "robust":
+            df_resid = float(n - k_full)
         else:
             df_resid = float(n - k_full)
 
@@ -383,6 +393,13 @@ class AbsorbingOLS:
         if vce == "ols":
             sigma2 = rss / df_resid if df_resid > 0 else 0.0
             cov_full = sigma2 * np.linalg.inv(XtX)
+        elif vce == "robust":
+            # HC1 robust sandwich on full LSDV coefficients
+            XtX_inv = np.linalg.inv(XtX)
+            meat = X_full.T @ (X_full * (residuals ** 2)[:, np.newaxis])
+            cov_full = XtX_inv @ meat @ XtX_inv
+            if n > 1:
+                cov_full *= n / (n - 1)
         else:
             # Cluster-robust VCE on full LSDV
             XtX_inv = np.linalg.inv(XtX)
@@ -486,7 +503,7 @@ class AbsorbingOLS:
         result = ResultSchema()
         absorb_var = self.absorb_vars[0] if len(self.absorb_vars) == 1 else None
         result.model = ModelInfo(
-            command="reghdfe" if len(self.absorb_vars) > 1 else "areg",
+            command="reghdfe" if self._reghdfe_mode else "areg",
             estimator_family="absorbing_ols",
             vcetype=vce,
             absorb_var=absorb_var,
@@ -562,16 +579,40 @@ class AbsorbingOLS:
         """Generate predictions after fitting."""
         if not self._is_fitted:
             raise ValueError("Model has not been fitted yet. Call fit() first.")
-        if type not in ("xb", "residuals"):
-            raise ValueError(f"type='{type}' not supported for AbsorbingOLS. Use 'xb' or 'residuals'.")
+        if type not in ("xb", "residuals", "d", "xbd", "dresiduals"):
+            raise ValueError(
+                f"type='{type}' not supported for AbsorbingOLS. "
+                "Use 'xb', 'residuals', 'd', 'xbd', or 'dresiduals'."
+            )
 
         if newdata is not None:
             raise NotImplementedError("Out-of-sample prediction for AbsorbingOLS not yet implemented.")
-        else:
-            xb = self._design_matrix @ self._beta_full
-            if type == "residuals":
-                return self._dep_var - xb
-            return xb
+
+        n = len(self._dep_var)
+        xbd = self._design_matrix @ self._beta_full
+
+        if type == "xbd":
+            return xbd
+        if type == "residuals":
+            return self._dep_var - xbd
+
+        # xb uses only reported coefficients (x vars + constant, excluding FEs)
+        X_reported_cols = []
+        for name in self._coef_names:
+            if name == "_cons":
+                X_reported_cols.append(np.ones(n))
+            elif name in self.x:
+                X_reported_cols.append(self._df[name].values.astype(np.float64))
+        X_reported = np.column_stack(X_reported_cols) if X_reported_cols else np.zeros((n, 0))
+        xb_reported = X_reported @ self._beta_reported
+
+        if type == "xb":
+            return xb_reported
+        if type == "d":
+            return xbd - xb_reported
+        if type == "dresiduals":
+            return self._dep_var - xb_reported
+        return xb_reported  # fallback
 
     def margins(self, type: str = "dydx") -> SimpleNamespace:
         """Compute marginal effects."""

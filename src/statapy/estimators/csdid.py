@@ -2,7 +2,16 @@
 
 import numpy as np
 import pandas as pd
-from types import SimpleNamespace
+from statapy.results.result import (
+    ResultSchema,
+    ModelInfo,
+    SampleInfo,
+    FitInfo,
+    CoefficientRow,
+    VarianceInfo,
+    DiagnosticsInfo,
+    ProvenanceInfo,
+)
 
 
 class CSDID:
@@ -311,14 +320,53 @@ class CSDID:
 
         conf_int = np.column_stack([coefs - 1.96 * ses, coefs + 1.96 * ses])
 
-        return SimpleNamespace(
-            params={k: float(params[pk]) for k, pk in zip(display_keys, param_keys)},
-            bse={k: float(bse[pk]) for k, pk in zip(display_keys, param_keys)},
-            tvalues={k: float(tvalues[i]) for i, k in enumerate(display_keys)},
-            pvalues={k: float(pvalues[i]) for i, k in enumerate(display_keys)},
-            conf_int={k: (float(conf_int[i, 0]), float(conf_int[i, 1])) for i, k in enumerate(display_keys)},
-            nobs=self._nobs,
-            n_clust=self._n_clust,
+        coefficients = []
+        for i, k in enumerate(display_keys):
+            coefficients.append(CoefficientRow(
+                name=k,
+                beta=float(coefs[i]),
+                std_err=float(ses[i]),
+                t_stat=float(tvalues[i]),
+                p_value=float(pvalues[i]),
+                ci_low=float(conf_int[i, 0]),
+                ci_high=float(conf_int[i, 1]),
+            ))
+
+        active_names = [c.name for c in coefficients if c.std_err > 0]
+        cov = np.zeros((len(active_names), len(active_names)))
+        for i, c in enumerate([c for c in coefficients if c.std_err > 0]):
+            cov[i, i] = c.std_err ** 2
+
+        n_active = len(active_names)
+        df_model = float(n_active) if n_active > 0 else 0.0
+        df_resid = float(self._n_clust - 1) if self._n_clust > 1 else float(self._nobs - n_active)
+
+        return ResultSchema(
+            model=ModelInfo(
+                command="csdid",
+                estimator_family="csdid",
+                vcetype="cluster",
+                cluster_var=None,
+            ),
+            sample=SampleInfo(
+                nobs=self._nobs,
+                n_input_rows=self._nobs,
+            ),
+            fit=FitInfo(
+                df_model=df_model,
+                df_resid=df_resid,
+            ),
+            coefficients=coefficients,
+            variance=VarianceInfo(
+                row_names=active_names,
+                values=cov.tolist(),
+            ),
+            diagnostics=DiagnosticsInfo(
+                cluster_count=self._n_clust,
+            ),
+            provenance=ProvenanceInfo(
+                stata_command="csdid y, ivar(id) time(time) gvar(first_treat) method(reg)",
+            ),
         )
 
     @staticmethod
