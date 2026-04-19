@@ -87,5 +87,5 @@ See [`docs/audit/next-development-plan.md`](../audit/next-development-plan.md) f
 
 ## Feedback and contributions
 
-- Issues: [https://github.com/anthropics/claude-code/issues](https://github.com/anthropics/claude-code/issues) (for Claude Code feedback)
+- Issues: [https://github.com/ZhenHaoFu810/Statapy/issues](https://github.com/ZhenHaoFu810/Statapy/issues)
 - The project uses a dual-governance model: **Codex** (architecture and review) and **Claude Code** (implementation and testing).

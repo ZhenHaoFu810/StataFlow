@@ -38,6 +38,10 @@ stata/output/
 workspace/qwencode-current/*report*.md
 workspace/qwencode-current/review-*.md
 
+# Internal scripts and their outputs
+scripts/internal/*.log
+scripts/internal/__pycache__/
+
 # OS
 .DS_Store
 Thumbs.db

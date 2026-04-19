@@ -1,42 +1,41 @@
 # 当前任务
 
-你现在进入 **审计主线任务包 007**：`rdrobust` 完整度推进（Phase B）。
+你现在进入 **发布任务包 001**：首次开源 Alpha 修缮。
 
-当前主线不再横向扩别的命令，而是继续按审计计划把 vendor 命令做深做全。  
-这一轮的重点是把 `rdrobust` 从 **最小 sharp RD 子集** 推进到 **常见 sharp RD 工作流可用** 的 Phase B 子集。
+当前目标不是继续扩算法，也不是推进新的命令完整度。  
+这一轮只做 **首次对外开源发布面修缮**：把当前仓库从“高质量 Alpha，但更像内部研究仓库”推进到“适合第一次正式对外开源展示与试用”的状态。
 
 ## 当前激活任务
-- [docs/tasks/audit-mainline-package-007-rdrobust-completeness-phase-b.md](</D:/OneDrive - SAIF/PhD3/Stata2Python/docs/tasks/audit-mainline-package-007-rdrobust-completeness-phase-b.md>)
+- [docs/tasks/release-package-001-first-open-source-alpha-remediation.md](</D:/OneDrive - SAIF/PhD3/Stata2Python/docs/tasks/release-package-001-first-open-source-alpha-remediation.md>)
 
 ## 必须先阅读
-1. [docs/tasks/audit-mainline-package-007-rdrobust-completeness-phase-b.md](</D:/OneDrive - SAIF/PhD3/Stata2Python/docs/tasks/audit-mainline-package-007-rdrobust-completeness-phase-b.md>)
-2. [docs/research/rdrobust-source-map.md](</D:/OneDrive - SAIF/PhD3/Stata2Python/docs/research/rdrobust-source-map.md>)
-3. [docs/command-support-matrix/rdrobust.md](</D:/OneDrive - SAIF/PhD3/Stata2Python/docs/command-support-matrix/rdrobust.md>)
-4. [docs/audit/audit-findings.md](</D:/OneDrive - SAIF/PhD3/Stata2Python/docs/audit/audit-findings.md>)
-5. [docs/audit/project-gaps.md](</D:/OneDrive - SAIF/PhD3/Stata2Python/docs/audit/project-gaps.md>)
-6. [docs/audit/next-development-plan.md](</D:/OneDrive - SAIF/PhD3/Stata2Python/docs/audit/next-development-plan.md>)
-7. [docs/operations/executor-playbook.md](</D:/OneDrive - SAIF/PhD3/Stata2Python/docs/operations/executor-playbook.md>)
-8. [docs/operations/codex-review-protocol.md](</D:/OneDrive - SAIF/PhD3/Stata2Python/docs/operations/codex-review-protocol.md>)
+1. [docs/tasks/release-package-001-first-open-source-alpha-remediation.md](</D:/OneDrive - SAIF/PhD3/Stata2Python/docs/tasks/release-package-001-first-open-source-alpha-remediation.md>)
+2. [docs/qa/first-open-source-release-review.md](</D:/OneDrive - SAIF/PhD3/Stata2Python/docs/qa/first-open-source-release-review.md>)
+3. [docs/qa/first-open-source-release-issues.md](</D:/OneDrive - SAIF/PhD3/Stata2Python/docs/qa/first-open-source-release-issues.md>)
+4. [docs/qa/first-open-source-release-remediation-plan.md](</D:/OneDrive - SAIF/PhD3/Stata2Python/docs/qa/first-open-source-release-remediation-plan.md>)
+5. [docs/operations/executor-playbook.md](</D:/OneDrive - SAIF/PhD3/Stata2Python/docs/operations/executor-playbook.md>)
+6. [docs/operations/codex-review-protocol.md](</D:/OneDrive - SAIF/PhD3/Stata2Python/docs/operations/codex-review-protocol.md>)
 
 ## 本轮重点
 
-- 先做 `rdrobust` 的自动带宽与 `covs()` 最小子集，再谈更大参数面
-- 必须坚持 source-backed / formula-backed 实现，不能靠调容差或特例修补过测试
-- `rdrobust` source map、support matrix、wrapper、测试证据要同步收口
-- 不顺手改 `reghdfe` / `ppmlhdfe` / `ivreghdfe` / DID 内核
+- 不新增任何功能
+- 只修首次开源的发布阻塞项与仓库表面问题
+- 必须让 README、包元数据、release 文档、examples、仓库根目录形态相互一致
+- 必须补上最基本的开源工程信号（如 LICENSE、CI workflow）
 
-## 已知延后项
+## 已知约束
 
-- 历史 `REPORT.md` 中关于 `ivreghdfe` Package 004 与 DID Package 005 的 fresh-run 旧数字问题，当前按项目决策不再阻塞主线。
-- 本轮不要求回头修这些旧报告；如有必要，只在 release-facing known issues 中继续保持登记。
+- 不回头扩 `reghdfe` / `ppmlhdfe` / `ivreghdfe` / DID / `rdrobust` 算法
+- 不为了“仓库看起来干净”而静默删除仍有价值的内部脚本；应优先迁移、归档或忽略
 
 ## 回报要求
 
 完成后在 [workspace/current-task/REPORT.md](</D:/OneDrive - SAIF/PhD3/Stata2Python/workspace/current-task/REPORT.md>) 中明确说明：
 
-- 自动带宽选择实现了什么、没有实现什么
-- `covs()` 实现了什么、没有实现什么
-- 估计过程 / 偏差修正 / VCE 与 Stata / 源码如何对应
-- 更新了哪些 source map / support matrix / release-facing 文档
-- 跑了哪些 synthetic / dual-run / pytest
+- 修掉了哪些 release-blocking 问题
+- `pyproject.toml` / README / release 文档如何统一了
+- 根目录哪些文件被迁移、清理或归档
+- 新增了哪些 CI / release-facing 文件
+- 跑了哪些验证命令
 - 最新 fresh run 结果
+- 当前仓库是否已经达到“适合第一次正式对外开源 Alpha 发布”的标准

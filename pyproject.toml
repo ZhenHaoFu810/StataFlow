@@ -5,7 +5,21 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "statapy"
 version = "0.1.0"
-description = "Stata2Python: A计量工具包 for empirical research in finance and economics"
+description = "Stata2Python: A Python econometrics toolkit aligned with Stata 17"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [{name = "Zhenhao Fu", email = "zhenhaofu2001@gmail.com"}]
+keywords = ["econometrics", "stata", "regression", "fixed-effects", "panel-data"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Mathematics",
+]
 requires-python = ">=3.10"
 dependencies = [
     "numpy>=1.24",
@@ -19,6 +33,11 @@ dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/ZhenHaoFu810/Statapy"
+Repository = "https://github.com/ZhenHaoFu810/Statapy"
+Issues = "https://github.com/ZhenHaoFu810/Statapy/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]

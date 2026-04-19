@@ -31,7 +31,7 @@ See the [Command Support Matrix](./docs/command-support-matrix/README.md) for th
 pip install -e .
 ```
 
-Requirements: Python 3.9+, NumPy, pandas, SciPy.
+Requirements: Python 3.10+, NumPy, pandas, SciPy.
 
 ---
 

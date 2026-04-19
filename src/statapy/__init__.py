@@ -1,7 +1,7 @@
-# Stata2Python - Phase 0 Bootstrap
 """
-A minimal Python package for empirical research in finance and economics.
-Targets Stata 17 alignment with verifiable dual-run testing.
+Stata2Python (statapy) — A Python econometrics toolkit aligned with Stata 17.
+Provides a Stata-compatible command layer and native Python estimators,
+with field-level dual-run verification.
 """
 
 __version__ = "0.1.0"

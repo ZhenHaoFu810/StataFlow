@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install package
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Import smoke
+        run: python -c "import statapy; print(statapy.__version__)"
+
+      - name: Run unit tests (no golden)
+        run: python -m pytest tests/ -v --ignore=tests/golden/
+
+      - name: Run example smoke
+        run: |
+          python examples/demo_regress.py
+          python examples/demo_reghdfe.py
+          python examples/demo_ppmlhdfe.py
+          python examples/demo_ivregress_2sls.py
+
+      - name: Build wheel
+        run: python -m pip wheel . --no-deps -w dist_tmp
