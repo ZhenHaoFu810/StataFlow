@@ -1,0 +1,74 @@
+{
+  "case_id": "oos_areg_airfare",
+  "command": "areg",
+  "dataset_key": "airfare",
+  "status": "passed",
+  "field_checks": [
+    {
+      "field": "nobs",
+      "python": 4596,
+      "stata": 4596.0,
+      "passed": true,
+      "message": "nobs: Python=4596.000000000000000, Stata=4596.000000000000000, abs_diff=0.00e+00, rel_diff=0.00e+00, PASS"
+    },
+    {
+      "field": "df_model",
+      "python": 1.0,
+      "stata": 1.0,
+      "passed": true,
+      "message": "df_model: Python=1.000000000000000, Stata=1.000000000000000, abs_diff=0.00e+00, rel_diff=0.00e+00, PASS"
+    },
+    {
+      "field": "df_resid",
+      "python": 3446.0,
+      "stata": 3446.0,
+      "passed": true,
+      "message": "df_resid: Python=3446.000000000000000, Stata=3446.000000000000000, abs_diff=0.00e+00, rel_diff=0.00e+00, PASS"
+    },
+    {
+      "field": "df_a",
+      "python": 1148.0,
+      "stata": 1148.0,
+      "passed": true,
+      "message": "df_a: Python=1148.000000000000000, Stata=1148.000000000000000, abs_diff=0.00e+00, rel_diff=0.00e+00, PASS"
+    },
+    {
+      "field": "r2",
+      "python": 0.9485467941357211,
+      "stata": 0.94854679,
+      "passed": true,
+      "message": "r2: Python=0.948546794135721, Stata=0.948546790000000, abs_diff=4.14e-09, rel_diff=4.36e-09, PASS"
+    },
+    {
+      "field": "r2_adj",
+      "python": 0.931390748419512,
+      "stata": 0.93139075,
+      "passed": true,
+      "message": "r2_adj: Python=0.931390748419512, Stata=0.931390750000000, abs_diff=1.58e-09, rel_diff=1.70e-09, PASS"
+    },
+    {
+      "field": "rmse",
+      "python": 0.11430784279064102,
+      "stata": 0.11430784,
+      "passed": true,
+      "message": "rmse: Python=0.114307842790641, Stata=0.114307840000000, abs_diff=2.79e-09, rel_diff=2.44e-08, PASS"
+    },
+    {
+      "field": "f_stat",
+      "python": 10.879834146315003,
+      "stata": 10.879834,
+      "passed": true,
+      "message": "f_stat: Python=10.879834146315003, Stata=10.879834000000001, abs_diff=1.46e-07, rel_diff=1.34e-08, PASS"
+    }
+  ],
+  "coefficient_checks": [
+    {
+      "name": "concen",
+      "beta_passed": true,
+      "beta_message": "beta[concen]: Python=0.103051086136935, Stata=0.103051090000000, abs_diff=3.86e-09, rel_diff=3.75e-08, PASS",
+      "se_passed": true,
+      "se_message": "se[concen]: Python=0.031242187610992, Stata=0.031242190000000, abs_diff=2.39e-09, rel_diff=7.65e-08, PASS"
+    }
+  ],
+  "notes": ""
+}

@@ -1,0 +1,147 @@
+{
+  "family": "did",
+  "cases": 3,
+  "passed": 2,
+  "blocked": 1,
+  "reports": [
+    {
+      "case_id": "oos_did_imputation_jtrain",
+      "command": "did_imputation",
+      "dataset_key": "jtrain",
+      "status": "blocked",
+      "field_checks": [
+        {
+          "field": "nobs",
+          "python": 390,
+          "stata": 122.0,
+          "passed": false,
+          "message": "nobs: Python=390.000000000000000, Stata=122.000000000000000, abs_diff=2.68e+02, rel_diff=2.20e+00, FAIL"
+        }
+      ],
+      "coefficient_checks": [
+        {
+          "name": "tau0",
+          "beta_passed": false,
+          "beta_message": "beta[tau0]: Python=2.118220143997875, Stata=2.028191900000000, abs_diff=9.00e-02, rel_diff=4.44e-02, FAIL",
+          "se_passed": false,
+          "se_message": "se[tau0]: Python=0.168372700007553, Stata=0.235979250000000, abs_diff=6.76e-02, rel_diff=2.86e-01, FAIL"
+        },
+        {
+          "name": "tau1",
+          "beta_passed": false,
+          "beta_message": "beta[tau1]: Python=0.086293022033352, Stata=0.000000000000000, abs_diff=8.63e-02, rel_diff=8.63e+13, FAIL",
+          "se_passed": false,
+          "se_message": "se[tau1]: Python=0.240192621251063, Stata=0.000000000000000, abs_diff=2.40e-01, rel_diff=2.40e+14, FAIL"
+        },
+        {
+          "name": "tau1987",
+          "passed": false,
+          "message": "Coefficient 'tau1987' in Stata but not in Python"
+        },
+        {
+          "name": "tau1988",
+          "passed": false,
+          "message": "Coefficient 'tau1988' in Stata but not in Python"
+        },
+        {
+          "name": "tau1989",
+          "passed": false,
+          "message": "Coefficient 'tau1989' in Stata but not in Python"
+        }
+      ],
+      "notes": "JTRAIN has only 3 time periods (1987-1989), which is insufficient for Stata did_imputation to impute FE for all cohorts. Stata drops to 122 obs and suppresses most coefficients. Python is more lenient. This case documents the behavior difference on short panels."
+    },
+    {
+      "case_id": "oos_eventstudyinteract_jtrain",
+      "command": "eventstudyinteract",
+      "dataset_key": "jtrain",
+      "status": "passed",
+      "field_checks": [
+        {
+          "field": "nobs",
+          "python": 390,
+          "stata": 386.0,
+          "passed": true,
+          "message": "nobs: Python=390.000000000000000, Stata=386.000000000000000, abs_diff=4.00e+00, rel_diff=1.04e-02, PASS"
+        }
+      ],
+      "coefficient_checks": [
+        {
+          "name": "Dm2",
+          "beta_passed": true,
+          "beta_message": "beta[Dm2]: Python=-0.127544873586637, Stata=-0.127544870000000, abs_diff=3.59e-09, rel_diff=2.81e-08, PASS",
+          "se_passed": true,
+          "se_message": "se[Dm2]: Python=0.153598015032614, Stata=0.153828450000000, abs_diff=2.30e-04, rel_diff=1.50e-03, PASS"
+        },
+        {
+          "name": "D0",
+          "beta_passed": true,
+          "beta_message": "beta[D0]: Python=2.109393079711897, Stata=2.109393100000000, abs_diff=2.03e-08, rel_diff=9.62e-09, PASS",
+          "se_passed": true,
+          "se_message": "se[D0]: Python=0.170361508885637, Stata=0.170616700000000, abs_diff=2.55e-04, rel_diff=1.50e-03, PASS"
+        },
+        {
+          "name": "Dp1",
+          "beta_passed": true,
+          "beta_message": "beta[Dp1]: Python=0.105617080226153, Stata=0.105617080000000, abs_diff=2.26e-10, rel_diff=2.14e-09, PASS",
+          "se_passed": true,
+          "se_message": "se[Dp1]: Python=0.243850375500729, Stata=0.244216210000000, abs_diff=3.66e-04, rel_diff=1.50e-03, PASS"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "oos_csdid_jtrain",
+      "command": "csdid",
+      "dataset_key": "jtrain",
+      "status": "passed",
+      "field_checks": [
+        {
+          "field": "nobs",
+          "python": 405,
+          "stata": 386.0,
+          "passed": true,
+          "message": "nobs: Python=405.000000000000000, Stata=386.000000000000000, abs_diff=1.90e+01, rel_diff=4.92e-02, PASS"
+        }
+      ],
+      "coefficient_checks": [
+        {
+          "name": "Pre_avg",
+          "beta_passed": true,
+          "beta_message": "beta[Pre_avg]: Python=0.115210045628591, Stata=0.113515470000000, abs_diff=1.69e-03, rel_diff=1.49e-02, PASS",
+          "se_passed": true,
+          "se_message": "se[Pre_avg]: Python=0.147614099621262, Stata=0.151832970000000, abs_diff=4.22e-03, rel_diff=2.78e-02, PASS"
+        },
+        {
+          "name": "Post_avg",
+          "beta_passed": true,
+          "beta_message": "beta[Post_avg]: Python=1.114179655440813, Stata=1.108850300000000, abs_diff=5.33e-03, rel_diff=4.81e-03, PASS",
+          "se_passed": true,
+          "se_message": "se[Post_avg]: Python=0.170614078834022, Stata=0.181733930000000, abs_diff=1.11e-02, rel_diff=6.12e-02, PASS"
+        },
+        {
+          "name": "Tm1",
+          "beta_passed": true,
+          "beta_message": "beta[Tm1]: Python=0.115210045628591, Stata=0.113515470000000, abs_diff=1.69e-03, rel_diff=1.49e-02, PASS",
+          "se_passed": true,
+          "se_message": "se[Tm1]: Python=0.147614099621262, Stata=0.151832970000000, abs_diff=4.22e-03, rel_diff=2.78e-02, PASS"
+        },
+        {
+          "name": "Tp0",
+          "beta_passed": true,
+          "beta_message": "beta[Tp0]: Python=2.105927465088655, Stata=2.103039600000000, abs_diff=2.89e-03, rel_diff=1.37e-03, PASS",
+          "se_passed": true,
+          "se_message": "se[Tp0]: Python=0.157146550399026, Stata=0.169447840000000, abs_diff=1.23e-02, rel_diff=7.26e-02, PASS"
+        },
+        {
+          "name": "Tp1",
+          "beta_passed": true,
+          "beta_message": "beta[Tp1]: Python=0.122431845792968, Stata=0.114660930000000, abs_diff=7.77e-03, rel_diff=6.78e-02, PASS",
+          "se_passed": true,
+          "se_message": "se[Tp1]: Python=0.231556996394095, Stata=0.242568660000000, abs_diff=1.10e-02, rel_diff=4.54e-02, PASS"
+        }
+      ],
+      "notes": ""
+    }
+  ]
+}
