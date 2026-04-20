@@ -2,7 +2,7 @@
 
 import numpy as np
 import pandas as pd
-from statapy.results.result import (
+from stataflow.results.result import (
     ResultSchema,
     ModelInfo,
     SampleInfo,

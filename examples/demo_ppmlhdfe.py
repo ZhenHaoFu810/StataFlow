@@ -2,7 +2,7 @@
 
 import numpy as np
 import pandas as pd
-from statapy.compat.stata import ppmlhdfe
+from stataflow.compat.stata import ppmlhdfe
 
 # Synthetic count panel data
 rng = np.random.default_rng(42)

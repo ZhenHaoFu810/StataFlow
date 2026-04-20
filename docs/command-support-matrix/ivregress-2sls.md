@@ -7,7 +7,7 @@ Two-stage least squares instrumental-variables regression, aligned with Stata 17
 ## Python Entry
 
 ```python
-from statapy.compat.stata import ivregress_2sls
+from stataflow.compat.stata import ivregress_2sls
 
 result = ivregress_2sls(
     data, y="depvar",
@@ -65,4 +65,4 @@ Validation evidence book entry: [`docs/validation/evidence-matrix.md#ivregress-2
 
 ## Core Implementation
 
-`src/statapy/estimators/iv.py` (`IV2SLS`)
+`src/stataflow/estimators/iv.py` (`IV2SLS`)

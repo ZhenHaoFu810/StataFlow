@@ -7,7 +7,7 @@ Logistic regression (MLE), aligned with Stata 17 `logit`.
 ## Python Entry
 
 ```python
-from statapy.compat.stata import logit
+from stataflow.compat.stata import logit
 
 result = logit(data, y="depvar", x=["x1", "x2"], vce="robust")
 ```
@@ -43,7 +43,7 @@ Unsupported factor syntax (`ib.` without level, `o.` without level, `b.` without
 
 ## Postestimation (Core Estimator Layer Only)
 
-The `compat.stata` wrapper returns a `ResultSchema` object. To use `predict()` or `margins()`, call the core estimator (`statapy.estimators.Logit`) directly.
+The `compat.stata` wrapper returns a `ResultSchema` object. To use `predict()` or `margins()`, call the core estimator (`stataflow.estimators.Logit`) directly.
 
 - `predict(type="xb")`
 - `predict(type="pr")`
@@ -68,10 +68,10 @@ Validation evidence book entry: [`docs/validation/evidence-matrix.md#logit`](../
 
 - Synthetic cases: `tests/golden/test_w3_logit_basic.py`
 - Real-data cases: `tests/golden/test_w3_logit_real.py`
-- Factor-syntax cases: `tests/golden/test_a2_factor_logit_basic.py` — `logit y_bin c.x1##c.x2`; `tests/golden/test_a2_factor_logit_base.py` — `logit y_bin ib2.g##c.x1`
+- Factor-syntax cases: `tests/golden/test_a2_factor_logit_basic.py` 鈥?`logit y_bin c.x1##c.x2`; `tests/golden/test_a2_factor_logit_base.py` 鈥?`logit y_bin ib2.g##c.x1`
 - Margins cases: `tests/golden/test_w5_margins_logit_basic.py`, `tests/golden/test_w5_margins_real_mroz.py`
 - Stata 17 dual-run verified for MLE with conventional, robust, and cluster-robust VCE
 
 ## Core Implementation
 
-`src/statapy/estimators/glm.py` (`Logit`)
+`src/stataflow/estimators/glm.py` (`Logit`)

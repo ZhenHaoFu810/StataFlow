@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 from typing import Optional
 from types import SimpleNamespace
-from statapy.results.result import (
+from stataflow.results.result import (
     ResultSchema,
     ModelInfo,
     SampleInfo,
@@ -121,7 +121,7 @@ class OLS:
                 )
 
             # Add weights to dataframe for missing check
-            df["_statapy_weights"] = weight_arr
+            df["_stataflow_weights"] = weight_arr
 
         # Drop missing values
         if self.missing == "drop":
@@ -137,7 +137,7 @@ class OLS:
 
         # Extract weights after missing drop
         if weight_arr is not None:
-            weight_arr = df["_statapy_weights"].values.astype(np.float64)
+            weight_arr = df["_stataflow_weights"].values.astype(np.float64)
             # Validate weights are positive
             if np.any(weight_arr <= 0):
                 raise ValueError("aweight requires all weights > 0")
@@ -417,8 +417,8 @@ class OLS:
                 f_pvalue = 1 - f_dist.cdf(f_stat, dfn=df_model, dfd=df_resid)
             elif vce == "robust":
                 # Wald F-statistic for robust VCE
-                # F = (1/df_model) * β' * V_rob^{-1} * β
-                # where β excludes the constant term
+                # F = (1/df_model) * 尾' * V_rob^{-1} * 尾
+                # where 尾 excludes the constant term
                 # Find index of constant (if present)
                 const_idx = self._coef_names.index("_cons") if "_cons" in self._coef_names else -1
 
@@ -431,7 +431,7 @@ class OLS:
                 beta_slopes = beta[slope_idx]
                 cov_slopes = cov_beta[np.ix_(slope_idx, slope_idx)]
 
-                # Wald statistic: β' * V^{-1} * β
+                # Wald statistic: 尾' * V^{-1} * 尾
                 try:
                     cov_inv = np.linalg.inv(cov_slopes)
                     wald_stat = float(beta_slopes @ cov_inv @ beta_slopes)
@@ -593,7 +593,7 @@ class OLS:
         """
         if not self._is_fitted:
             raise ValueError("Model has not been fitted yet. Call fit() first.")
-        from statapy.postestimation import margins_ame_linear, _build_margins_result
+        from stataflow.postestimation import margins_ame_linear, _build_margins_result
 
         effects = margins_ame_linear(self._beta)
         k = len(self._beta)

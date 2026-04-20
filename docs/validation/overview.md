@@ -1,6 +1,6 @@
 # Validation Overview
 
-`statapy` 的对外验证不是“看起来差不多”，而是基于 **Stata 17 field-level dual-run** 的证据册。  
+`stataflow` 的对外验证不是“看起来差不多”，而是基于 **Stata 17 field-level dual-run** 的证据册。  
 这份文档给开源用户一个总入口，说明：
 
 - 我们验证了什么
@@ -11,7 +11,7 @@
 
 ## Validation Goal
 
-目标是证明：对当前已经实现的命令路径，`statapy` 在数学口径、字段级结果和公开命令语义上，与 **Stata 17** 对齐。
+目标是证明：对当前已经实现的命令路径，`stataflow` 在数学口径、字段级结果和公开命令语义上，与 **Stata 17** 对齐。
 
 这份证据册不做两种事：
 

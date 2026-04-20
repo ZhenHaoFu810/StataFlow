@@ -1,6 +1,6 @@
-# Statapy
+# StataFlow
 
-Statapy 是一个面向计量经济学工作流的 Python 库，目标是在一组清晰限定的命令子集上，以 Stata 风格命令接口和源码支撑验证结果来复现 Stata 的使用体验。
+StataFlow 是一个面向计量经济学工作流的 Python 库，目标是在一组清晰限定的命令子集上，以 Stata 风格命令接口和源码支撑验证结果来复现 Stata 的使用体验。
 
 这个目录是从原开发仓库中拆分出来的“干净开源版”。它保留：
 
@@ -15,13 +15,13 @@ Statapy 是一个面向计量经济学工作流的 Python 库，目标是在一�
 
 ## 当前包含的内容
 
-- 核心代码：[src/statapy](/D:/OneDrive%20-%20SAIF/PhD3/Statapy_open_source/src/statapy)
-- 示例：[examples](/D:/OneDrive%20-%20SAIF/PhD3/Statapy_open_source/examples)
-- 命令支持矩阵：[docs/command-support-matrix](/D:/OneDrive%20-%20SAIF/PhD3/Statapy_open_source/docs/command-support-matrix)
-- 验证证据册：[docs/validation](/D:/OneDrive%20-%20SAIF/PhD3/Statapy_open_source/docs/validation)
-- 公开数据与验证产物：[research/data/public](/D:/OneDrive%20-%20SAIF/PhD3/Statapy_open_source/research/data/public)、[research/results/validation](/D:/OneDrive%20-%20SAIF/PhD3/Statapy_open_source/research/results/validation)
-- 英文使用手册：[docs/USER_GUIDE.md](/D:/OneDrive%20-%20SAIF/PhD3/Statapy_open_source/docs/USER_GUIDE.md)
-- 中文使用手册：[docs/USER_GUIDE.zh-CN.md](/D:/OneDrive%20-%20SAIF/PhD3/Statapy_open_source/docs/USER_GUIDE.zh-CN.md)
+- 核心代码：[src/stataflow](/D:/OneDrive%20-%20SAIF/PhD3/StataFlow_open_source/src/stataflow)
+- 示例：[examples](/D:/OneDrive%20-%20SAIF/PhD3/StataFlow_open_source/examples)
+- 命令支持矩阵：[docs/command-support-matrix](/D:/OneDrive%20-%20SAIF/PhD3/StataFlow_open_source/docs/command-support-matrix)
+- 验证证据册：[docs/validation](/D:/OneDrive%20-%20SAIF/PhD3/StataFlow_open_source/docs/validation)
+- 公开数据与验证产物：[research/data/public](/D:/OneDrive%20-%20SAIF/PhD3/StataFlow_open_source/research/data/public)、[research/results/validation](/D:/OneDrive%20-%20SAIF/PhD3/StataFlow_open_source/research/results/validation)
+- 英文使用手册：[docs/USER_GUIDE.md](/D:/OneDrive%20-%20SAIF/PhD3/StataFlow_open_source/docs/USER_GUIDE.md)
+- 中文使用手册：[docs/USER_GUIDE.zh-CN.md](/D:/OneDrive%20-%20SAIF/PhD3/StataFlow_open_source/docs/USER_GUIDE.zh-CN.md)
 
 ## 安装
 
@@ -29,13 +29,13 @@ Statapy 是一个面向计量经济学工作流的 Python 库，目标是在一�
 pip install -e .
 ```
 
-Python 版本要求以 [pyproject.toml](/D:/OneDrive%20-%20SAIF/PhD3/Statapy_open_source/pyproject.toml) 为准。
+Python 版本要求以 [pyproject.toml](/D:/OneDrive%20-%20SAIF/PhD3/StataFlow_open_source/pyproject.toml) 为准。
 
 ## 快速开始
 
 ```python
 import pandas as pd
-from statapy.compat.stata import regress, reghdfe
+from stataflow.compat.stata import regress, reghdfe
 
 df = pd.read_csv("research/data/public/panel/oos/airfare.csv")
 
@@ -79,27 +79,27 @@ hdfe_res = reghdfe(
 
 命令名存在并不代表已经完整等同于 Stata 全命令。请以支持矩阵为准：
 
-- [docs/command-support-matrix/README.md](/D:/OneDrive%20-%20SAIF/PhD3/Statapy_open_source/docs/command-support-matrix/README.md)
+- [docs/command-support-matrix/README.md](/D:/OneDrive%20-%20SAIF/PhD3/StataFlow_open_source/docs/command-support-matrix/README.md)
 
 ## Validation 证据
 
 对外最重要的验证入口如下：
 
-- [Validation 导览](/D:/OneDrive%20-%20SAIF/PhD3/Statapy_open_source/docs/validation/README.zh-CN.md)
-- [总报告](/D:/OneDrive%20-%20SAIF/PhD3/Statapy_open_source/docs/validation/overview.md)
-- [证据矩阵](/D:/OneDrive%20-%20SAIF/PhD3/Statapy_open_source/docs/validation/evidence-matrix.md)
-- [Out-of-sample 结果汇总](/D:/OneDrive%20-%20SAIF/PhD3/Statapy_open_source/research/results/validation/oos/oos_master_summary.md)
+- [Validation 导览](/D:/OneDrive%20-%20SAIF/PhD3/StataFlow_open_source/docs/validation/README.zh-CN.md)
+- [总报告](/D:/OneDrive%20-%20SAIF/PhD3/StataFlow_open_source/docs/validation/overview.md)
+- [证据矩阵](/D:/OneDrive%20-%20SAIF/PhD3/StataFlow_open_source/docs/validation/evidence-matrix.md)
+- [Out-of-sample 结果汇总](/D:/OneDrive%20-%20SAIF/PhD3/StataFlow_open_source/research/results/validation/oos/oos_master_summary.md)
 
 当前 validation 的原则是：对已实现子集，优先做基于 Stata 17 的真实公开数据字段级双跑对比，而不是只给出开发期测试通过结论。
 
 ## 目录结构
 
-- [src](/D:/OneDrive%20-%20SAIF/PhD3/Statapy_open_source/src)：包源码
-- [examples](/D:/OneDrive%20-%20SAIF/PhD3/Statapy_open_source/examples)：可运行示例
-- [docs](/D:/OneDrive%20-%20SAIF/PhD3/Statapy_open_source/docs)：面向外部用户的说明文档
-- [scripts/validation](/D:/OneDrive%20-%20SAIF/PhD3/Statapy_open_source/scripts/validation)：验证脚本
-- [research/data/public](/D:/OneDrive%20-%20SAIF/PhD3/Statapy_open_source/research/data/public)：公开数据
-- [research/results/validation](/D:/OneDrive%20-%20SAIF/PhD3/Statapy_open_source/research/results/validation)：验证结果产物
+- [src](/D:/OneDrive%20-%20SAIF/PhD3/StataFlow_open_source/src)：包源码
+- [examples](/D:/OneDrive%20-%20SAIF/PhD3/StataFlow_open_source/examples)：可运行示例
+- [docs](/D:/OneDrive%20-%20SAIF/PhD3/StataFlow_open_source/docs)：面向外部用户的说明文档
+- [scripts/validation](/D:/OneDrive%20-%20SAIF/PhD3/StataFlow_open_source/scripts/validation)：验证脚本
+- [research/data/public](/D:/OneDrive%20-%20SAIF/PhD3/StataFlow_open_source/research/data/public)：公开数据
+- [research/results/validation](/D:/OneDrive%20-%20SAIF/PhD3/StataFlow_open_source/research/results/validation)：验证结果产物
 
 ## 当前限制
 
@@ -109,5 +109,5 @@ hdfe_res = reghdfe(
 
 更多发布状态与已知问题见：
 
-- [docs/release/open-source-alpha-status.md](/D:/OneDrive%20-%20SAIF/PhD3/Statapy_open_source/docs/release/open-source-alpha-status.md)
-- [docs/release/known-issues.md](/D:/OneDrive%20-%20SAIF/PhD3/Statapy_open_source/docs/release/known-issues.md)
+- [docs/release/open-source-alpha-status.md](/D:/OneDrive%20-%20SAIF/PhD3/StataFlow_open_source/docs/release/open-source-alpha-status.md)
+- [docs/release/known-issues.md](/D:/OneDrive%20-%20SAIF/PhD3/StataFlow_open_source/docs/release/known-issues.md)

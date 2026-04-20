@@ -2,7 +2,7 @@
 
 ## Completeness Status
 
-**Partial / Phase B Subset** — 2SLS + 1–2 FE + robust/cluster VCE + `noconstant` + `keepsingletons` + predict (`xb`/`xbd`/`residuals`/`d`/`dresiduals`) is implemented and verified. First-stage diagnostics, weak-instrument tests, LIML/GMM, multi-way clustering, and broader command options are missing.
+**Partial / Phase B Subset** 鈥?2SLS + 1鈥? FE + robust/cluster VCE + `noconstant` + `keepsingletons` + predict (`xb`/`xbd`/`residuals`/`d`/`dresiduals`) is implemented and verified. First-stage diagnostics, weak-instrument tests, LIML/GMM, multi-way clustering, and broader command options are missing.
 
 ## Command Target
 
@@ -11,7 +11,7 @@ Two-stage least squares with high-dimensional fixed effects, aligned with Stata 
 ## Python Entry
 
 ```python
-from statapy.compat.stata import ivreghdfe
+from stataflow.compat.stata import ivreghdfe
 
 result = ivreghdfe(
     data, y="depvar",
@@ -60,7 +60,7 @@ Unsupported factor syntax (`ib.` without level, `o.` without level, `b.` without
 
 ## Postestimation (Core Estimator Layer Only)
 
-The `compat.stata` wrapper returns a `ResultSchema` object. To use `predict()`, call the core estimator (`statapy.estimators.IVAbsorbingOLS`) directly.
+The `compat.stata` wrapper returns a `ResultSchema` object. To use `predict()`, call the core estimator (`stataflow.estimators.IVAbsorbingOLS`) directly.
 
 - `predict(type="xb")`
 - `predict(type="xbd")`
@@ -85,11 +85,11 @@ Validation evidence book entry: [`docs/validation/evidence-matrix.md#ivreghdfe`]
 
 - Synthetic cases: `tests/golden/test_w2_ivreghdfe_basic.py`, `tests/golden/test_w2_ivreghdfe_cluster.py`
 - Real-data cases: `tests/golden/test_w2_ivreghdfe_real_panel.py`
-- Factor-syntax case: `tests/golden/test_a2_factor_ivreghdfe_basic.py` — `ivreghdfe y c.x1##i.g (x_endog = z1 z2), absorb(firm year)`
+- Factor-syntax case: `tests/golden/test_a2_factor_ivreghdfe_basic.py` 鈥?`ivreghdfe y c.x1##i.g (x_endog = z1 z2), absorb(firm year)`
 - Phase B synthetic behavior: `tests/test_hdfe_synthetic.py` (noconstant, keepsingletons, predict consistency)
 - Local source mirror: `research/vendor/stata_community/ivreghdfe/`
 - Stata 17 dual-run verified for 2SLS with 1-2 absorbed FEs and cluster VCE
 
 ## Core Implementation
 
-`src/statapy/estimators/iv.py` (`IVAbsorbingOLS`)
+`src/stataflow/estimators/iv.py` (`IVAbsorbingOLS`)

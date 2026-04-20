@@ -2,7 +2,7 @@
 
 import os
 import pytest
-from statapy.stata_runner.runner import (
+from stataflow.stata_runner.runner import (
     StataRunner,
     find_stata_executable,
     DEFAULT_STATA_PATH,

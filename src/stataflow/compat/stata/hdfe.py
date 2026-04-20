@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Optional
 
-from statapy.estimators import AbsorbingOLS, PPMLHDFE
-from statapy.compat.stata.factor_variables import expand_factor_terms, parse_absorb
+from stataflow.estimators import AbsorbingOLS, PPMLHDFE
+from stataflow.compat.stata.factor_variables import expand_factor_terms, parse_absorb
 
 
 def reghdfe(
@@ -24,7 +24,7 @@ def reghdfe(
     """
     Stata-compatible wrapper for ``reghdfe``.
 
-    Maps to :class:`statapy.estimators.AbsorbingOLS`.
+    Maps to :class:`stataflow.estimators.AbsorbingOLS`.
 
     Parameters
     ----------
@@ -74,7 +74,7 @@ def ppmlhdfe(
     """
     Stata-compatible wrapper for ``ppmlhdfe``.
 
-    Maps to :class:`statapy.estimators.PPMLHDFE`.
+    Maps to :class:`stataflow.estimators.PPMLHDFE`.
     """
     if kwargs:
         raise ValueError(f"Unsupported arguments: {list(kwargs.keys())}")

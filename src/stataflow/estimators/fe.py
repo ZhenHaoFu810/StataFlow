@@ -11,7 +11,7 @@ import pandas as pd
 from typing import Optional
 from types import SimpleNamespace
 from scipy.stats import t as t_dist, f as f_dist
-from statapy.results.result import (
+from stataflow.results.result import (
     ResultSchema,
     ModelInfo,
     SampleInfo,
@@ -493,7 +493,7 @@ class FixedEffectsOLS:
         """Compute marginal effects."""
         if not self._is_fitted:
             raise ValueError("Model has not been fitted yet. Call fit() first.")
-        from statapy.postestimation import margins_ame_linear, _build_margins_result
+        from stataflow.postestimation import margins_ame_linear, _build_margins_result
 
         effects = margins_ame_linear(self._beta)
         k = len(self._beta)

@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 from scipy.stats import t as t_dist, f as f_dist
 from typing import Optional
-from statapy.results.result import (
+from stataflow.results.result import (
     ResultSchema,
     ModelInfo,
     SampleInfo,
@@ -246,7 +246,7 @@ class IV2SLS:
         else:
             tss = float(np.sum(y ** 2))
 
-        # Structural RSS (for R², RMSE, and VCE)
+        # Structural RSS (for R虏, RMSE, and VCE)
         rss = float(np.sum(residuals ** 2))
         mss = tss - rss
 

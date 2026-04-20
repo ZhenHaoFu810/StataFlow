@@ -13,7 +13,7 @@ import pandas as pd
 from scipy.stats import t as t_dist, f as f_dist
 from typing import Optional
 from types import SimpleNamespace
-from statapy.results.result import (
+from stataflow.results.result import (
     ResultSchema,
     ModelInfo,
     SampleInfo,
@@ -618,7 +618,7 @@ class AbsorbingOLS:
         """Compute marginal effects."""
         if not self._is_fitted:
             raise ValueError("Model has not been fitted yet. Call fit() first.")
-        from statapy.postestimation import margins_ame_linear, _build_margins_result
+        from stataflow.postestimation import margins_ame_linear, _build_margins_result
 
         k = len(self._beta_reported)
         effects = margins_ame_linear(self._beta_reported)

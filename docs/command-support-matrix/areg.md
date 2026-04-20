@@ -7,7 +7,7 @@ Linear regression with a single absorbed fixed effect, aligned with Stata 17 `ar
 ## Python Entry
 
 ```python
-from statapy.compat.stata import areg
+from stataflow.compat.stata import areg
 
 result = areg(data, y="depvar", x=["x1", "x2"], absorb="firm_id")
 ```
@@ -59,4 +59,4 @@ Validation evidence book entry: [`docs/validation/evidence-matrix.md#areg`](../v
 
 ## Core Implementation
 
-`src/statapy/estimators/absorbing_ols.py` (single-absorb path)
+`src/stataflow/estimators/absorbing_ols.py` (single-absorb path)

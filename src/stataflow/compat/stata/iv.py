@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Optional
 
-from statapy.estimators import IV2SLS, IVAbsorbingOLS
-from statapy.compat.stata.factor_variables import expand_factor_terms, parse_absorb
+from stataflow.estimators import IV2SLS, IVAbsorbingOLS
+from stataflow.compat.stata.factor_variables import expand_factor_terms, parse_absorb
 
 
 def ivregress_2sls(
@@ -23,7 +23,7 @@ def ivregress_2sls(
     """
     Stata-compatible wrapper for ``ivregress 2sls``.
 
-    Maps to :class:`statapy.estimators.IV2SLS`.
+    Maps to :class:`stataflow.estimators.IV2SLS`.
     """
     if kwargs:
         raise ValueError(f"Unsupported arguments: {list(kwargs.keys())}")
@@ -61,7 +61,7 @@ def ivreghdfe(
     """
     Stata-compatible wrapper for ``ivreghdfe``.
 
-    Maps to :class:`statapy.estimators.IVAbsorbingOLS`.
+    Maps to :class:`stataflow.estimators.IVAbsorbingOLS`.
 
     Parameters
     ----------

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pandas as pd
 
-from statapy.estimators.rdrobust import RDRobust
-from statapy.results.result import (
+from stataflow.estimators.rdrobust import RDRobust
+from stataflow.results.result import (
     CoefficientRow,
     DiagnosticsInfo,
     FitInfo,

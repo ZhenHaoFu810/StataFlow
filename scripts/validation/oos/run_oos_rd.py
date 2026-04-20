@@ -23,7 +23,7 @@ from scripts.validation.oos.common import (
     write_case_report,
     write_family_summary,
 )
-from statapy.compat.stata import rdrobust
+from stataflow.compat.stata import rdrobust
 
 
 def _load_senate() -> pd.DataFrame:
@@ -41,7 +41,7 @@ def run_oos_rdrobust_senate_covs() -> dict:
         dataset_key="rdrobust_senate",
         dataset_path="research/vendor/stata_community/rdrobust/rdrobust-master/stata/rdrobust_senate.dta",
         stata_command="rdrobust vote margin, c(0) h(15) covs(termshouse)",
-        python_callable="statapy.compat.stata.rdrobust",
+        python_callable="stataflow.compat.stata.rdrobust",
         python_kwargs={"y": "vote", "x": "margin", "c": 0, "h": 15.0, "covs": ["termshouse"]},
         description="Sharp RD on senate elections with covariate adjustment.",
     )
@@ -83,7 +83,7 @@ def run_oos_rdrobust_senate_mserd() -> dict:
         dataset_key="rdrobust_senate",
         dataset_path="research/vendor/stata_community/rdrobust/rdrobust-master/stata/rdrobust_senate.dta",
         stata_command="rdrobust vote margin, c(0) bwselect(mserd)",
-        python_callable="statapy.compat.stata.rdrobust",
+        python_callable="stataflow.compat.stata.rdrobust",
         python_kwargs={"y": "vote", "x": "margin", "c": 0, "bwselect": "mserd"},
         description="Sharp RD with automatic mean-squared-error bandwidth selection.",
         notes="Automatic bandwidth uses documented looser tolerance due to plug-in selector sensitivity.",

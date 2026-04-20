@@ -27,7 +27,7 @@ jobs:
           pip install -e ".[dev]"
 
       - name: Import smoke
-        run: python -c "import statapy; print(statapy.__version__)"
+        run: python -c "import stataflow; print(stataflow.__version__)"
 
       - name: Run unit tests (no golden)
         run: python -m pytest tests/ -v --ignore=tests/golden/

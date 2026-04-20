@@ -2,7 +2,7 @@
 
 import numpy as np
 import pandas as pd
-from statapy.compat.stata import ivregress_2sls
+from stataflow.compat.stata import ivregress_2sls
 
 # Synthetic data with endogeneity
 rng = np.random.default_rng(42)

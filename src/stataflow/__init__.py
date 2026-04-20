@@ -1,5 +1,5 @@
 """
-Stata2Python (statapy) — A Python econometrics toolkit aligned with Stata 17.
+StataFlow (stataflow) 鈥?A Python econometrics toolkit aligned with Stata 17.
 Provides a Stata-compatible command layer and native Python estimators,
 with field-level dual-run verification.
 """

@@ -364,7 +364,7 @@
       "validation_line": "real_data",
       "dataset_key": "grunfeld",
       "stata_command": "regress inv value capital",
-      "python_entry": "statapy.compat.stata.regress",
+      "python_entry": "stataflow.compat.stata.regress",
       "model_description": "Pooled OLS on classic investment panel.",
       "key_fields": [
         "nobs",
@@ -417,7 +417,7 @@
       "validation_line": "real_data",
       "dataset_key": "grunfeld",
       "stata_command": "xtset firm year; xtreg inv value capital, fe",
-      "python_entry": "statapy.compat.stata.xtreg_fe",
+      "python_entry": "stataflow.compat.stata.xtreg_fe",
       "model_description": "Real-data within estimator on Grunfeld panel.",
       "key_fields": [
         "nobs",
@@ -491,7 +491,7 @@
       "validation_line": "real_data",
       "dataset_key": "wagepan",
       "stata_command": "reghdfe lwage educ exper union, absorb(nr year) vce(cluster nr)",
-      "python_entry": "statapy.compat.stata.reghdfe",
+      "python_entry": "stataflow.compat.stata.reghdfe",
       "model_description": "Two-way FE + cluster real-data benchmark.",
       "key_fields": [
         "nobs",
@@ -515,7 +515,7 @@
       "validation_line": "synthetic",
       "dataset_key": "synthetic",
       "stata_command": "reghdfe y x1 x2, absorb(entity_id)",
-      "python_entry": "statapy.compat.stata.reghdfe",
+      "python_entry": "stataflow.compat.stata.reghdfe",
       "model_description": "Single-absorb HDFE baseline on controlled synthetic data.",
       "key_fields": [
         "df_a",
@@ -556,7 +556,7 @@
       "validation_line": "real_data",
       "dataset_key": "card",
       "stata_command": "ivregress 2sls lwage educ exper expersq black smsa south smsa66 reg662-reg669 (educ = nearc4)",
-      "python_entry": "statapy.compat.stata.ivregress_2sls",
+      "python_entry": "stataflow.compat.stata.ivregress_2sls",
       "model_description": "Returns-to-schooling 2SLS benchmark.",
       "key_fields": [
         "nobs",
@@ -580,7 +580,7 @@
       "validation_line": "synthetic",
       "dataset_key": "synthetic",
       "stata_command": "ivreghdfe y x1 (x2 = z), absorb(g1)",
-      "python_entry": "statapy.compat.stata.ivreghdfe",
+      "python_entry": "stataflow.compat.stata.ivreghdfe",
       "model_description": "Controlled absorbed IV baseline.",
       "key_fields": [
         "df_a",
@@ -601,7 +601,7 @@
       "validation_line": "real_data",
       "dataset_key": "wagepan",
       "stata_command": "ivreghdfe lwage union exper tenure (educ = married), absorb(nr year) vce(cluster nr)",
-      "python_entry": "statapy.compat.stata.ivreghdfe",
+      "python_entry": "stataflow.compat.stata.ivreghdfe",
       "model_description": "Absorbed IV benchmark with clustered inference.",
       "key_fields": [
         "nobs",
@@ -777,7 +777,7 @@
       "validation_line": "real_data",
       "dataset_key": "countymurders_ca",
       "stata_command": "ppmlhdfe murders density perc1019 perc2029 percblack percmale rpcincmaint rpcpersinc rpcunemins, absorb(countyid year)",
-      "python_entry": "statapy.compat.stata.ppmlhdfe",
+      "python_entry": "stataflow.compat.stata.ppmlhdfe",
       "model_description": "Zero-heavy county-year panel with two absorbed FE dimensions.",
       "key_fields": [
         "nobs",
@@ -804,7 +804,7 @@
       "validation_line": "synthetic",
       "dataset_key": "synthetic",
       "stata_command": "ppmlhdfe y x1 x2, absorb(g1 g2)",
-      "python_entry": "statapy.compat.stata.ppmlhdfe",
+      "python_entry": "stataflow.compat.stata.ppmlhdfe",
       "model_description": "Controlled PPML-HDFE baseline.",
       "key_fields": [
         "ll",
@@ -827,7 +827,7 @@
       "validation_line": "synthetic",
       "dataset_key": "synthetic",
       "stata_command": "did_imputation y treated time id, allhorizons autosample",
-      "python_entry": "statapy.compat.stata.did_imputation",
+      "python_entry": "stataflow.compat.stata.did_imputation",
       "model_description": "Controlled staggered-adoption DID baseline.",
       "key_fields": [
         "coefficient_names",
@@ -847,7 +847,7 @@
       "validation_line": "real_data",
       "dataset_key": "ezunem",
       "stata_command": "did_imputation gsp treated year city, allhorizons autosample cluster(city)",
-      "python_entry": "statapy.compat.stata.did_imputation",
+      "python_entry": "stataflow.compat.stata.did_imputation",
       "model_description": "BJS imputation on staggered city-year policy panel.",
       "key_fields": [
         "nobs",
@@ -868,7 +868,7 @@
       "validation_line": "real_data",
       "dataset_key": "ezunem",
       "stata_command": "eventstudyinteract gsp treated city year, cohort(first_treat) control_cohort(never) absorb(city year) vce(cluster city)",
-      "python_entry": "statapy.compat.stata.eventstudyinteract",
+      "python_entry": "stataflow.compat.stata.eventstudyinteract",
       "model_description": "Sun-Abraham interaction-weighted event study on staggered panel.",
       "key_fields": [
         "nobs",
@@ -889,7 +889,7 @@
       "validation_line": "synthetic",
       "dataset_key": "synthetic",
       "stata_command": "eventstudyinteract y treated id time, absorb(id time)",
-      "python_entry": "statapy.compat.stata.eventstudyinteract",
+      "python_entry": "stataflow.compat.stata.eventstudyinteract",
       "model_description": "Controlled Sun-Abraham baseline.",
       "key_fields": [
         "coefficient_names",
@@ -909,7 +909,7 @@
       "validation_line": "synthetic",
       "dataset_key": "synthetic",
       "stata_command": "csdid y, ivar(id) time(time) gvar(first_treat) method(reg)",
-      "python_entry": "statapy.compat.stata.csdid",
+      "python_entry": "stataflow.compat.stata.csdid",
       "model_description": "Controlled ATT(g,t) baseline.",
       "key_fields": [
         "coefficient_names",
@@ -929,7 +929,7 @@
       "validation_line": "real_data",
       "dataset_key": "ezunem",
       "stata_command": "csdid gsp, ivar(city) time(year) gvar(first_treat) method(reg) notyet cluster(city)",
-      "python_entry": "statapy.compat.stata.csdid",
+      "python_entry": "stataflow.compat.stata.csdid",
       "model_description": "Callaway-Sant'Anna ATT(g,t) and aggregated event-study benchmark.",
       "key_fields": [
         "coefficient_names",
@@ -949,7 +949,7 @@
       "validation_line": "real_data",
       "dataset_key": "rdrobust_senate",
       "stata_command": "rdrobust vote margin, c(0) h(15) / bwselect(mserd) / covs(z)",
-      "python_entry": "statapy.compat.stata.rdrobust",
+      "python_entry": "stataflow.compat.stata.rdrobust",
       "model_description": "Official rdrobust senate benchmark with explicit-h and auto-bandwidth variants.",
       "key_fields": [
         "coefficients",
@@ -970,7 +970,7 @@
       "validation_line": "synthetic",
       "dataset_key": "synthetic",
       "stata_command": "rdrobust y x, c(0) h(0.5)",
-      "python_entry": "statapy.compat.stata.rdrobust",
+      "python_entry": "stataflow.compat.stata.rdrobust",
       "model_description": "Controlled sharp RD baseline.",
       "key_fields": [
         "coefficients",

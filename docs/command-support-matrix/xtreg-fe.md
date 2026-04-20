@@ -7,7 +7,7 @@ Fixed-effects (within) panel regression, aligned with Stata 17 `xtreg, fe`.
 ## Python Entry
 
 ```python
-from statapy.compat.stata import xtreg_fe
+from stataflow.compat.stata import xtreg_fe
 
 result = xtreg_fe(data, y="depvar", x=["x1", "x2"], fe="id")
 ```
@@ -48,4 +48,4 @@ Validation evidence book entry: [`docs/validation/evidence-matrix.md#xtreg-fe`](
 
 ## Core Implementation
 
-`src/statapy/estimators/fe.py`
+`src/stataflow/estimators/fe.py`

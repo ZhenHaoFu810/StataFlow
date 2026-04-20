@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from statapy.estimators import DIDImputation, EventStudyInteract, CSDID
+from stataflow.estimators import DIDImputation, EventStudyInteract, CSDID
 
 
 def did_imputation(
@@ -22,7 +22,7 @@ def did_imputation(
     """
     Stata-compatible wrapper for ``did_imputation``.
 
-    Maps to :class:`statapy.estimators.DIDImputation`.
+    Maps to :class:`stataflow.estimators.DIDImputation`.
     """
     if kwargs:
         raise ValueError(f"Unsupported arguments: {list(kwargs.keys())}")
@@ -56,7 +56,7 @@ def eventstudyinteract(
     """
     Stata-compatible wrapper for ``eventstudyinteract``.
 
-    Maps to :class:`statapy.estimators.EventStudyInteract`.
+    Maps to :class:`stataflow.estimators.EventStudyInteract`.
 
     Parameters
     ----------
@@ -126,7 +126,7 @@ def csdid(
     """
     Stata-compatible wrapper for ``csdid``.
 
-    Maps to :class:`statapy.estimators.CSDID`.
+    Maps to :class:`stataflow.estimators.CSDID`.
     """
     if kwargs:
         raise ValueError(f"Unsupported arguments: {list(kwargs.keys())}")

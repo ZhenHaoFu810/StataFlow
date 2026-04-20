@@ -12,7 +12,7 @@ import pandas as pd
 import pytest
 import statsmodels.api as sm
 
-from statapy import OLS
+from stataflow import OLS
 
 
 @pytest.fixture

@@ -1,7 +1,7 @@
 """Tests for ResultSchema serialization and deserialization."""
 
 import json
-from statapy.results.result import (
+from stataflow.results.result import (
     ResultSchema,
     ModelInfo,
     SampleInfo,

@@ -24,7 +24,7 @@ This document registers issues that are acknowledged but not treated as release-
 
 ## 2. Vendor command completeness — all are partial subsets
 
-All community commands in `statapy.compat.stata` are implemented as **high-frequency-path subsets**, not full Stata command reproductions. This is by design for the Alpha phase, but users may misinterpret wrapper availability as full support.
+All community commands in `stataflow.compat.stata` are implemented as **high-frequency-path subsets**, not full Stata command reproductions. This is by design for the Alpha phase, but users may misinterpret wrapper availability as full support.
 
 | Command | Status | Largest remaining gap |
 |---------|--------|----------------------|

@@ -2,7 +2,7 @@
 
 ## Completeness Status
 
-**Partial / Core Estimator Subset** — the Borusyak-Jaravel-Spiess DID imputation estimator with TWFE-on-controls, imputation, and cluster-robust standard errors is implemented and verified, but `controls`, `window`, `minn`, `pretrends`, and repeated cross-section are missing.
+**Partial / Core Estimator Subset** 鈥?the Borusyak-Jaravel-Spiess DID imputation estimator with TWFE-on-controls, imputation, and cluster-robust standard errors is implemented and verified, but `controls`, `window`, `minn`, `pretrends`, and repeated cross-section are missing.
 
 ## Command Target
 
@@ -11,7 +11,7 @@ Borusyak, Jaravel \& Spiess (2021) DID imputation estimator, aligned with Stata 
 ## Python Entry
 
 ```python
-from statapy.compat.stata import did_imputation
+from stataflow.compat.stata import did_imputation
 
 result = did_imputation(
     data, y="y", id="unit_id", time="year",
@@ -62,4 +62,4 @@ Validation evidence book entry: [`docs/validation/evidence-matrix.md#did_imputat
 
 ## Core Implementation
 
-`src/statapy/estimators/did_imputation.py`
+`src/stataflow/estimators/did_imputation.py`

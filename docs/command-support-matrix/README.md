@@ -1,6 +1,6 @@
 # Command Support Matrix
 
-This directory lists the current support status for every Stata-compatible command exposed by `statapy.compat.stata`.
+This directory lists the current support status for every Stata-compatible command exposed by `stataflow.compat.stata`.
 
 Cross-command validation evidence is collected separately in:
 
@@ -23,15 +23,15 @@ Cross-command validation evidence is collected separately in:
 | [`poisson`](./poisson.md) | Count | Stable | MLE, robust, cluster |
 | [`ppmlhdfe`](./ppmlhdfe.md) | Count / HDFE | Alpha | PPML + 1-2 FEs, offset/exposure, robust/cluster |
 | [`did_imputation`](./did-imputation.md) | DID / Event Study | Alpha | BJS imputation, allhorizons, autosample, cluster |
-| [`rdrobust`](./rdrobust.md) | RD | Alpha — Partial | Sharp RD minimal subset; explicit bandwidth required |
+| [`rdrobust`](./rdrobust.md) | RD | Alpha 鈥?Partial | Sharp RD minimal subset; explicit bandwidth required |
 | [`eventstudyinteract`](./eventstudyinteract.md) | DID / Event Study | Alpha | Sun-Abraham IW estimator, auto dummy generation, cluster |
 | [`csdid`](./csdid.md) | DID / Event Study | Alpha | Callaway-Sant'Anna, `method="reg"` only, `estat_event` |
 
 ## Status Legend
 
-- **Stable** — synthetic + real-data dual-run verified; core API unlikely to change in backward-incompatible ways.
-- **Alpha** — high-frequency paths are implemented and verified, but command surface is still a subset of the full Stata community command. Unsupported parameters are hard-rejected.
-- **Alpha — Partial** — a verifiable implementation exists and is tested, but large functional areas are still missing (e.g., automatic bandwidth selection, fuzzy RD, covariates). Explicit bandwidths or reduced parameter sets may be required.
+- **Stable** 鈥?synthetic + real-data dual-run verified; core API unlikely to change in backward-incompatible ways.
+- **Alpha** 鈥?high-frequency paths are implemented and verified, but command surface is still a subset of the full Stata community command. Unsupported parameters are hard-rejected.
+- **Alpha 鈥?Partial** 鈥?a verifiable implementation exists and is tested, but large functional areas are still missing (e.g., automatic bandwidth selection, fuzzy RD, covariates). Explicit bandwidths or reduced parameter sets may be required.
 
 ## Common Limitations Across All Commands
 

@@ -23,7 +23,7 @@ from scripts.validation.oos.common import (
     write_case_report,
     write_family_summary,
 )
-from statapy.compat.stata import csdid, did_imputation, eventstudyinteract
+from stataflow.compat.stata import csdid, did_imputation, eventstudyinteract
 
 
 def _load_jtrain() -> pd.DataFrame:
@@ -38,7 +38,7 @@ def run_oos_did_imputation_jtrain() -> dict:
         dataset_key="jtrain",
         dataset_path="research/data/public/did/jtrain_prepared.dta",
         stata_command="did_imputation lhrsemp fcode year first_treat, allhorizons autosample cluster(fcode)",
-        python_callable="statapy.compat.stata.did_imputation",
+        python_callable="stataflow.compat.stata.did_imputation",
         python_kwargs={
             "data": None,
             "y": "lhrsemp",
@@ -93,7 +93,7 @@ def run_oos_eventstudyinteract_jtrain() -> dict:
         dataset_key="jtrain",
         dataset_path="research/data/public/did/jtrain_prepared.dta",
         stata_command="eventstudyinteract lhrsemp Dm2 D0 Dp1, cohort(first_treat) control_cohort(never_treated) absorb(fcode year) vce(cluster fcode)",
-        python_callable="statapy.compat.stata.eventstudyinteract",
+        python_callable="stataflow.compat.stata.eventstudyinteract",
         python_kwargs={
             "data": None,
             "y": "lhrsemp",
@@ -162,7 +162,7 @@ def run_oos_csdid_jtrain() -> dict:
         dataset_key="jtrain",
         dataset_path="research/data/public/did/jtrain_prepared.dta",
         stata_command="csdid lhrsemp, ivar(fcode) time(year) gvar(first_treat) method(reg)",
-        python_callable="statapy.compat.stata.csdid",
+        python_callable="stataflow.compat.stata.csdid",
         python_kwargs={
             "data": None,
             "y": "lhrsemp",

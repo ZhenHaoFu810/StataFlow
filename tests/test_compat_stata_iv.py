@@ -4,8 +4,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from statapy.compat.stata import ivregress_2sls, ivreghdfe
-from statapy.estimators import IV2SLS, IVAbsorbingOLS
+from stataflow.compat.stata import ivregress_2sls, ivreghdfe
+from stataflow.estimators import IV2SLS, IVAbsorbingOLS
 
 
 def _make_iv_data(n=100, seed=42):

@@ -7,7 +7,7 @@ subsequent rdrobust package literature.
 
 This is a clean re-implementation of the core algorithm
 (local polynomial WLS + bias correction + robust inference)
-using only NumPy/SciPy, adapted to the statapy ResultSchema.
+using only NumPy/SciPy, adapted to the stataflow ResultSchema.
 
 Supported:
 - Sharp RD (deriv=0) only in this minimal subset
@@ -28,7 +28,7 @@ import math
 import numpy as np
 from scipy import linalg, stats
 
-from statapy.results.result import (
+from stataflow.results.result import (
     CoefficientRow,
     DiagnosticsInfo,
     FitInfo,

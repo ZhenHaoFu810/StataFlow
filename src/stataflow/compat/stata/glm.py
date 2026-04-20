@@ -1,115 +1,108 @@
-"""Stata linear regression command wrappers."""
+"""Stata GLM command wrappers."""
 
 from __future__ import annotations
 
 from typing import Optional
 
-from statapy.estimators import OLS, FixedEffectsOLS, AbsorbingOLS
-from statapy.compat.stata.factor_variables import expand_factor_terms, parse_absorb
+from stataflow.estimators import Logit, Probit, Poisson
+from stataflow.compat.stata.factor_variables import expand_factor_terms
 
 
-def regress(
+def logit(
     data,
     y: str,
     x: list[str],
     *,
     vce: str = "ols",
     cluster: Optional[str] = None,
-    aweight: Optional[str] = None,
     noconstant: bool = False,
     missing: str = "drop",
     **kwargs,
 ) -> object:
     """
-    Stata-compatible wrapper for ``regress``.
+    Stata-compatible wrapper for ``logit``.
 
-    Maps to :class:`statapy.estimators.OLS`.
+    Maps to :class:`stataflow.estimators.Logit`.
     """
     if kwargs:
         raise ValueError(f"Unsupported arguments: {list(kwargs.keys())}")
 
-    weight_type = None
-    weights = None
-    if aweight is not None:
-        weight_type = "aweight"
-        weights = data[aweight].values
-
     data_expanded, x_expanded = expand_factor_terms(data, x)
 
-    model = OLS(
+    model = Logit(
         data=data_expanded,
         y=y,
         x=x_expanded,
         add_constant=not noconstant,
-        weights=weights,
-        weight_type=weight_type,
         missing=missing,
     )
     return model.fit(vce=vce, cluster=cluster)
 
 
-def xtreg_fe(
+def probit(
     data,
     y: str,
     x: list[str],
     *,
-    fe: str,
     vce: str = "ols",
     cluster: Optional[str] = None,
+    noconstant: bool = False,
     missing: str = "drop",
     **kwargs,
 ) -> object:
     """
-    Stata-compatible wrapper for ``xtreg, fe``.
+    Stata-compatible wrapper for ``probit``.
 
-    Maps to :class:`statapy.estimators.FixedEffectsOLS`.
+    Maps to :class:`stataflow.estimators.Probit`.
     """
     if kwargs:
         raise ValueError(f"Unsupported arguments: {list(kwargs.keys())}")
 
     data_expanded, x_expanded = expand_factor_terms(data, x)
 
-    model = FixedEffectsOLS(
+    model = Probit(
         data=data_expanded,
         y=y,
         x=x_expanded,
-        fe=fe,
+        add_constant=not noconstant,
         missing=missing,
     )
     return model.fit(vce=vce, cluster=cluster)
 
 
-def areg(
+def poisson(
     data,
     y: str,
     x: list[str],
     *,
-    absorb: str,
     vce: str = "ols",
     cluster: Optional[str] = None,
+    noconstant: bool = False,
+    exposure: Optional[str] = None,
+    offset: Optional[str] = None,
     missing: str = "drop",
     **kwargs,
 ) -> object:
     """
-    Stata-compatible wrapper for ``areg``.
+    Stata-compatible wrapper for ``poisson``.
 
-    Maps to :class:`statapy.estimators.AbsorbingOLS` with a single
-    absorption variable.
+    Maps to :class:`stataflow.estimators.Poisson`.
     """
     if kwargs:
         raise ValueError(f"Unsupported arguments: {list(kwargs.keys())}")
 
-    data_expanded, x_expanded = expand_factor_terms(data, x)
-    absorb_parsed = parse_absorb(absorb)
-    if len(absorb_parsed) > 1:
-        raise ValueError("areg supports only a single absorb variable")
+    if exposure is not None:
+        raise NotImplementedError("exposure is not yet supported in stataflow.poisson")
+    if offset is not None:
+        raise NotImplementedError("offset is not yet supported in stataflow.poisson")
 
-    model = AbsorbingOLS(
+    data_expanded, x_expanded = expand_factor_terms(data, x)
+
+    model = Poisson(
         data=data_expanded,
         y=y,
         x=x_expanded,
-        absorb=absorb_parsed[0],
-        add_constant=True,
+        add_constant=not noconstant,
         missing=missing,
     )
     return model.fit(vce=vce, cluster=cluster)

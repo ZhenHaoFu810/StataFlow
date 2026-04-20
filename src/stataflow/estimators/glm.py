@@ -12,7 +12,7 @@ import pandas as pd
 from scipy.stats import norm as norm_dist, chi2 as chi2_dist
 from typing import Optional
 from types import SimpleNamespace
-from statapy.results.result import (
+from stataflow.results.result import (
     ResultSchema,
     ModelInfo,
     SampleInfo,
@@ -434,7 +434,7 @@ class GLMBase:
         """Compute marginal effects."""
         if not self._is_fitted:
             raise ValueError("Model has not been fitted yet. Call fit() first.")
-        from statapy.postestimation import (
+        from stataflow.postestimation import (
             margins_ame_logit, margins_mem_logit,
             margins_ame_probit, margins_mem_probit,
             margins_ame_poisson, margins_mem_poisson,

@@ -2,7 +2,7 @@
 
 ## Completeness Status
 
-**Partial / IW Subset** — the Sun-Abraham interaction-weighted event-study estimator with auto dummy generation is implemented and verified, but `window`, `minn`, and full output/reporting options are missing.
+**Partial / IW Subset** 鈥?the Sun-Abraham interaction-weighted event-study estimator with auto dummy generation is implemented and verified, but `window`, `minn`, and full output/reporting options are missing.
 
 ## Command Target
 
@@ -11,7 +11,7 @@ Sun & Abraham interaction-weighted event-study estimator, aligned with Stata com
 ## Python Entry
 
 ```python
-from statapy.compat.stata import eventstudyinteract
+from stataflow.compat.stata import eventstudyinteract
 
 # Auto-generation mode (command-semantic interface)
 result = eventstudyinteract(
@@ -71,4 +71,4 @@ Validation evidence book entry: [`docs/validation/evidence-matrix.md#eventstudyi
 
 ## Core Implementation
 
-`src/statapy/estimators/eventstudyinteract.py`
+`src/stataflow/estimators/eventstudyinteract.py`

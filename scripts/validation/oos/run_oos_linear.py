@@ -25,7 +25,7 @@ from scripts.validation.oos.common import (
     write_case_report,
     write_family_summary,
 )
-from statapy.compat.stata import areg, reghdfe, regress, xtreg_fe
+from stataflow.compat.stata import areg, reghdfe, regress, xtreg_fe
 
 
 def _load_airfare() -> pd.DataFrame:
@@ -44,7 +44,7 @@ def run_oos_regress_airfare() -> dict:
         dataset_key="airfare",
         dataset_path="research/data/public/panel/oos/airfare.csv",
         stata_command="regress lfare ldist concen y98 y99 y00",
-        python_callable="statapy.compat.stata.regress",
+        python_callable="stataflow.compat.stata.regress",
         python_kwargs={"y": "lfare", "x": ["ldist", "concen", "y98", "y99", "y00"], "vce": "ols"},
         description="Pooled OLS on airfare panel with route distance, market concentration, and year dummies.",
     )
@@ -99,7 +99,7 @@ def run_oos_xtreg_fe_airfare() -> dict:
         dataset_key="airfare",
         dataset_path="research/data/public/panel/oos/airfare.csv",
         stata_command="xtreg lfare concen y98 y99 y00, fe",
-        python_callable="statapy.compat.stata.xtreg_fe",
+        python_callable="stataflow.compat.stata.xtreg_fe",
         python_kwargs={"y": "lfare", "x": ["concen", "y98", "y99", "y00"], "fe": "id", "vce": "ols"},
         description="Within-transformation FE on airfare panel (route FE).",
     )
@@ -151,7 +151,7 @@ def run_oos_areg_airfare() -> dict:
         dataset_key="airfare",
         dataset_path="research/data/public/panel/oos/airfare.csv",
         stata_command="areg lfare concen, absorb(id)",
-        python_callable="statapy.compat.stata.areg",
+        python_callable="stataflow.compat.stata.areg",
         python_kwargs={"y": "lfare", "x": ["concen"], "absorb": "id", "vce": "ols"},
         description="Single absorbed route FE on airfare panel.",
     )
@@ -203,7 +203,7 @@ def run_oos_reghdfe_airfare() -> dict:
         dataset_key="airfare",
         dataset_path="research/data/public/panel/oos/airfare.csv",
         stata_command="reghdfe lfare concen, absorb(id year) vce(cluster id)",
-        python_callable="statapy.compat.stata.reghdfe",
+        python_callable="stataflow.compat.stata.reghdfe",
         python_kwargs={"y": "lfare", "x": ["concen"], "absorb": ["id", "year"], "vce": "cluster", "cluster": "id"},
         description="Two-way FE (route + year) with route clustering on airfare panel.",
     )
@@ -257,7 +257,7 @@ def run_oos_reghdfe_airfare_factor() -> dict:
         dataset_key="airfare",
         dataset_path="research/data/public/panel/oos/airfare.csv",
         stata_command="reghdfe lfare i.year##c.ldist, absorb(id)",
-        python_callable="statapy.compat.stata.reghdfe",
+        python_callable="stataflow.compat.stata.reghdfe",
         python_kwargs={"y": "lfare", "x": ["i.year##c.ldist"], "absorb": "id", "vce": "ols"},
         description="Factor-variable full interaction (year dummies x distance) with route FE. Tests absorbed-FE collinearity behavior.",
     )

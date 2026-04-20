@@ -24,7 +24,7 @@ from scripts.validation.oos.common import (
     write_case_report,
     write_family_summary,
 )
-from statapy.compat.stata import ivregress_2sls, ivreghdfe
+from stataflow.compat.stata import ivregress_2sls, ivreghdfe
 
 
 def _load_card() -> pd.DataFrame:
@@ -44,7 +44,7 @@ def run_oos_ivregress_card() -> dict:
         dataset_key="card",
         dataset_path="research/data/public/iv/card.csv",
         stata_command="ivregress 2sls lwage exper expersq smsa south (educ = nearc2 nearc4)",
-        python_callable="statapy.compat.stata.ivregress_2sls",
+        python_callable="stataflow.compat.stata.ivregress_2sls",
         python_kwargs={
             "y": "lwage",
             "x_exog": ["exper", "expersq", "smsa", "south"],
@@ -100,7 +100,7 @@ def run_oos_ivreghdfe_wagepan() -> dict:
         dataset_key="wagepan",
         dataset_path="research/data/public/panel/wooldridge/wagepan.csv",
         stata_command="ivreghdfe lwage hours fin (union = married), absorb(nr year) vce(cluster nr)",
-        python_callable="statapy.compat.stata.ivreghdfe",
+        python_callable="stataflow.compat.stata.ivreghdfe",
         python_kwargs={
             "y": "lwage",
             "x_exog": ["hours", "fin"],

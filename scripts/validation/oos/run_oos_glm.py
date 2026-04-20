@@ -25,7 +25,7 @@ from scripts.validation.oos.common import (
     write_case_report,
     write_family_summary,
 )
-from statapy.compat.stata import logit, poisson, ppmlhdfe, probit
+from stataflow.compat.stata import logit, poisson, ppmlhdfe, probit
 
 
 def _load_vote1() -> pd.DataFrame:
@@ -48,7 +48,7 @@ def run_oos_logit_vote1() -> dict:
         dataset_key="vote1",
         dataset_path="research/data/public/binary/oos/vote1.csv",
         stata_command="logit democA lexpendA lexpendB prtystrA",
-        python_callable="statapy.compat.stata.logit",
+        python_callable="stataflow.compat.stata.logit",
         python_kwargs={"y": "democA", "x": ["lexpendA", "lexpendB", "prtystrA"], "vce": "ols"},
         description="Binary logit on congressional election data (incumbent party win).",
     )
@@ -95,7 +95,7 @@ def run_oos_probit_vote1() -> dict:
         dataset_key="vote1",
         dataset_path="research/data/public/binary/oos/vote1.csv",
         stata_command="probit democA lexpendA lexpendB prtystrA",
-        python_callable="statapy.compat.stata.probit",
+        python_callable="stataflow.compat.stata.probit",
         python_kwargs={"y": "democA", "x": ["lexpendA", "lexpendB", "prtystrA"], "vce": "ols"},
         description="Binary probit on congressional election data.",
     )
@@ -142,7 +142,7 @@ def run_oos_poisson_fertil1() -> dict:
         dataset_key="fertil1",
         dataset_path="research/data/public/count/oos/fertil1.csv",
         stata_command="poisson kids educ age agesq black",
-        python_callable="statapy.compat.stata.poisson",
+        python_callable="stataflow.compat.stata.poisson",
         python_kwargs={
             "y": "kids",
             "x": ["educ", "age", "agesq", "black"],
@@ -195,7 +195,7 @@ def run_oos_ppmlhdfe_fertil1() -> dict:
         dataset_key="fertil1",
         dataset_path="research/data/public/count/oos/fertil1.csv",
         stata_command="ppmlhdfe kids educ age agesq black, absorb(year) vce(robust)",
-        python_callable="statapy.compat.stata.ppmlhdfe",
+        python_callable="stataflow.compat.stata.ppmlhdfe",
         python_kwargs={
             "y": "kids",
             "x": ["educ", "age", "agesq", "black"],
@@ -248,7 +248,7 @@ def run_oos_logit_smoke_factor() -> dict:
         dataset_key="smoke",
         dataset_path="research/data/public/binary/oos/smoke.csv",
         stata_command="logit smoker educ age i.white##c.income",
-        python_callable="statapy.compat.stata.logit",
+        python_callable="stataflow.compat.stata.logit",
         python_kwargs={"y": "smoker", "x": ["educ", "age", "i.white##c.income"], "vce": "ols"},
         description="Logit with categorical-continuous full interaction on smoking data (smoker = cigs > 0).",
     )

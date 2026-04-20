@@ -2,7 +2,7 @@
 
 ## Completeness Status
 
-**Partial / Regression-Adjustment Subset** — the Callaway-Sant'Anna CSDID estimator with `method="reg"` and event-study aggregation (`estat_event`) is implemented and verified, but doubly-robust methods, IPW, other aggregation types, and wild bootstrap are missing. As of this round, `estat_event()` returns `ResultSchema` aligned with other DID commands.
+**Partial / Regression-Adjustment Subset** 鈥?the Callaway-Sant'Anna CSDID estimator with `method="reg"` and event-study aggregation (`estat_event`) is implemented and verified, but doubly-robust methods, IPW, other aggregation types, and wild bootstrap are missing. As of this round, `estat_event()` returns `ResultSchema` aligned with other DID commands.
 
 ## Command Target
 
@@ -11,7 +11,7 @@ Callaway-Sant'Anna DID estimator, aligned with Stata community command `csdid`.
 ## Python Entry
 
 ```python
-from statapy.compat.stata import csdid
+from stataflow.compat.stata import csdid
 
 result = csdid(
     data, y="y", id="county_id", time="year",
@@ -58,4 +58,4 @@ Validation evidence book entry: [`docs/validation/evidence-matrix.md#csdid`](../
 
 ## Core Implementation
 
-`src/statapy/estimators/csdid.py`
+`src/stataflow/estimators/csdid.py`

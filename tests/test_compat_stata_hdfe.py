@@ -4,8 +4,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from statapy.compat.stata import reghdfe, ppmlhdfe
-from statapy.estimators import AbsorbingOLS, PPMLHDFE
+from stataflow.compat.stata import reghdfe, ppmlhdfe
+from stataflow.estimators import AbsorbingOLS, PPMLHDFE
 
 
 def _make_hdfe_data(n=100, seed=42):

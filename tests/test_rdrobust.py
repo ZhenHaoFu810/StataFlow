@@ -10,8 +10,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from statapy.compat.stata import rdrobust
-from statapy.estimators.rdrobust import RDRobust
+from stataflow.compat.stata import rdrobust
+from stataflow.estimators.rdrobust import RDRobust
 
 
 def _make_rd_data(n=500, seed=42, jump=2.0, cutoff=0.0):

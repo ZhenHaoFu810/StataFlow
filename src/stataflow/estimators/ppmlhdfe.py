@@ -12,7 +12,7 @@ import pandas as pd
 from scipy.stats import norm as norm_dist
 from typing import Optional
 from types import SimpleNamespace
-from statapy.results.result import (
+from stataflow.results.result import (
     ResultSchema,
     ModelInfo,
     SampleInfo,
@@ -22,7 +22,7 @@ from statapy.results.result import (
     DiagnosticsInfo,
     ProvenanceInfo,
 )
-from statapy.estimators.absorbing_ols import AbsorbingOLS
+from stataflow.estimators.absorbing_ols import AbsorbingOLS
 
 
 class PPMLHDFE:
@@ -353,7 +353,7 @@ class PPMLHDFE:
         from scipy.special import gammaln
         ll_model = float(np.sum(y * np.log(mu) - mu - gammaln(y + 1)))
 
-        # Deviance: 2 * Σ [μ - y + y * log(y/μ)]  (with 0*log(0) = 0)
+        # Deviance: 2 * 危 [渭 - y + y * log(y/渭)]  (with 0*log(0) = 0)
         with np.errstate(divide="ignore", invalid="ignore"):
             deviance_terms = (mu - y) + y * np.log(y / mu)
         deviance_terms = np.where(y == 0, mu, deviance_terms)
@@ -489,7 +489,7 @@ class PPMLHDFE:
         """Compute marginal effects."""
         if not self._is_fitted:
             raise ValueError("Model has not been fitted yet. Call fit() first.")
-        from statapy.postestimation import (
+        from stataflow.postestimation import (
             margins_ame_poisson, margins_mem_poisson, _build_margins_result,
         )
 

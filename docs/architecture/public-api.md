@@ -13,7 +13,7 @@
 ### 已有估计器
 
 ```python
-from statapy import (
+from stataflow import (
     OLS,
     FixedEffectsOLS,
     AbsorbingOLS,
@@ -40,7 +40,7 @@ from statapy import (
 ### 正式入口
 
 ```python
-from statapy.compat.stata import (
+from stataflow.compat.stata import (
     regress,
     xtreg_fe,
     areg,

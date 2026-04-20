@@ -1,4 +1,4 @@
-"""Stata command compatibility layer for statapy."""
+"""Stata command compatibility layer for stataflow."""
 
 from .linear import regress, xtreg_fe, areg
 from .hdfe import reghdfe, ppmlhdfe

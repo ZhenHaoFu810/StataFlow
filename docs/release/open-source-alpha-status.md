@@ -7,10 +7,10 @@
 
 ## What this project is
 
-`statapy` is a Python econometrics toolkit that reproduces Stata 17 estimation results with high precision. It provides:
+`stataflow` is a Python econometrics toolkit that reproduces Stata 17 estimation results with high precision. It provides:
 
-- A **Stata-compatible command layer** (`statapy.compat.stata`) for researchers migrating from Stata.
-- A **native Python estimator layer** (`statapy.estimators`) for advanced users who want direct control.
+- A **Stata-compatible command layer** (`stataflow.compat.stata`) for researchers migrating from Stata.
+- A **native Python estimator layer** (`stataflow.estimators`) for advanced users who want direct control.
 - **Field-level dual-run verification** against Stata 17 on both synthetic and real public datasets.
 
 ---
@@ -38,18 +38,18 @@ Specifically:
 | Binary | `logit` | Stable | MLE, robust, cluster |
 | Binary | `probit` | Stable | MLE, robust, cluster |
 | Count | `poisson` | Stable | MLE, robust, cluster |
-| HDFE | `reghdfe` | Alpha | 1–2 categorical FEs, singleton drop, robust/cluster |
-| IV / HDFE | `ivreghdfe` | Alpha | IV + 1–2 FEs, robust/cluster |
-| Count / HDFE | `ppmlhdfe` | Alpha | PPML + 1–2 FEs, offset/exposure, robust/cluster |
+| HDFE | `reghdfe` | Alpha | 1鈥? categorical FEs, singleton drop, robust/cluster |
+| IV / HDFE | `ivreghdfe` | Alpha | IV + 1鈥? FEs, robust/cluster |
+| Count / HDFE | `ppmlhdfe` | Alpha | PPML + 1鈥? FEs, offset/exposure, robust/cluster |
 | DID | `did_imputation` | Alpha | BJS imputation, allhorizons, autosample, cluster |
 | DID | `eventstudyinteract` | Alpha | Sun-Abraham IW estimator, auto dummy generation, cluster |
 | DID | `csdid` | Alpha | Callaway-Sant'Anna `method="reg"` only, `estat_event` |
-| RD | `rdrobust` | Alpha — Partial | Sharp RD with `bwselect="mserd"` and `covs`; fuzzy RD, clustering, and other selectors not yet supported |
+| RD | `rdrobust` | Alpha 鈥?Partial | Sharp RD with `bwselect="mserd"` and `covs`; fuzzy RD, clustering, and other selectors not yet supported |
 
 **Legend:**
-- **Stable** — synthetic + real-data dual-run verified; core API unlikely to change in backward-incompatible ways.
-- **Alpha** — high-frequency paths implemented and verified, but command surface is a subset of the full Stata community command.
-- **Alpha — Partial** — verifiable implementation exists, but large functional areas are still missing.
+- **Stable** 鈥?synthetic + real-data dual-run verified; core API unlikely to change in backward-incompatible ways.
+- **Alpha** 鈥?high-frequency paths implemented and verified, but command surface is a subset of the full Stata community command.
+- **Alpha 鈥?Partial** 鈥?verifiable implementation exists, but large functional areas are still missing.
 
 ---
 
@@ -66,8 +66,8 @@ Specifically:
 
 Every public command is validated with two lines of evidence:
 
-1. **Synthetic / controlled cases** — formula, degrees of freedom, sample screening, edge cases.
-2. **Real public datasets** — field-level comparison against Stata 17 on openly available data.
+1. **Synthetic / controlled cases** 鈥?formula, degrees of freedom, sample screening, edge cases.
+2. **Real public datasets** 鈥?field-level comparison against Stata 17 on openly available data.
 
 Current test status: **681 passed, 0 failed** (as of 2026-04-18).
 
@@ -95,5 +95,5 @@ See [`docs/audit/next-development-plan.md`](../audit/next-development-plan.md) f
 
 ## Feedback and contributions
 
-- Issues: [https://github.com/ZhenHaoFu810/Statapy/issues](https://github.com/ZhenHaoFu810/Statapy/issues)
+- Issues: [https://github.com/ZhenHaoFu810/StataFlow/issues](https://github.com/ZhenHaoFu810/StataFlow/issues)
 - The project uses a dual-governance model: **Codex** (architecture and review) and **Claude Code** (implementation and testing).

@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from scipy.stats import norm as norm_dist
 from typing import Optional
-from statapy.results.result import (
+from stataflow.results.result import (
     ResultSchema,
     ModelInfo,
     SampleInfo,
