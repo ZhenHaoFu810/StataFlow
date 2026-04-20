@@ -4,7 +4,7 @@ Provides a Stata-compatible command layer and native Python estimators,
 with field-level dual-run verification.
 """
 
-__version__ = "0.1.0"
+__version__ = "0.1.3"
 
 # Core estimators (Python-native API)
 from .estimators import (
