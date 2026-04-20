@@ -22,16 +22,25 @@ Stata2Python (`statapy`) is a Python econometrics toolkit that reproduces Stata 
 - **Alpha — Partial** — a verifiable implementation exists, but large functional areas are still missing (e.g., fuzzy RD for `rdrobust`, multi-way clustering).
 
 See the [Command Support Matrix](./docs/command-support-matrix/README.md) for the per-command detailed status.
+For the public Stata-vs-Python evidence book, see [Validation Overview](./docs/validation/overview.md).
 
 ---
 
 ## Installation
 
 ```bash
-pip install -e .
+pip install StataFlow
 ```
 
 Requirements: Python 3.10+, NumPy, pandas, SciPy.
+
+For development (editable install from source):
+
+```bash
+git clone https://github.com/ZhenHaoFu810/StataFlow.git
+cd StataFlow
+pip install -e .
+```
 
 ---
 
@@ -118,6 +127,13 @@ Every public command is validated with **two lines of evidence**:
 
 A command is considered "done" only when both lines pass and the source-to-Python mapping is documented. We do not accept "statistical equivalence" without explicit mathematical or source-code justification.
 
+Public evidence entry points:
+
+- [Validation Overview](./docs/validation/overview.md)
+- [Evidence Matrix](./docs/validation/evidence-matrix.md)
+- [Dataset Registry](./docs/validation/dataset-registry.md)
+- [Validation Policy](./docs/validation/validation-policy.md)
+
 ### Running tests
 
 ```bash
@@ -153,6 +169,8 @@ pytest tests/golden/ -v
 - [Architecture overview](./docs/architecture/overview.md)
 - [Public API specification](./docs/architecture/public-api.md)
 - [Command support matrices](./docs/command-support-matrix/README.md)
+- [Validation overview](./docs/validation/overview.md)
+- [Validation evidence matrix](./docs/validation/evidence-matrix.md)
 - [Open-source roadmap](./docs/next-round-open-source-plan.md)
 
 ---

@@ -3,8 +3,8 @@ requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "statapy"
-version = "0.1.0"
+name = "StataFlow"
+version = "0.1.1"
 description = "Stata2Python: A Python econometrics toolkit aligned with Stata 17"
 readme = "README.md"
 license = {text = "MIT"}
@@ -35,9 +35,9 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/ZhenHaoFu810/Statapy"
-Repository = "https://github.com/ZhenHaoFu810/Statapy"
-Issues = "https://github.com/ZhenHaoFu810/Statapy/issues"
+Homepage = "https://github.com/ZhenHaoFu810/StataFlow"
+Repository = "https://github.com/ZhenHaoFu810/StataFlow"
+Issues = "https://github.com/ZhenHaoFu810/StataFlow/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]
