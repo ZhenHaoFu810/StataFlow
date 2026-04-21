@@ -2,7 +2,7 @@
 
 ## Completeness Status
 
-**Partial / Phase B Subset** 鈥?the core 1鈥? categorical FE path is implemented, tested, and dual-run verified. Phase B added `keepsingletons`, `noconstant`, and expanded `predict` support (`xb`, `xbd`, `d`, `residuals`, `dresiduals`). This is still **not** a full reproduction of `reghdfe`: mobility-group DoF, slopes, individual/team FEs, multi-way clustering, and the `estat` ecosystem remain missing.
+**Partial / Phase B Subset** — the core 1–2  categorical FE path is implemented, tested, and dual-run verified. Phase B added `keepsingletons`, `noconstant`, and expanded `predict` support (`xb`, `xbd`, `d`, `residuals`, `dresiduals`). This is still **not** a full reproduction of `reghdfe`: mobility-group DoF, slopes, individual/team FEs, multi-way clustering, and the `estat` ecosystem remain missing.
 
 ## Command Target
 
@@ -59,11 +59,11 @@ Unsupported factor syntax (`ib.` without level, `o.` without level, `b.` without
 
 `AbsorbingOLS.predict()` supports the following `type` values (mapped from `reghdfe_p.ado`):
 
-- `"xb"` 鈥?linear prediction from reported coefficients (excludes FE dummies)
-- `"xbd"` 鈥?full prediction including absorbed FE contributions
-- `"d"` 鈥?sum of fixed-effects contributions (`xbd - xb`)
-- `"residuals"` 鈥?`y - xbd`
-- `"dresiduals"` 鈥?`y - xb`
+- `"xb"` — linear prediction from reported coefficients (excludes FE dummies)
+- `"xbd"` — full prediction including absorbed FE contributions
+- `"d"` — sum of fixed-effects contributions (`xbd - xb`)
+- `"residuals"` — `y - xbd`
+- `"dresiduals"` — `y - xb`
 
 `stdp` is not yet implemented.
 
@@ -78,11 +78,10 @@ Unsupported factor syntax (`ib.` without level, `o.` without level, `b.` without
 
 ## Alignment Evidence
 
-Validation evidence book entry: [`docs/validation/evidence-matrix.md#reghdfe`](../validation/evidence-matrix.md#reghdfe)
 
 - Synthetic cases: `tests/golden/test_p3_reghdfe_basic.py`, `tests/golden/test_p3_reghdfe_cluster.py`, `tests/golden/test_p3_reghdfe_two_fe.py`, `tests/golden/test_p3_reghdfe_keepsingletons.py`
 - Real-data cases: `tests/golden/test_p3_reghdfe_real_panel.py`
-- Factor-syntax cases: `tests/golden/test_a2_factor_reghdfe_basic.py` 鈥?`reghdfe y i.g##c.x1, absorb(firm year)`; `tests/golden/test_a2_factor_reghdfe_mixed.py` 鈥?`reghdfe y c.x1##i.g, absorb(firm year)`; `tests/golden/test_a2_factor_reghdfe_bare.py` 鈥?`reghdfe y x1##x2, absorb(firm year)` mapped to Stata `c.x1##c.x2`; `tests/golden/test_a2_factor_reghdfe_base.py` 鈥?`reghdfe y ib2.g##c.x1, absorb(firm year)`
+- Factor-syntax cases: `tests/golden/test_a2_factor_reghdfe_basic.py` — `reghdfe y i.g##c.x1, absorb(firm year)`; `tests/golden/test_a2_factor_reghdfe_mixed.py` — `reghdfe y c.x1##i.g, absorb(firm year)`; `tests/golden/test_a2_factor_reghdfe_bare.py` — `reghdfe y x1##x2, absorb(firm year)` mapped to Stata `c.x1##c.x2`; `tests/golden/test_a2_factor_reghdfe_base.py` — `reghdfe y ib2.g##c.x1, absorb(firm year)`
 - Local source mirror: `research/vendor/stata_community/reghdfe/`
 - Stata 17 dual-run verified for 1-2 absorbed FEs with OLS and cluster VCE
 

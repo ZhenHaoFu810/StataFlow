@@ -63,7 +63,6 @@ The `compat.stata` wrapper returns a `ResultSchema` object. To use `predict()` o
 
 ## Alignment Evidence
 
-Validation evidence book entry: [`docs/validation/evidence-matrix.md#poisson`](../validation/evidence-matrix.md#poisson)
 
 - Synthetic cases: `tests/golden/test_w3_poisson_basic.py`
 - Real-data cases: `tests/golden/test_w3_poisson_real.py`

@@ -2,7 +2,7 @@
 
 ## Completeness Status
 
-**Partial / Regression-Adjustment Subset** 鈥?the Callaway-Sant'Anna CSDID estimator with `method="reg"` and event-study aggregation (`estat_event`) is implemented and verified, but doubly-robust methods, IPW, other aggregation types, and wild bootstrap are missing. As of this round, `estat_event()` returns `ResultSchema` aligned with other DID commands.
+**Partial / Regression-Adjustment Subset** — the Callaway-Sant'Anna CSDID estimator with `method="reg"` and event-study aggregation (`estat_event`) is implemented and verified, but doubly-robust methods, IPW, other aggregation types, and wild bootstrap are missing. As of this round, `estat_event()` returns `ResultSchema` aligned with other DID commands.
 
 ## Command Target
 
@@ -50,7 +50,6 @@ ATT(g,t) estimates, event-study aggregation coefficients, standard errors, z-sta
 
 ## Alignment Evidence
 
-Validation evidence book entry: [`docs/validation/evidence-matrix.md#csdid`](../validation/evidence-matrix.md#csdid)
 
 - Synthetic cases: `tests/golden/test_w4_csdid_basic.py`
 - Real-data cases: `tests/golden/test_w4_csdid_real_ezunem.py`

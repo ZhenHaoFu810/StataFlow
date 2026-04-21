@@ -51,7 +51,6 @@ All other Stata options are hard-rejected via `ValueError`.
 
 ## Alignment Evidence
 
-Validation evidence book entry: [`docs/validation/evidence-matrix.md#areg`](../validation/evidence-matrix.md#areg)
 
 - Synthetic cases: `tests/golden/test_p3_areg_basic.py`
 - Real-data cases: `tests/golden/test_p3_areg_real_panel.py`

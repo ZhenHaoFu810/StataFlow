@@ -2,7 +2,7 @@
 
 ## Completeness Status
 
-**Partial / IW Subset** 鈥?the Sun-Abraham interaction-weighted event-study estimator with auto dummy generation is implemented and verified, but `window`, `minn`, and full output/reporting options are missing.
+**Partial / IW Subset** — the Sun-Abraham interaction-weighted event-study estimator with auto dummy generation is implemented and verified, but `window`, `minn`, and full output/reporting options are missing.
 
 ## Command Target
 
@@ -62,7 +62,6 @@ Interaction-weighted event-study coefficients, standard errors, z-statistics, p-
 
 ## Alignment Evidence
 
-Validation evidence book entry: [`docs/validation/evidence-matrix.md#eventstudyinteract`](../validation/evidence-matrix.md#eventstudyinteract)
 
 - Synthetic cases: `tests/golden/test_w4_eventstudyinteract_basic.py`
 - Real-data cases: `tests/golden/test_w4_eventstudyinteract_real_ezunem.py`

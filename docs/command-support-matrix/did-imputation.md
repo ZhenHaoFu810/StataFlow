@@ -2,7 +2,7 @@
 
 ## Completeness Status
 
-**Partial / Core Estimator Subset** 鈥?the Borusyak-Jaravel-Spiess DID imputation estimator with TWFE-on-controls, imputation, and cluster-robust standard errors is implemented and verified, but `controls`, `window`, `minn`, `pretrends`, and repeated cross-section are missing.
+**Partial / Core Estimator Subset** — the Borusyak-Jaravel-Spiess DID imputation estimator with TWFE-on-controls, imputation, and cluster-robust standard errors is implemented and verified, but `controls`, `window`, `minn`, `pretrends`, and repeated cross-section are missing.
 
 ## Command Target
 
@@ -53,7 +53,6 @@ Event-study horizon coefficients (`tau0`, `tau1`, ...), standard errors, z-stati
 
 ## Alignment Evidence
 
-Validation evidence book entry: [`docs/validation/evidence-matrix.md#did_imputation`](../validation/evidence-matrix.md#did_imputation)
 
 - Synthetic cases: `tests/golden/test_w4_did_imputation_basic.py`
 - Real-data cases: `tests/golden/test_w4_did_imputation_real_ezunem.py`

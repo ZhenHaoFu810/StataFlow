@@ -64,7 +64,6 @@ All other Stata `probit` options are hard-rejected via `ValueError`.
 
 ## Alignment Evidence
 
-Validation evidence book entry: [`docs/validation/evidence-matrix.md#probit`](../validation/evidence-matrix.md#probit)
 
 - Synthetic cases: `tests/golden/test_w3_probit_basic.py`, `tests/golden/test_w3_probit_robust.py`
 - Real-data cases: `tests/golden/test_w3_probit_real.py`

@@ -64,11 +64,10 @@ All other Stata `logit` options are hard-rejected via `ValueError`.
 
 ## Alignment Evidence
 
-Validation evidence book entry: [`docs/validation/evidence-matrix.md#logit`](../validation/evidence-matrix.md#logit)
 
 - Synthetic cases: `tests/golden/test_w3_logit_basic.py`
 - Real-data cases: `tests/golden/test_w3_logit_real.py`
-- Factor-syntax cases: `tests/golden/test_a2_factor_logit_basic.py` 鈥?`logit y_bin c.x1##c.x2`; `tests/golden/test_a2_factor_logit_base.py` 鈥?`logit y_bin ib2.g##c.x1`
+- Factor-syntax cases: `tests/golden/test_a2_factor_logit_basic.py` — `logit y_bin c.x1##c.x2`; `tests/golden/test_a2_factor_logit_base.py` — `logit y_bin ib2.g##c.x1`
 - Margins cases: `tests/golden/test_w5_margins_logit_basic.py`, `tests/golden/test_w5_margins_real_mroz.py`
 - Stata 17 dual-run verified for MLE with conventional, robust, and cluster-robust VCE
 

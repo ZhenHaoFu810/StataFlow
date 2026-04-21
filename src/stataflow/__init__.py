@@ -1,10 +1,10 @@
 """
-StataFlow (stataflow) 鈥?A Python econometrics toolkit aligned with Stata 17.
+StataFlow (stataflow) — A Python econometrics toolkit aligned with Stata 17.
 Provides a Stata-compatible command layer and native Python estimators,
 with field-level dual-run verification.
 """
 
-__version__ = "0.1.3"
+__version__ = "0.1.0"
 
 # Core estimators (Python-native API)
 from .estimators import (

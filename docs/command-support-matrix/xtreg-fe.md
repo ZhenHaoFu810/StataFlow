@@ -40,7 +40,6 @@ All other Stata options are hard-rejected via `ValueError`.
 
 ## Alignment Evidence
 
-Validation evidence book entry: [`docs/validation/evidence-matrix.md#xtreg-fe`](../validation/evidence-matrix.md#xtreg-fe)
 
 - Synthetic cases: `tests/golden/test_p2_fe_basic.py`, `tests/golden/test_p2_fe_cluster.py`
 - Real-data cases: `tests/golden/test_v1_xtreg_fe_real_grunfeld.py` (within-estimator alignment on Grunfeld)

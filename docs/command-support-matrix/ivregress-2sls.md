@@ -57,7 +57,6 @@ Unsupported factor syntax (`ib#.`, `o.`, `b.`, time-series operators, three-way+
 
 ## Alignment Evidence
 
-Validation evidence book entry: [`docs/validation/evidence-matrix.md#ivregress-2sls`](../validation/evidence-matrix.md#ivregress-2sls)
 
 - Synthetic cases: `tests/golden/test_w2_ivregress_basic.py`, `tests/golden/test_w2_ivregress_cluster.py`
 - Real-data cases: `tests/golden/test_w2_ivregress_real_card.py`

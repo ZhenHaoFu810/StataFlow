@@ -383,7 +383,7 @@ result = rdrobust(
 rdrobust vote margin, c(0) covs(z)
 ```
 
-> **Status:** Alpha 鈥?Partial. Automatic selectors may use documented numerical tolerances.
+> **Status:** Alpha — Partial. Automatic selectors may use documented numerical tolerances.
 
 ---
 
@@ -576,4 +576,4 @@ The `compat.stata` wrappers return a `ResultSchema`. For programmatic prediction
 
 ---
 
-*Last updated: 2026-04-20. For detailed validation evidence and per-command support matrices, see `docs/validation/` and `docs/command-support-matrix/`.*
+*Last updated: 2026-04-20. For per-command support matrices, see `docs/command-support-matrix/`.*

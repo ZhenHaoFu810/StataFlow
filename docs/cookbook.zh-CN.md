@@ -1,4 +1,4 @@
-# Stata2Python (stataflow) 中文使用手册
+# StataFlow 中文使用手册
 
 > **面向 Stata 用户的 Python 计量经济学工具包**
 >

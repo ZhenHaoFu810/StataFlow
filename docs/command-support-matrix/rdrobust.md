@@ -6,7 +6,7 @@ Local polynomial Regression Discontinuity estimation with robust bias-corrected 
 
 ## Completeness Status
 
-**Partial / Phase B Subset** 鈥?sharp RD is usable with automatic bandwidth selection (`bwselect="mserd"`) and covariate adjustment (`covs`). Fuzzy RD, kink designs, clustering, weights, and the full selector family remain unsupported.
+**Partial / Phase B Subset** — sharp RD is usable with automatic bandwidth selection (`bwselect="mserd"`) and covariate adjustment (`covs`). Fuzzy RD, kink designs, clustering, weights, and the full selector family remain unsupported.
 
 ## Python Entry
 
@@ -70,16 +70,15 @@ Conventional RD estimate (`tau_cl`), bias-corrected estimate (`tau_bc`), convent
 
 ## Alignment Evidence
 
-Validation evidence book entry: [`docs/validation/evidence-matrix.md#rdrobust`](../validation/evidence-matrix.md#rdrobust)
 
 - **Synthetic cases:** `tests/test_rdrobust.py` (controlled jump, kernel/bandwidth variation, boundary behavior, automatic bandwidth selector behavior, covariate-adjusted estimation)
-- **Real-data cases:** `tests/test_rdrobust.py` 鈥?official `rdrobust_senate.dta` (Cattaneo, Frandsen, and Titiunik 2015)
+- **Real-data cases:** `tests/test_rdrobust.py` — official `rdrobust_senate.dta` (Cattaneo, Frandsen, and Titiunik 2015)
 - **Dual-run verified against Stata 17** for:
-  - `rdrobust vote margin, c(0) h(15)` 鈥?`tau_cl`, `tau_bc`, `se_tau_cl`, `se_tau_rb` all match to < 1e-6 relative tolerance.
-  - `rdrobust vote margin, c(0) h(15) vce(hc0) kernel(uniform)` 鈥?full four-object match to < 1e-6 relative tolerance.
-  - `rdrobust vote margin, c(0) bwselect(mserd)` 鈥?bandwidths agree to ~0.03 %, estimates to ~1e-4 relative tolerance.
-  - `rdrobust vote margin, c(0) h(15) covs(z)` 鈥?full four-object match to < 1e-6 relative tolerance.
-  - `rdrobust vote margin, c(0) covs(z)` 鈥?bandwidths agree to ~0.03 %, estimates to ~1e-4 relative tolerance.
+  - `rdrobust vote margin, c(0) h(15)` — `tau_cl`, `tau_bc`, `se_tau_cl`, `se_tau_rb` all match to < 1e-6 relative tolerance.
+  - `rdrobust vote margin, c(0) h(15) vce(hc0) kernel(uniform)` — full four-object match to < 1e-6 relative tolerance.
+  - `rdrobust vote margin, c(0) bwselect(mserd)` — bandwidths agree to ~0.03 %, estimates to ~1e-4 relative tolerance.
+  - `rdrobust vote margin, c(0) h(15) covs(z)` — full four-object match to < 1e-6 relative tolerance.
+  - `rdrobust vote margin, c(0) covs(z)` — bandwidths agree to ~0.03 %, estimates to ~1e-4 relative tolerance.
 - **Local source mirror:** `research/vendor/stata_community/rdrobust/`
 - **Mathematical source:** CCT (2014a) local polynomial RD estimator with bias correction and robust inference; Stata `rdrobust.ado` v10.0.0 and Mata functions for verification.
 
