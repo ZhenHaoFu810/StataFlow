@@ -1,0 +1,80 @@
+# Open-Source Export Manifest
+#
+# This manifest drives scripts/release/export_open_source.ps1.
+# Principle: StataFlow (main repo) is the sole maintenance source.
+# StataFlow_open_source is a reproducible export target.
+#
+# Default posture for new files in non-whitelisted directories: CLOSED.
+# ---------------------------------------------------------------------------
+
+meta:
+  source_repo: "StataFlow"
+  target_repo: "StataFlow_open_source"
+  manifest_version: "1.1.0"
+
+# ---------------------------------------------------------------------------
+# Whitelist: every path that enters the open-source repo must be matched here.
+# ---------------------------------------------------------------------------
+whitelist:
+  # Root-level standard files
+  files:
+    - "README.md"
+    - "README.zh-CN.md"
+    - "LICENSE"
+    - "pyproject.toml"
+    - ".gitignore"
+
+  # Entire open subdirectories (recursively)
+  directories:
+    - "src/stataflow/"
+    - "examples/"
+    - "docs/command-support-matrix/"
+    - "scripts/validation/"
+
+  # Specific files inside mixed or partially-closed directories
+  specific_files:
+    - "docs/cookbook.md"
+    - "docs/cookbook.zh-CN.md"
+    - "docs/USER_GUIDE.md"
+    - "docs/USER_GUIDE.zh-CN.md"
+    - "scripts/__init__.py"
+    - "scripts/release/export_open_source.ps1"
+    - "scripts/release/open_source_manifest.yml"
+    - ".github/workflows/ci.yml"
+
+  # Data / research artifacts required by open tests
+  data_directories:
+    - "research/results/validation/"
+
+  # Test files (non-golden only)
+  test_files:
+    - "tests/__init__.py"
+    - "tests/conftest.py"
+    - "tests/test_*.py"
+    - "tests/data/**"
+
+# ---------------------------------------------------------------------------
+# Blacklist: applied AFTER whitelist copying. Catches generated artifacts,
+# secrets, and anything that must never be exported.
+# ---------------------------------------------------------------------------
+blacklist:
+  patterns:
+    - "Pypi token.txt"
+    - "*token*"
+    - "*secret*"
+    - "*credential*"
+    - "QWEN.md"
+    - "CLAUDE.md"
+    - ".qwen/**"
+    - "dist/**"
+    - "__pycache__/**"
+    - "*.egg-info/**"
+    - ".pytest_cache/**"
+    - ".vscode/**"
+    - ".idea/**"
+    - "stata/cases/**"
+    - "stata/output/**"
+    - "tests/golden/**"
+    - "workspace/**"
+    - "*.log"
+    - "*.tmp"

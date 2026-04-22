@@ -1,4 +1,4 @@
-from statapy.stata_runner import StataRunner
+from stataflow.stata_runner import StataRunner
 from pathlib import Path
 
 DATA_FILE = Path("research/data/public/did/jtrain_prepared.dta").resolve()

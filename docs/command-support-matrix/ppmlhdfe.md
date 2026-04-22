@@ -2,7 +2,7 @@
 
 ## Completeness Status
 
-**Partial / Phase B Subset** — PPML-HDFE with 1–2 FEs, offset/exposure, robust/cluster VCE, `maxiter`/`tolerance`, `predict(residuals)`, `deviance`, and `pseudo_r2` is implemented and verified. Still missing: separation detection, multi-way clustering, and additional predict types (`pearson`, `deviance`, `working`).
+**Partial / Phase B Subset** — PPML-HDFE with 1–2  FEs, offset/exposure, robust/cluster VCE, `maxiter`/`tolerance`, `predict(residuals)`, `deviance`, and `pseudo_r2` is implemented and verified. Still missing: separation detection, multi-way clustering, and additional predict types (`pearson`, `deviance`, `working`).
 
 ## Command Target
 
@@ -11,7 +11,7 @@ Poisson pseudo-maximum likelihood with high-dimensional fixed effects, aligned w
 ## Python Entry
 
 ```python
-from statapy.compat.stata import ppmlhdfe
+from stataflow.compat.stata import ppmlhdfe
 
 result = ppmlhdfe(
     data, y="depvar", x=["x1", "x2"],
@@ -60,11 +60,11 @@ Unsupported factor syntax (`ib.` without level, `o.` without level, `b.` without
 
 ## Postestimation (Core Estimator Layer Only)
 
-The `compat.stata` wrapper returns a `ResultSchema` object. To use `predict()` or `margins()`, call the core estimator (`statapy.estimators.PPMLHDFE`) directly.
+The `compat.stata` wrapper returns a `ResultSchema` object. To use `predict()` or `margins()`, call the core estimator (`stataflow.estimators.PPMLHDFE`) directly.
 
 - `predict(type="xb")`
 - `predict(type="mu")`
-- `predict(type="residuals")` — response residual `y - μ`
+- `predict(type="residuals")` — response residual `y - 渭`
 - `margins(type="dydx")`
 - `margins(type="atmeans")`
 
@@ -80,14 +80,15 @@ The `compat.stata` wrapper returns a `ResultSchema` object. To use `predict()` o
 
 ## Alignment Evidence
 
+
 - Synthetic cases: `tests/golden/test_w3_ppmlhdfe_basic.py`, `tests/golden/test_w3_ppmlhdfe_cluster.py`
 - Real-data cases: `tests/golden/test_w3_ppmlhdfe_real_gravity.py`
 - Factor-syntax case: `tests/golden/test_a2_factor_ppmlhdfe_basic.py` — `ppmlhdfe y i.g##c.x1, absorb(firm year)`
-- **Phase B fit-stats case**: `tests/golden/test_p3_ppmlhdfe_fit_stats.py` — deviance and pseudo-R² dual-run verification
+- **Phase B fit-stats case**: `tests/golden/test_p3_ppmlhdfe_fit_stats.py` — deviance and pseudo-R虏 dual-run verification
 - Margins cases: covered in Wave 5 postestimation tests
 - Local source mirror: `research/vendor/stata_community/ppmlhdfe/`
 - Stata 17 dual-run verified for 1-2 absorbed FEs with robust and cluster VCE
 
 ## Core Implementation
 
-`src/statapy/estimators/ppmlhdfe.py`
+`src/stataflow/estimators/ppmlhdfe.py`

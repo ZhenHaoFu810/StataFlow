@@ -15,7 +15,7 @@ from tests.golden.test_utils import (
     run_stata_factor,
     tolerance_close,
 )
-from statapy.compat.stata import reghdfe
+from stataflow.compat.stata import reghdfe
 
 
 def _run_stata(data: pd.DataFrame) -> dict:

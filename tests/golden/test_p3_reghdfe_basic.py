@@ -19,7 +19,7 @@ from tests.golden.test_utils import (
     tolerance_close,
     parse_stata_log_with_precise_coefs,
 )
-from statapy import AbsorbingOLS
+from stataflow import AbsorbingOLS
 
 
 def _generate_test_data() -> pd.DataFrame:

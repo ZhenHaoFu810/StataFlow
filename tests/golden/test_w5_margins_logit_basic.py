@@ -6,8 +6,8 @@ from pathlib import Path
 import pytest
 import re
 
-from statapy import OLS, Logit, Probit, Poisson
-from statapy.stata_runner import StataRunner
+from stataflow import OLS, Logit, Probit, Poisson
+from stataflow.stata_runner import StataRunner
 from tests.golden.test_utils import (
     PROJECT_ROOT,
     PROJECT_STATA_OUTPUT,

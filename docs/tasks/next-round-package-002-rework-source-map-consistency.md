@@ -1,72 +1,54 @@
-# 下一轮任务包 002 返工：HDFE Source Map 一致性收口
+# 涓嬩竴杞换鍔″寘 002 杩斿伐锛欻DFE Source Map 涓€鑷存€ф敹鍙?
+## 鍩烘湰淇℃伅
 
-## 基本信息
+- 浠诲姟鍚嶇О锛欻DFE Source Map 涓€鑷存€ф敹鍙?- 鎵€灞為樁娈碉細寮€婧愬垵鐗堜笅涓€杞?- 鏉ユ簮锛氫换鍔″寘 002 琚?Codex 閫€鍥炲悗鐨勫畾鍚戣繑宸?- 浼樺厛绾э細P0
+- 鎵ц浜猴細Claude Code
+- 瀹℃煡浜猴細Codex
 
-- 任务名称：HDFE Source Map 一致性收口
-- 所属阶段：开源初版下一轮
-- 来源：任务包 002 被 Codex 退回后的定向返工
-- 优先级：P0
-- 执行人：Claude Code
-- 审查人：Codex
+## 杩斿伐鐩爣
 
-## 返工目标
-
-本次返工 **不新增功能范围**，只做一件事：
-
-把 `reghdfe`、`ivreghdfe`、`ppmlhdfe` 三份 source-to-python mapping 文档与当前真实实现、wrapper 暴露面、测试证据链完全对齐。
-
-## 必读材料
+鏈杩斿伐 **涓嶆柊澧炲姛鑳借寖鍥?*锛屽彧鍋氫竴浠朵簨锛?
+鎶?`reghdfe`銆乣ivreghdfe`銆乣ppmlhdfe` 涓変唤 source-to-python mapping 鏂囨。涓庡綋鍓嶇湡瀹炲疄鐜般€亀rapper 鏆撮湶闈€佹祴璇曡瘉鎹摼瀹屽叏瀵归綈銆?
+## 蹇呰鏉愭枡
 
 1. `workspace/current-task/review-next-round-package-002-codex.md`
 2. `docs/research/reghdfe-source-map.md`
 3. `docs/research/ivreghdfe-source-map.md`
 4. `docs/research/ppmlhdfe-source-map.md`
-5. `src/statapy/compat/stata/hdfe.py`
-6. `src/statapy/compat/stata/iv.py`
-7. `src/statapy/estimators/absorbing_ols.py`
-8. `src/statapy/estimators/iv.py`
-9. `src/statapy/estimators/ppmlhdfe.py`
+5. `src/stataflow/compat/stata/hdfe.py`
+6. `src/stataflow/compat/stata/iv.py`
+7. `src/stataflow/estimators/absorbing_ols.py`
+8. `src/stataflow/estimators/iv.py`
+9. `src/stataflow/estimators/ppmlhdfe.py`
 10. `tests/test_hdfe_synthetic.py`
 
-## 必须完成的工作
+## 蹇呴』瀹屾垚鐨勫伐浣?
+### A. 淇涓変唤 source map 鐨勮繃鏈熺粨璁?
+蹇呴』淇鑷冲皯浠ヤ笅鐭涚浘锛?
+- `reghdfe-source-map.md` 涓叧浜?`vce(robust)` 鈥滃皻鏈疄鐜扳€濈殑鏃х粨璁?- `ivreghdfe-source-map.md` 涓叧浜?`vce(robust)` 鈥滃皻鏈敮鎸佲€濈殑鏃х粨璁?- `ppmlhdfe-source-map.md` 涓叧浜?`offset/exposure` 鈥滄湭鏆撮湶/鏈疄鐜扳€濈殑鏃х粨璁?
+### B. 涓烘瘡浠?source map 澧炲姞缁熶竴缁撴瀯
 
-### A. 修正三份 source map 的过期结论
+姣忎唤鏂囨。閮藉繀椤诲崟鐙鍔?3 涓皬鑺傦細
 
-必须修正至少以下矛盾：
+1. `宸插疄鐜颁笖鏈夋槑纭簮鐮佷緷鎹甡
+2. `宸插疄鐜帮紝浣嗗睘浜?Phase A 鐨勭瓑浠峰疄鐜癭
+3. `鏈疄鐜版垨鏄惧紡鎷掔粷`
 
-- `reghdfe-source-map.md` 中关于 `vce(robust)` “尚未实现”的旧结论
-- `ivreghdfe-source-map.md` 中关于 `vce(robust)` “尚未支持”的旧结论
-- `ppmlhdfe-source-map.md` 中关于 `offset/exposure` “未暴露/未实现”的旧结论
+涓嶈兘鍐嶆妸鈥滃凡瀹炵幇浣嗗彧鏄渶灏忓瓙闆嗏€濆拰鈥滃皻鏈疄鐜扳€濇贩鍦ㄤ竴璧枫€?
+### C. 鏇存柊鎵ц鎶ュ憡
 
-### B. 为每份 source map 增加统一结构
+`workspace/current-task/REPORT.md` 蹇呴』锛?
+- 鏇存柊涓轰笌鏈€鏂版祴璇曠姸鎬佷竴鑷?- 涓嶅啀淇濈暀 `400/401 passed` 绛夋棫缁撹
+- 鏄庣‘鍐欐竻锛氳繖娆¤繑宸ュ彧鏀跺彛鏂囨。涓庤瘉鎹摼锛屼笉鏂板绠楁硶鑼冨洿
 
-每份文档都必须单独增加 3 个小节：
+## 鏄庣‘涓嶅仛
 
-1. `已实现且有明确源码依据`
-2. `已实现，但属于 Phase A 的等价实现`
-3. `未实现或显式拒绝`
+- 涓嶆柊澧?HDFE 鍔熻兘
+- 涓嶆墿鏂扮殑鍙傛暟闈?- 涓嶄慨鏀?backlog 瑙勫垝
+- 涓嶆彁鍓嶅紑濮嬩换鍔″寘 003
 
-不能再把“已实现但只是最小子集”和“尚未实现”混在一起。
+## 楠屾敹鏍囧噯
 
-### C. 更新执行报告
-
-`workspace/current-task/REPORT.md` 必须：
-
-- 更新为与最新测试状态一致
-- 不再保留 `400/401 passed` 等旧结论
-- 明确写清：这次返工只收口文档与证据链，不新增算法范围
-
-## 明确不做
-
-- 不新增 HDFE 功能
-- 不扩新的参数面
-- 不修改 backlog 规划
-- 不提前开始任务包 003
-
-## 验收标准
-
-- [ ] 三份 source map 不再包含与当前实现矛盾的旧结论
-- [ ] 每份 source map 都有统一的三段式收口结构
-- [ ] `REPORT.md` 与最新测试结果一致
-- [ ] `pytest tests/test_hdfe_synthetic.py -v` 通过
-- [ ] `pytest tests -v` 通过
+- [ ] 涓変唤 source map 涓嶅啀鍖呭惈涓庡綋鍓嶅疄鐜扮煕鐩剧殑鏃х粨璁?- [ ] 姣忎唤 source map 閮芥湁缁熶竴鐨勪笁娈靛紡鏀跺彛缁撴瀯
+- [ ] `REPORT.md` 涓庢渶鏂版祴璇曠粨鏋滀竴鑷?- [ ] `pytest tests/test_hdfe_synthetic.py -v` 閫氳繃
+- [ ] `pytest tests -v` 閫氳繃

@@ -1,4 +1,4 @@
-from statapy.stata_runner import StataRunner
+from stataflow.stata_runner import StataRunner
 from pathlib import Path
 
 PROJECT_STATA_OUTPUT = Path("stata/output").resolve()

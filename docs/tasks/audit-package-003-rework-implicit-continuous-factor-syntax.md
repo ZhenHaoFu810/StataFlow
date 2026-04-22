@@ -1,33 +1,26 @@
-# 审计后任务包 003 返工：隐式连续变量 factor 语义
+# 瀹¤鍚庝换鍔″寘 003 杩斿伐锛氶殣寮忚繛缁彉閲?factor 璇箟
 
-## 1. 返工目标
+## 1. 杩斿伐鐩爣
 
-本次返工只解决一个阻塞问题：
+鏈杩斿伐鍙В鍐充竴涓樆濉為棶棰橈細
 
-让 Stata 常用的**裸连续变量**交乘语义真正可用，而不是必须写成显式 `c.` 才能通过。
+璁?Stata 甯哥敤鐨?*瑁歌繛缁彉閲?*浜や箻璇箟鐪熸鍙敤锛岃€屼笉鏄繀椤诲啓鎴愭樉寮?`c.` 鎵嶈兘閫氳繃銆?
+鏈€浣庨渶瑕佸榻愮殑 Stata 璇箟锛?
+- `x1#x2` 绛変环浜?`c.x1#c.x2`
+- `x1##x2` 绛変环浜?`c.x1##c.x2`
 
-最低需要对齐的 Stata 语义：
+杩欑偣瀵?`reghdfe y x1##x2, absorb(firm year)` 涔嬬被鍛戒护鏄垰闇€锛屼笉鑳界户缁姹傜敤鎴锋敼鍐欐垚鏄惧紡 `c.`銆?
+## 2. 蹇呴』瀹屾垚鐨勫唴瀹?
+### A. parser 璇箟淇
 
-- `x1#x2` 等价于 `c.x1#c.x2`
-- `x1##x2` 等价于 `c.x1##c.x2`
+鏇存柊 `src/stataflow/compat/stata/factor_variables.py`锛?
+- 涓嶅啀鎶婅８鍙橀噺鍙備笌 `#` / `##` 涓€寰嬬‖鎷掔粷
+- 瀵硅繛缁彉閲忓満鏅仛 Stata 瀵归綈锛?  - `x1#x2` 鈫?`c.x1#c.x2`
+  - `x1##x2` 鈫?`c.x1##c.x2`
 
-这点对 `reghdfe y x1##x2, absorb(firm year)` 之类命令是刚需，不能继续要求用户改写成显式 `c.`。
+### B. mixed 鍐欐硶缁熶竴
 
-## 2. 必须完成的内容
-
-### A. parser 语义修正
-
-更新 `src/statapy/compat/stata/factor_variables.py`：
-
-- 不再把裸变量参与 `#` / `##` 一律硬拒绝
-- 对连续变量场景做 Stata 对齐：
-  - `x1#x2` → `c.x1#c.x2`
-  - `x1##x2` → `c.x1##c.x2`
-
-### B. mixed 写法统一
-
-至少明确并实现以下混合情形的统一策略：
-
+鑷冲皯鏄庣‘骞跺疄鐜颁互涓嬫贩鍚堟儏褰㈢殑缁熶竴绛栫暐锛?
 - `x1#c.x2`
 - `c.x1#x2`
 - `x1##c.x2`
@@ -37,34 +30,27 @@
 - `x1##i.g`
 - `i.g##x1`
 
-可以把裸变量解释为连续变量，但必须：
+鍙互鎶婅８鍙橀噺瑙ｉ噴涓鸿繛缁彉閲忥紝浣嗗繀椤伙細
 
-- 全局一致
-- 文档写清楚
-- 结果与显式 `c.` 写法一致
+- 鍏ㄥ眬涓€鑷?- 鏂囨。鍐欐竻妤?- 缁撴灉涓庢樉寮?`c.` 鍐欐硶涓€鑷?
+### C. 鏂板娴嬭瘯
 
-### C. 新增测试
-
-至少新增：
-
-- `x1#x2` 与 `c.x1#c.x2` 等价
-- `x1##x2` 与 `c.x1##c.x2` 等价
-- `x1##i.g` 与 `c.x1##i.g` 等价
-- `reghdfe y x1##x2, absorb(firm year)` 可以运行并与手工展开一致
-
+鑷冲皯鏂板锛?
+- `x1#x2` 涓?`c.x1#c.x2` 绛変环
+- `x1##x2` 涓?`c.x1##c.x2` 绛変环
+- `x1##i.g` 涓?`c.x1##i.g` 绛変环
+- `reghdfe y x1##x2, absorb(firm year)` 鍙互杩愯骞朵笌鎵嬪伐灞曞紑涓€鑷?
 ### D. Stata dual-run
 
-至少新增一组：
+鑷冲皯鏂板涓€缁勶細
 
 - `regress y x1##x2`
 - `reghdfe y x1##x2, absorb(firm year)`
 
-若时间允许，再补一个非线性命令的裸变量 `##` case。
+鑻ユ椂闂村厑璁革紝鍐嶈ˉ涓€涓潪绾挎€у懡浠ょ殑瑁稿彉閲?`##` case銆?
+### E. 鏂囨。鍚屾
 
-### E. 文档同步
-
-至少同步：
-
+鑷冲皯鍚屾锛?
 - `docs/research/factor-variable-semantics.md`
 - `README.md`
 - `docs/command-support-matrix/regress.md`
@@ -72,35 +58,28 @@
 - `docs/command-support-matrix/ivreghdfe.md`
 - `docs/command-support-matrix/ppmlhdfe.md`
 
-必须明确写清：
+蹇呴』鏄庣‘鍐欐竻锛?
+- 瑁稿彉閲忓湪浜や箻璇硶閲岄粯璁ゆ寜杩炵画鍙橀噺瑙ｉ噴
+- 鍝簺鍐欐硶浠嶆湭鏀寔
 
-- 裸变量在交乘语法里默认按连续变量解释
-- 哪些写法仍未支持
+## 3. 涓嶈鍋氱殑浜?
+鏈疆涓嶈椤烘墜鍋氾細
 
-## 3. 不要做的事
+- `ib#.` / `b.` / `o.` 鍏ㄦ敮鎸?- 鏃堕棿搴忓垪绠楀瓙
+- 涓夐樁鍙婁互涓婁氦浜?- 涓庢湰杩斿伐鏃犲叧鐨勭畻娉曟墿灞?
+## 4. 楠岃瘉瑕佹眰
 
-本轮不要顺手做：
-
-- `ib#.` / `b.` / `o.` 全支持
-- 时间序列算子
-- 三阶及以上交互
-- 与本返工无关的算法扩展
-
-## 4. 验证要求
-
-至少回报：
-
+鑷冲皯鍥炴姤锛?
 ```powershell
 python -m pytest tests/test_factor_variables.py -v
 python -m pytest tests/test_hdfe_synthetic.py tests/test_compat_stata_iv.py tests/test_compat_stata_hdfe.py tests/test_compat_stata_glm.py -v
 python -m pytest tests -v
 ```
 
-## 5. 完成标准
+## 5. 瀹屾垚鏍囧噯
 
-本轮返工通过的最低标准：
+鏈疆杩斿伐閫氳繃鐨勬渶浣庢爣鍑嗭細
 
-- `x1#x2` 与 `x1##x2` 已被接受并按 Stata 连续变量语义处理
-- `reghdfe y x1##x2, absorb(firm year)` 已可用
-- 混合裸变量/显式 `c.` / `i.` 写法策略统一
-- 文档与测试同步一致
+- `x1#x2` 涓?`x1##x2` 宸茶鎺ュ彈骞舵寜 Stata 杩炵画鍙橀噺璇箟澶勭悊
+- `reghdfe y x1##x2, absorb(firm year)` 宸插彲鐢?- 娣峰悎瑁稿彉閲?鏄惧紡 `c.` / `i.` 鍐欐硶绛栫暐缁熶竴
+- 鏂囨。涓庢祴璇曞悓姝ヤ竴鑷?

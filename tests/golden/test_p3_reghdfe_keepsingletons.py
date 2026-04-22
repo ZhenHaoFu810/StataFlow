@@ -15,7 +15,7 @@ from tests.golden.test_utils import (
     tolerance_close,
     parse_stata_log_with_precise_coefs,
 )
-from statapy.compat.stata import reghdfe
+from stataflow.compat.stata import reghdfe
 
 
 def _generate_test_data() -> pd.DataFrame:
@@ -146,7 +146,7 @@ class TestP3ReghdfeKeepsingletons:
 
     @pytest.fixture(scope="class")
     def python_model(self, test_data):
-        from statapy.estimators import AbsorbingOLS
+        from stataflow.estimators import AbsorbingOLS
         model = AbsorbingOLS(
             data=test_data, y="y", x=["x1"], absorb="g1", drop_singletons=False
         )

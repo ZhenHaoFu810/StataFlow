@@ -1,6 +1,6 @@
 import pytest
 import pandas as pd
-from statapy import DIDImputation
+from stataflow import DIDImputation
 
 def test_py_didimp_jtrain():
     df = pd.read_stata("research/data/public/did/jtrain_prepared.dta")

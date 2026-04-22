@@ -1,79 +1,56 @@
-# Review: 审计后任务包 001
+# Review: 瀹¤鍚庝换鍔″寘 001
 
-## 结论
+## 缁撹
 
-本轮**不通过**，暂不下放下一任务包。
+鏈疆**涓嶉€氳繃**锛屾殏涓嶄笅鏀句笅涓€浠诲姟鍖呫€?
+鍘熷洜涓嶆槸 `rdrobust` 鏍稿績瀹炵幇娌¤窇閫氥€傜浉鍙嶏紝褰撳墠 fresh run 琛ㄦ槑锛?
+- `python -m pytest tests/test_rdrobust.py -v` 鈫?`11 passed`
+- `python -m pytest tests -v` 鈫?`500 passed`
 
-原因不是 `rdrobust` 核心实现没跑通。相反，当前 fresh run 表明：
+鑰屼笖 `rdrobust` 鐨勬渶灏?sharp RD 涓昏矾寰勩€亀rapper 鏆撮湶銆乻ynthetic/real-data 娴嬭瘯閮藉凡缁忚惤鍦般€?
+褰撳墠闃诲鐐瑰湪浜庯細**鍏ㄥ眬鐘舵€佷笌鏂囨。娉ㄥ唽娌℃湁鏀跺彛鍒扳€渧endor 鍏懡浠ゅ畬鏁村害缁熶竴鏇存柊鈥濈殑浠诲姟瑕佹眰**銆傝繖浼氱洿鎺ュ奖鍝嶅悗缁鏌ヤ笌寮€婧愭矡閫氾紝鍥犳涓嶈兘鏀捐銆?
+## 闃诲闂
 
-- `python -m pytest tests/test_rdrobust.py -v` → `11 passed`
-- `python -m pytest tests -v` → `500 passed`
+### 1. `rdrobust` 娌℃湁琚悓姝ヨ繘鍏ㄥ眬浠诲姟姹?
+- [docs/backlog.md](</D:/OneDrive - SAIF/PhD3/StataFlow/docs/backlog.md>) 浠嶆病鏈?`rdrobust` 鏉＄洰
+- 褰撳墠浠诲姟鍖呰姹傛妸 vendor 鍏懡浠ゅ畬鏁村害鐘舵€佺粺涓€鏀跺彛
+- 鐜板湪 support matrix 閲屾湁 `rdrobust`锛屼絾 backlog 涓嶇煡閬撳畠瀛樺湪
 
-而且 `rdrobust` 的最小 sharp RD 主路径、wrapper 暴露、synthetic/real-data 测试都已经落地。
+杩欐剰鍛崇潃椤圭洰鍏ㄥ眬灞傞潰瀵?`rdrobust` 鐨勭姸鎬佺鐞嗕粛鐒舵槸缂哄け鐨勩€?
+### 2. `rdrobust` 娌℃湁杩涘叆娴嬭瘯鏍蜂緥鐩綍娓呭崟
 
-当前阻塞点在于：**全局状态与文档注册没有收口到“vendor 六命令完整度统一更新”的任务要求**。这会直接影响后续审查与开源沟通，因此不能放行。
+- [docs/testing/test-case-catalog.md](</D:/OneDrive - SAIF/PhD3/StataFlow/docs/testing/test-case-catalog.md>) 娌℃湁浠讳綍 `rdrobust` case
+- 褰撳墠浠诲姟鍖呰姹?synthetic + real-data 娴嬭瘯璇佹嵁閾炬敹鍙?- 瀹為檯娴嬭瘯宸茬粡鏈?`tests/test_rdrobust.py`锛屼絾鐩綍娓呭崟娌℃湁鐧昏
 
-## 阻塞问题
+杩欎細瀵艰嚧鍚庣画鈥滄祴璇曡鐩栫洏鐐光€濆拰鈥滃畬鏁村害瀹¤鈥濇棤娉曚緷璧栫粺涓€鐩綍銆?
+### 3. Command Support Matrix 鎬诲叆鍙ｆ病鏈夋妸 `rdrobust-source-map.md` 绾冲叆 research archive 鍒楄〃
 
-### 1. `rdrobust` 没有被同步进全局任务池
+- [docs/command-support-matrix/README.md](</D:/OneDrive - SAIF/PhD3/StataFlow/docs/command-support-matrix/README.md>) 宸叉柊澧?`rdrobust` 鍛戒护琛?- 浣?`Research Archives` 娈佃惤浠嶅彧鍒楀嚭 5 涓?source map锛屾病鏈?`rdrobust-source-map.md`
 
-- [docs/backlog.md](</D:/OneDrive - SAIF/PhD3/Stata2Python/docs/backlog.md>) 仍没有 `rdrobust` 条目
-- 当前任务包要求把 vendor 六命令完整度状态统一收口
-- 现在 support matrix 里有 `rdrobust`，但 backlog 不知道它存在
+杩欒鏄庘€渟upport matrix / source map / 鍏ㄥ眬鍏ュ彛涓夊悜涓€鑷存€р€濆皻鏈畬鍏ㄦ敹鍙ｃ€?
+### 4. 鎵ц鎶ュ憡澶稿ぇ浜嗏€淰endor 鍏懡浠ゅ畬鏁村害鐘舵€佺粺涓€鏀跺彛鈥?
+- [workspace/current-task/REPORT.md](</D:/OneDrive - SAIF/PhD3/StataFlow/workspace/current-task/REPORT.md>) 澹扮О鍏懡浠ゅ畬鏁村害鐘舵€佸凡缁熶竴鏀跺彛
+- 浣?backlog 鍜?test-case-catalog 鐨勫叏灞€娉ㄥ唽鏈悓姝?
+鍥犳杩欎唤鎶ュ憡杩樹笉鑳戒綔涓哄共鍑€鐨勫叧鍗曡瘉鎹€?
+## 涓嶆瀯鎴愰樆濉炵殑閮ㄥ垎
 
-这意味着项目全局层面对 `rdrobust` 的状态管理仍然是缺失的。
+浠ヤ笅鍐呭鎴戣涓哄凡缁忔垚绔嬶紝涓嶈姹傝繑宸ワ細
 
-### 2. `rdrobust` 没有进入测试样例目录清单
+- `rdrobust` estimator 宸插瓨鍦ㄤ笖鍙鍏?- `stataflow.compat.stata.rdrobust()` wrapper 宸插瓨鍦ㄤ笖鍙皟鐢?- `tests/test_rdrobust.py` 鏈?synthetic + real-data + negative tests
+- 鍏ㄩ噺 `pytest` 鏃犲洖褰?- `rdrobust` support matrix 涓?source map 涓讳綋鍐呭宸插叿澶囧彲瀹℃煡鎬?
+## 杩斿伐瑕佹眰
 
-- [docs/testing/test-case-catalog.md](</D:/OneDrive - SAIF/PhD3/Stata2Python/docs/testing/test-case-catalog.md>) 没有任何 `rdrobust` case
-- 当前任务包要求 synthetic + real-data 测试证据链收口
-- 实际测试已经有 `tests/test_rdrobust.py`，但目录清单没有登记
+鏈杩斿伐涓嶈姹傜户缁敼 `rdrobust` 绠楁硶鏈韩锛岄櫎闈炰綘鍦ㄥ悓姝ュ叏灞€鐘舵€佹椂鍙戠幇鏂扮殑鏁板闂銆?
+蹇呴』瀹屾垚锛?
+1. 鍦?[docs/backlog.md](</D:/OneDrive - SAIF/PhD3/StataFlow/docs/backlog.md>) 涓寮忕櫥璁?`rdrobust`
+2. 鍦?[docs/testing/test-case-catalog.md](</D:/OneDrive - SAIF/PhD3/StataFlow/docs/testing/test-case-catalog.md>) 涓櫥璁?`rdrobust` 鐨?synthetic 涓?real-data case
+3. 鍦?[docs/command-support-matrix/README.md](</D:/OneDrive - SAIF/PhD3/StataFlow/docs/command-support-matrix/README.md>) 鐨?research archive 鍒楄〃涓ˉ鍏?`rdrobust-source-map.md`
+4. 鏇存柊 [workspace/current-task/REPORT.md](</D:/OneDrive - SAIF/PhD3/StataFlow/workspace/current-task/REPORT.md>)锛屾挙鍥炩€滃凡缁熶竴鏀跺彛鈥濈殑涓嶅噯纭〃杩帮紝骞跺洖濉渶鏂伴獙璇佺粨鏋?
+## 閫氳繃鏉′欢
 
-这会导致后续“测试覆盖盘点”和“完整度审计”无法依赖统一目录。
+涓嬫鎴戜細閲嶇偣妫€鏌ワ細
 
-### 3. Command Support Matrix 总入口没有把 `rdrobust-source-map.md` 纳入 research archive 列表
-
-- [docs/command-support-matrix/README.md](</D:/OneDrive - SAIF/PhD3/Stata2Python/docs/command-support-matrix/README.md>) 已新增 `rdrobust` 命令行
-- 但 `Research Archives` 段落仍只列出 5 个 source map，没有 `rdrobust-source-map.md`
-
-这说明“support matrix / source map / 全局入口三向一致性”尚未完全收口。
-
-### 4. 执行报告夸大了“Vendor 六命令完整度状态统一收口”
-
-- [workspace/current-task/REPORT.md](</D:/OneDrive - SAIF/PhD3/Stata2Python/workspace/current-task/REPORT.md>) 声称六命令完整度状态已统一收口
-- 但 backlog 和 test-case-catalog 的全局注册未同步
-
-因此这份报告还不能作为干净的关单证据。
-
-## 不构成阻塞的部分
-
-以下内容我认为已经成立，不要求返工：
-
-- `rdrobust` estimator 已存在且可导入
-- `statapy.compat.stata.rdrobust()` wrapper 已存在且可调用
-- `tests/test_rdrobust.py` 有 synthetic + real-data + negative tests
-- 全量 `pytest` 无回归
-- `rdrobust` support matrix 与 source map 主体内容已具备可审查性
-
-## 返工要求
-
-本次返工不要求继续改 `rdrobust` 算法本身，除非你在同步全局状态时发现新的数学问题。
-
-必须完成：
-
-1. 在 [docs/backlog.md](</D:/OneDrive - SAIF/PhD3/Stata2Python/docs/backlog.md>) 中正式登记 `rdrobust`
-2. 在 [docs/testing/test-case-catalog.md](</D:/OneDrive - SAIF/PhD3/Stata2Python/docs/testing/test-case-catalog.md>) 中登记 `rdrobust` 的 synthetic 与 real-data case
-3. 在 [docs/command-support-matrix/README.md](</D:/OneDrive - SAIF/PhD3/Stata2Python/docs/command-support-matrix/README.md>) 的 research archive 列表中补入 `rdrobust-source-map.md`
-4. 更新 [workspace/current-task/REPORT.md](</D:/OneDrive - SAIF/PhD3/Stata2Python/workspace/current-task/REPORT.md>)，撤回“已统一收口”的不准确表述，并回填最新验证结果
-
-## 通过条件
-
-下次我会重点检查：
-
-- `rdrobust` 是否已经正式进入 backlog
-- `rdrobust` 测试证据是否进入 test-case-catalog
-- support matrix 总入口是否与 source map 一致
-- 报告是否与仓库当前状态一致
-
-如果这些状态收口完成，我预计下一轮可以直接通过，并下放下一任务包。
-
+- `rdrobust` 鏄惁宸茬粡姝ｅ紡杩涘叆 backlog
+- `rdrobust` 娴嬭瘯璇佹嵁鏄惁杩涘叆 test-case-catalog
+- support matrix 鎬诲叆鍙ｆ槸鍚︿笌 source map 涓€鑷?- 鎶ュ憡鏄惁涓庝粨搴撳綋鍓嶇姸鎬佷竴鑷?
+濡傛灉杩欎簺鐘舵€佹敹鍙ｅ畬鎴愶紝鎴戦璁′笅涓€杞彲浠ョ洿鎺ラ€氳繃锛屽苟涓嬫斁涓嬩竴浠诲姟鍖呫€?

@@ -6,8 +6,8 @@ from pathlib import Path
 import pytest
 import re
 
-from statapy import FixedEffectsOLS
-from statapy.stata_runner import StataRunner
+from stataflow import FixedEffectsOLS
+from stataflow.stata_runner import StataRunner
 from tests.golden.test_utils import (
     PROJECT_STATA_OUTPUT,
     PROJECT_STATA_CASES,

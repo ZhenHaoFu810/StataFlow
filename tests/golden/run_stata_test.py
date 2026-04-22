@@ -9,7 +9,7 @@ import tempfile
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from statapy.stata_runner import StataRunner
+from stataflow.stata_runner import StataRunner
 
 # Generate data
 np.random.seed(12345)
@@ -21,7 +21,7 @@ y = 1 + 2 * x1 + 3 * x2 + np.random.normal(0, 1, n)
 df = pd.DataFrame({"y": y, "x1": x1, "x2": x2})
 
 # Save to temp directory (no spaces in path)
-temp_dir = Path(tempfile.mkdtemp(prefix="statapy_"))
+temp_dir = Path(tempfile.mkdtemp(prefix="stataflow_"))
 dta_path = temp_dir / "data.dta"
 json_path = temp_dir / "stata_results.json"
 
@@ -78,8 +78,8 @@ if result.log_file and os.path.exists(result.log_file):
         print(log[-500:] if len(log) > 500 else log)
 
 if json_path.exists():
-    print(f"\n✓ Stata JSON created at: {json_path}")
+    print(f"\n鉁?Stata JSON created at: {json_path}")
     with open(json_path, 'r') as f:
         print(f.read())
 else:
-    print(f"\n✗ Stata JSON NOT found at: {json_path}")
+    print(f"\n鉁?Stata JSON NOT found at: {json_path}")

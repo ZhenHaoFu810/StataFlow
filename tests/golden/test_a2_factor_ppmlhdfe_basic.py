@@ -16,7 +16,7 @@ from tests.golden.test_utils import (
     run_stata_factor,
     tolerance_close,
 )
-from statapy.compat.stata import ppmlhdfe
+from stataflow.compat.stata import ppmlhdfe
 
 
 def _make_data(n=400, seed=123):

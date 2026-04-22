@@ -8,8 +8,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from statapy.compat.stata import reghdfe, ppmlhdfe, ivreghdfe
-from statapy.estimators import AbsorbingOLS, PPMLHDFE, IVAbsorbingOLS
+from stataflow.compat.stata import reghdfe, ppmlhdfe, ivreghdfe
+from stataflow.estimators import AbsorbingOLS, PPMLHDFE, IVAbsorbingOLS
 
 
 def _make_reghdfe_data(n=200, seed=42):

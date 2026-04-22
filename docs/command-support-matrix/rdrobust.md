@@ -11,7 +11,7 @@ Local polynomial Regression Discontinuity estimation with robust bias-corrected 
 ## Python Entry
 
 ```python
-from statapy.compat.stata import rdrobust
+from stataflow.compat.stata import rdrobust
 
 # Explicit bandwidth
 result = rdrobust(
@@ -70,6 +70,7 @@ Conventional RD estimate (`tau_cl`), bias-corrected estimate (`tau_bc`), convent
 
 ## Alignment Evidence
 
+
 - **Synthetic cases:** `tests/test_rdrobust.py` (controlled jump, kernel/bandwidth variation, boundary behavior, automatic bandwidth selector behavior, covariate-adjusted estimation)
 - **Real-data cases:** `tests/test_rdrobust.py` — official `rdrobust_senate.dta` (Cattaneo, Frandsen, and Titiunik 2015)
 - **Dual-run verified against Stata 17** for:
@@ -83,4 +84,4 @@ Conventional RD estimate (`tau_cl`), bias-corrected estimate (`tau_bc`), convent
 
 ## Core Implementation
 
-`src/statapy/estimators/rdrobust.py` (`RDRobust`)
+`src/stataflow/estimators/rdrobust.py` (`RDRobust`)

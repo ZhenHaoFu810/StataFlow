@@ -1,7 +1,7 @@
 # `did_imputation` Source-to-Python Mapping
 
 **Version mapped:** November 22, 2023 (local mirror `research/vendor/stata_community/did_imputation/did_imputation-main/`)
-**Python target:** `statapy.estimators.DIDImputation` + `statapy.compat.stata.did_imputation()`
+**Python target:** `stataflow.estimators.DIDImputation` + `stataflow.compat.stata.did_imputation()`
 
 ---
 
@@ -9,19 +9,19 @@
 
 | Stata File | Program / Line | What it does | Maps to Python |
 |------------|----------------|--------------|----------------|
-| `did_imputation.ado` | `program define did_imputation, eclass` (L6) | Top-level dispatcher, syntax parsing, option validation, dependency checks (`reghdfe >= 5.7.3`, `ftools >= 2.37.0`) | `statapy.compat.stata.did_imputation()` wrapper |
-| `did_imputation.ado` | `syntax varlist(min=4 max=4) ...` (L8–12) | Parses `y id time first_treat`, plus optional `cluster`, `allhorizons`, `autosample`, `horizons`, `minn`, etc. | `DIDImputation.__init__()` + `fit()` parameter handling |
+| `did_imputation.ado` | `program define did_imputation, eclass` (L6) | Top-level dispatcher, syntax parsing, option validation, dependency checks (`reghdfe >= 5.7.3`, `ftools >= 2.37.0`) | `stataflow.compat.stata.did_imputation()` wrapper |
+| `did_imputation.ado` | `syntax varlist(min=4 max=4) ...` (L8鈥?2) | Parses `y id time first_treat`, plus optional `cluster`, `allhorizons`, `autosample`, `horizons`, `minn`, etc. | `DIDImputation.__init__()` + `fit()` parameter handling |
 
 ---
 
-## 2. Core Algorithm → Python Mapping
+## 2. Core Algorithm 鈫?Python Mapping
 
 ### 2.1 Sample Screening
 
 | Source | Function / Lines | Logic | Python Equivalent |
 |--------|------------------|-------|-------------------|
 | `did_imputation.ado` | `marksample touse, novarlist` (L18) | Initialize sample indicator | `DIDImputation.fit()` missing-value drop on `[y, id, time, first_treat]` |
-| `did_imputation.ado` | `markout touse Y t; markout touse i, strok` (L51–52) | Drop rows with missing key vars | Explicit `df[key_vars].notna().all(axis=1)` mask |
+| `did_imputation.ado` | `markout touse Y t; markout touse i, strok` (L51鈥?2) | Drop rows with missing key vars | Explicit `df[key_vars].notna().all(axis=1)` mask |
 | `did_imputation.ado` | `markout touse cluster, strok` (L23) | Drop missing cluster values | Included in key var screening when `cluster` is passed |
 
 ### 2.2 Relative Time and Treatment Indicator Construction
@@ -35,7 +35,7 @@
 
 | Source | Function / Lines | Logic | Python Equivalent |
 |--------|------------------|-------|-------------------|
-| `did_imputation.ado` | `reghdfe Y controls if D==0 & touse, a(fe_i fe_t fe) ...` (L344–345) | Run TWFE on never-treated + not-yet-treated to estimate unit and time FEs | `DIDImputation._fit_twfe()` implements iterative demeaning: alternate `alpha_i = mean(y - gamma_t)` and `gamma_t = mean(y - alpha_i)` until convergence |
+| `did_imputation.ado` | `reghdfe Y controls if D==0 & touse, a(fe_i fe_t fe) ...` (L344鈥?45) | Run TWFE on never-treated + not-yet-treated to estimate unit and time FEs | `DIDImputation._fit_twfe()` implements iterative demeaning: alternate `alpha_i = mean(y - gamma_t)` and `gamma_t = mean(y - alpha_i)` until convergence |
 
 **Key equivalence:** Stata uses `reghdfe` (MAP/LSDV) to estimate the TWFE. Python's iterative demeaning converges to the identical within-transformed estimates for the two-way FE model.
 
@@ -43,7 +43,7 @@
 
 | Source | Function / Lines | Logic | Python Equivalent |
 |--------|------------------|-------|-------------------|
-| `did_imputation.ado` | `gen Y0 = ...` (L354–384) | Recover fixed effects from `reghdfe` and build `Y0 = alpha_i + gamma_t + X*beta` for all observations | `df["_Y0"] = df[id].map(alpha_fe) + df[time].map(gamma_fe)` (Phase A omits `controls`) |
+| `did_imputation.ado` | `gen Y0 = ...` (L354鈥?84) | Recover fixed effects from `reghdfe` and build `Y0 = alpha_i + gamma_t + X*beta` for all observations | `df["_Y0"] = df[id].map(alpha_fe) + df[time].map(gamma_fe)` (Phase A omits `controls`) |
 | `did_imputation.ado` | `gen effect = Y - Y0 if D==1 & touse` (L393) | Compute treatment effect as actual minus counterfactual for treated units | `df.loc[treated_mask, "_effect"] = y - Y0` |
 
 ### 2.5 Autosample and Horizon Selection
@@ -51,8 +51,8 @@
 | Source | Function / Lines | Logic | Python Equivalent |
 |--------|------------------|-------|-------------------|
 | `did_imputation.ado` | `count if mi(effect) & need_imputation` (L451) | Detect observations where FE cannot be imputed | Check `n_imputable == 0`; if so and `autosample=False`, raise `RuntimeError` |
-| `did_imputation.ado` | `autosample` branch (L461–479) | Drop non-imputable observations and re-normalize weights | `effective_mask = imputable_mask` when `n_imputable < n_total` and `autosample=True` |
-| `did_imputation.ado` | `allhorizons` / `horizons` parsing (L166–207) | Determine which event-time horizons to compute | `allhorizons=True` uses all `h >= 0` found in treated data; default behavior also computes all `h >= 0` in current Python implementation |
+| `did_imputation.ado` | `autosample` branch (L461鈥?79) | Drop non-imputable observations and re-normalize weights | `effective_mask = imputable_mask` when `n_imputable < n_total` and `autosample=True` |
+| `did_imputation.ado` | `allhorizons` / `horizons` parsing (L166鈥?07) | Determine which event-time horizons to compute | `allhorizons=True` uses all `h >= 0` found in treated data; default behavior also computes all `h >= 0` in current Python implementation |
 
 ### 2.6 Coefficient Computation
 
@@ -96,38 +96,23 @@
 
 ## 5. Known Phase A Simplifications
 
-1. **No control covariates** — `controls()`, `unitcontrols()`, `timecontrols()` are not supported.
-2. **No custom weighting (`wtr`)** — only simple equal-weighted horizon averages.
-3. **No `horizons` subsetting** — `allhorizons` logic computes all `h >= 0`; explicit `horizons()` list not exposed.
-4. **No `minn`, `hbalance`, `project`, `hetby`** — not exposed.
-5. **DoF adjustment gap** — cluster SEs use the influence-function sum-of-squares without the `reghdfe` small-sample `dof_adj` multiplier.
-6. **No pretrend test** — `pretrends()` option not implemented.
+1. **No control covariates** 鈥?`controls()`, `unitcontrols()`, `timecontrols()` are not supported.
+2. **No custom weighting (`wtr`)** 鈥?only simple equal-weighted horizon averages.
+3. **No `horizons` subsetting** 鈥?`allhorizons` logic computes all `h >= 0`; explicit `horizons()` list not exposed.
+4. **No `minn`, `hbalance`, `project`, `hetby`** 鈥?not exposed.
+5. **DoF adjustment gap** 鈥?cluster SEs use the influence-function sum-of-squares without the `reghdfe` small-sample `dof_adj` multiplier.
+6. **No pretrend test** 鈥?`pretrends()` option not implemented.
 
 ---
 
-## 6. 已实现并有明确源码依据
-
-- **样本筛选**：`markout` 逻辑等价实现，剔除 `y`/`id`/`time`/`first_treat` 缺失值。
-- **处理指示与事件时间**：`_K`、`_D` 构造与 `did_imputation.ado` L91–98 一致。
-- **对照组定义**：`control_mask = (_D == 0)` 对应 never-treated + not-yet-treated。
-- **TWFE 估计**：`_fit_twfe()` 的迭代去均值与 `reghdfe` 在双向 FE 下的结果等价（golden 测试 `<1e-5`）。
-- **反事实插补**：`Y0 = alpha_i + gamma_t` 对应 `did_imputation.ado` L354–384 的 FE 恢复逻辑。
-- **效应计算**：`effect = Y - Y0` 与源码 L393 一致。
-- **autosample**：非可插补观测的自动剔除与重归一化逻辑与源码 L461–479 一致。
-- **horizon 均值**：各 `tauh` 为对应 horizon 上 treated 的 `effect` 均值。
-- **聚类标准误**：插补权重迭代去均值 + 聚类层级 influence function 求和，与源码 SE 构造逻辑一致。
-
-## 7. 已实现，但属于 Phase A 的等价实现
-
-- **TWFE 求解方式**：Stata 调用 `reghdfe`（MAP/稠密 LSDV），Python 使用迭代去均值；对完整面板数据两者数学等价。
-- **Cluster SE 小样本修正**：Python 当前未乘 `reghdfe` 的 `dof_adj` 修正因子，SE 数值在 synthetic/real-data 测试中已对齐到可接受容差。
-
-## 8. 未实现或显式拒绝
+## 6. 宸插疄鐜板苟鏈夋槑纭簮鐮佷緷鎹?
+- **鏍锋湰绛涢€?*锛歚markout` 閫昏緫绛変环瀹炵幇锛屽墧闄?`y`/`id`/`time`/`first_treat` 缂哄け鍊笺€?- **澶勭悊鎸囩ず涓庝簨浠舵椂闂?*锛歚_K`銆乣_D` 鏋勯€犱笌 `did_imputation.ado` L91鈥?8 涓€鑷淬€?- **瀵圭収缁勫畾涔?*锛歚control_mask = (_D == 0)` 瀵瑰簲 never-treated + not-yet-treated銆?- **TWFE 浼拌**锛歚_fit_twfe()` 鐨勮凯浠ｅ幓鍧囧€间笌 `reghdfe` 鍦ㄥ弻鍚?FE 涓嬬殑缁撴灉绛変环锛坓olden 娴嬭瘯 `<1e-5`锛夈€?- **鍙嶄簨瀹炴彃琛?*锛歚Y0 = alpha_i + gamma_t` 瀵瑰簲 `did_imputation.ado` L354鈥?84 鐨?FE 鎭㈠閫昏緫銆?- **鏁堝簲璁＄畻**锛歚effect = Y - Y0` 涓庢簮鐮?L393 涓€鑷淬€?- **autosample**锛氶潪鍙彃琛ヨ娴嬬殑鑷姩鍓旈櫎涓庨噸褰掍竴鍖栭€昏緫涓庢簮鐮?L461鈥?79 涓€鑷淬€?- **horizon 鍧囧€?*锛氬悇 `tauh` 涓哄搴?horizon 涓?treated 鐨?`effect` 鍧囧€笺€?- **鑱氱被鏍囧噯璇?*锛氭彃琛ユ潈閲嶈凯浠ｅ幓鍧囧€?+ 鑱氱被灞傜骇 influence function 姹傚拰锛屼笌婧愮爜 SE 鏋勯€犻€昏緫涓€鑷淬€?
+## 7. 宸插疄鐜帮紝浣嗗睘浜?Phase A 鐨勭瓑浠峰疄鐜?
+- **TWFE 姹傝В鏂瑰紡**锛歋tata 璋冪敤 `reghdfe`锛圡AP/绋犲瘑 LSDV锛夛紝Python 浣跨敤杩唬鍘诲潎鍊硷紱瀵瑰畬鏁撮潰鏉挎暟鎹袱鑰呮暟瀛︾瓑浠枫€?- **Cluster SE 灏忔牱鏈慨姝?*锛歅ython 褰撳墠鏈箻 `reghdfe` 鐨?`dof_adj` 淇鍥犲瓙锛孲E 鏁板€煎湪 synthetic/real-data 娴嬭瘯涓凡瀵归綈鍒板彲鎺ュ彈瀹瑰樊銆?
+## 8. 鏈疄鐜版垨鏄惧紡鎷掔粷
 
 - `controls()` / `unitcontrols()` / `timecontrols()`
-- `wtr()` 自定义权重
-- `horizons()` 子集控制（wrapper 硬拒绝）
-- `minn()`、`hbalance`、`project`、`hetby`
-- `saveestimates`、`saveweights`、`saveresid`
-- `pretrends()` 前置趋势检验
-- 重复截面（repeated cross-section）
+- `wtr()` 鑷畾涔夋潈閲?- `horizons()` 瀛愰泦鎺у埗锛坵rapper 纭嫆缁濓級
+- `minn()`銆乣hbalance`銆乣project`銆乣hetby`
+- `saveestimates`銆乣saveweights`銆乣saveresid`
+- `pretrends()` 鍓嶇疆瓒嬪娍妫€楠?- 閲嶅鎴潰锛坮epeated cross-section锛?

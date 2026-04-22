@@ -14,7 +14,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from tests.golden.test_utils import run_stata_ols, StataRunner
 
-TEMP_DIR = Path(tempfile.mkdtemp(prefix="statapy_fe_clust_debug_"))
+TEMP_DIR = Path(tempfile.mkdtemp(prefix="stataflow_fe_clust_debug_"))
 
 
 def generate_test_data() -> pd.DataFrame:

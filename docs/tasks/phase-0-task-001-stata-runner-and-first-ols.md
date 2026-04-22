@@ -1,34 +1,27 @@
-# 任务卡：Phase 0 Task 001 - Stata Runner 与首个 OLS 双跑样例
+# 浠诲姟鍗★細Phase 0 Task 001 - Stata Runner 涓庨涓?OLS 鍙岃窇鏍蜂緥
 
-## 基本信息
+## 鍩烘湰淇℃伅
 
-- 任务名称：Stata runner 最小链路与首个 OLS 黄金样例
-- 所属阶段：Phase 0
-- 对应 backlog 条目：
-  - 项目骨架与包结构
-  - Stata runner 最小链路
-  - 结果 schema 与序列化
-  - 首个 OLS 双跑样例
-- 优先级：P0
-- 执行人：QwenCode
-- 审查人：Codex
+- 浠诲姟鍚嶇О锛歋tata runner 鏈€灏忛摼璺笌棣栦釜 OLS 榛勯噾鏍蜂緥
+- 鎵€灞為樁娈碉細Phase 0
+- 瀵瑰簲 backlog 鏉＄洰锛?  - 椤圭洰楠ㄦ灦涓庡寘缁撴瀯
+  - Stata runner 鏈€灏忛摼璺?  - 缁撴灉 schema 涓庡簭鍒楀寲
+  - 棣栦釜 OLS 鍙岃窇鏍蜂緥
+- 浼樺厛绾э細P0
+- 鎵ц浜猴細QwenCode
+- 瀹℃煡浜猴細Codex
 
-## 本轮目标
+## 鏈疆鐩爣
 
-交付一个最小但完整的可验证闭环：
+浜や粯涓€涓渶灏忎絾瀹屾暣鐨勫彲楠岃瘉闂幆锛?
+1. 寤虹珛 Python 椤圭洰楠ㄦ灦
+2. 寤虹珛缁撴灉 schema 楠ㄦ灦
+3. 瀹炵幇鍙墽琛岀殑 Stata runner 鏈€灏忛摼璺?4. 瀹屾垚棣栦釜 `regress` 瀵圭収鏍蜂緥
+5. 璁?Python 涓?Stata 鑷冲皯鏈変竴鏉″瓧娈电骇鍙岃窇娴嬭瘯璺戦€?
+鏈疆鐩爣涓嶆槸瀹炵幇瀹屾暣 OLS 搴擄紝鑰屾槸鍏堟墦閫氣€滃彲寮€鍙戙€佸彲娴嬭瘯銆佸彲姣斿鈥濈殑宸ョ▼鍥炶矾銆?
+## 蹇呰鏂囨。
 
-1. 建立 Python 项目骨架
-2. 建立结果 schema 骨架
-3. 实现可执行的 Stata runner 最小链路
-4. 完成首个 `regress` 对照样例
-5. 让 Python 与 Stata 至少有一条字段级双跑测试跑通
-
-本轮目标不是实现完整 OLS 库，而是先打通“可开发、可测试、可比对”的工程回路。
-
-## 必读文档
-
-QwenCode 开始前必须阅读：
-
+QwenCode 寮€濮嬪墠蹇呴』闃呰锛?
 1. `docs/project-charter.md`
 2. `docs/architecture/overview.md`
 3. `docs/architecture/result-schema.md`
@@ -39,13 +32,13 @@ QwenCode 开始前必须阅读：
 8. `docs/operations/qwencode-playbook.md`
 9. `docs/operations/review-gates.md`
 
-## 建议文件结构
+## 寤鸿鏂囦欢缁撴瀯
 
-本轮建议创建或补齐以下路径：
+鏈疆寤鸿鍒涘缓鎴栬ˉ榻愪互涓嬭矾寰勶細
 
-- `src/statapy/__init__.py`
-- `src/statapy/results/`
-- `src/statapy/stata_runner/`
+- `src/stataflow/__init__.py`
+- `src/stataflow/results/`
+- `src/stataflow/stata_runner/`
 - `tests/`
 - `tests/golden/`
 - `stata/`
@@ -53,114 +46,85 @@ QwenCode 开始前必须阅读：
 - `stata/output/`
 - `pyproject.toml`
 
-若 QwenCode 认为目录名需要微调，可以调整，但不得改变四层架构含义。
+鑻?QwenCode 璁や负鐩綍鍚嶉渶瑕佸井璋冿紝鍙互璋冩暣锛屼絾涓嶅緱鏀瑰彉鍥涘眰鏋舵瀯鍚箟銆?
+## 鏈疆鎵ц姝ラ
 
-## 本轮执行步骤
+### Step 1: 寤虹珛椤圭洰楠ㄦ灦
 
-### Step 1: 建立项目骨架
+闇€瑕佸畬鎴愶細
 
-需要完成：
+- 鍒涘缓 `src/` 鍖呯粨鏋?- 鍒涘缓 `tests/` 缁撴瀯
+- 鍒涘缓 Stata 鐩稿叧鐩綍
+- 閫夋嫨鏈€灏忎緷璧栫鐞嗘柟妗堝苟鍒濆鍖栭厤缃?
+鏈浜у嚭锛?
+- 鍙鍏ョ殑鏈€灏?Python 鍖?- 鍙繍琛岀殑鏈€灏忔祴璇曢厤缃?
+### Step 2: 寤虹珛 result schema 鏈€灏忓疄鐜?
+闇€瑕佸畬鎴愶細
 
-- 创建 `src/` 包结构
-- 创建 `tests/` 结构
-- 创建 Stata 相关目录
-- 选择最小依赖管理方案并初始化配置
+- 鍒涘缓缁撴灉瀵硅薄楠ㄦ灦
+- 鏀寔搴忓垪鍖栦负 dict 鎴?JSON 鍏煎缁撴瀯
+- 鑷冲皯瑕嗙洊 `model`銆乣sample`銆乣fit`銆乣coefficients`銆乣variance`銆乣provenance` 杩欎簺椤跺眰鍧?
+鏈娴嬭瘯锛?
+- round-trip 鎴栧簭鍒楀寲 smoke test
 
-本步产出：
+### Step 3: 瀹炵幇 Stata runner 鏈€灏忛摼璺?
+闇€瑕佸畬鎴愶細
 
-- 可导入的最小 Python 包
-- 可运行的最小测试配置
+- 鑳芥壘鍒?Stata 鍙墽琛屾枃浠?- 鑳界敓鎴愭渶灏?`.do` 鏂囦欢
+- 鑳借皟鐢?Stata 鎵瑰鐞嗚繍琛?- 鑳借鍙栭€€鍑虹姸鎬佸拰杈撳嚭鏂囦欢
 
-### Step 2: 建立 result schema 最小实现
+绾︽潫锛?
+- 涓嶈鍦?runner 涓紪鐮佸叿浣撳洖褰掗€昏緫
+- 璺緞閰嶇疆灏介噺鍙弬鏁板寲锛屼笉瑕佹妸鍗曚竴鏈満璺緞鍐欐鍦ㄦ牳蹇冧唬鐮侀噷
 
-需要完成：
-
-- 创建结果对象骨架
-- 支持序列化为 dict 或 JSON 兼容结构
-- 至少覆盖 `model`、`sample`、`fit`、`coefficients`、`variance`、`provenance` 这些顶层块
-
-本步测试：
-
-- round-trip 或序列化 smoke test
-
-### Step 3: 实现 Stata runner 最小链路
-
-需要完成：
-
-- 能找到 Stata 可执行文件
-- 能生成最小 `.do` 文件
-- 能调用 Stata 批处理运行
-- 能读取退出状态和输出文件
-
-约束：
-
-- 不要在 runner 中编码具体回归逻辑
-- 路径配置尽量可参数化，不要把单一本机路径写死在核心代码里
-
-本步测试：
-
+鏈娴嬭瘯锛?
 - runner smoke test
 
-### Step 4: 创建首个 OLS 对照样例
+### Step 4: 鍒涘缓棣栦釜 OLS 瀵圭収鏍蜂緥
 
-需要完成：
+闇€瑕佸畬鎴愶細
 
-- 准备一个最小数据集
-- 编写 Stata `.do` 文件运行 `regress`
-- 导出结构化结果，至少包括系数向量、协方差矩阵、样本数和自由度
-- 在 Python 侧创建对应黄金测试
+- 鍑嗗涓€涓渶灏忔暟鎹泦
+- 缂栧啓 Stata `.do` 鏂囦欢杩愯 `regress`
+- 瀵煎嚭缁撴瀯鍖栫粨鏋滐紝鑷冲皯鍖呮嫭绯绘暟鍚戦噺銆佸崗鏂瑰樊鐭╅樀銆佹牱鏈暟鍜岃嚜鐢卞害
+- 鍦?Python 渚у垱寤哄搴旈粍閲戞祴璇?
+鏈绾︽潫锛?
+- 涓嶅緱鍙瘮杈冪郴鏁?- 鑷冲皯姣旇緝锛歚params`銆乣cov`銆乣nobs`銆乣df_model`銆乣df_resid`
 
-本步约束：
+### Step 5: 鍥炲～鏂囨。鐘舵€?
+闇€瑕佸畬鎴愶細
 
-- 不得只比较系数
-- 至少比较：`params`、`cov`、`nobs`、`df_model`、`df_resid`
+- 鍦?`docs/testing/test-case-catalog.md` 鏇存柊 `p0_min_ols_auto` 鐨勭姸鎬佷笌瀹為檯浜х墿璺緞
+- 鑻ョ洰褰曠粨鏋勪笌璁″垝鏈夊亸宸紝鍦ㄥ搴旈樁娈垫墜鍐屾垨浠诲姟缁撴灉涓鏄?
+## 鏈疆寤鸿娴嬭瘯椤哄簭
 
-### Step 5: 回填文档状态
+1. 鍖呭鍏?smoke test
+2. result schema 搴忓垪鍖栨祴璇?3. runner smoke test
+4. 棣栦釜 OLS 鍙岃窇娴嬭瘯
 
-需要完成：
+## QwenCode 鍥炴姤鏍煎紡
 
-- 在 `docs/testing/test-case-catalog.md` 更新 `p0_min_ols_auto` 的状态与实际产物路径
-- 若目录结构与计划有偏差，在对应阶段手册或任务结果中说明
+鏈疆缁撴潫鍚庯紝QwenCode 蹇呴』鑷冲皯鍥炴姤锛?
+- 淇敼鏂囦欢鍒楄〃
+- 鏂板娴嬭瘯鍒楄〃
+- Stata 鍙墽琛屾枃浠跺畾浣嶆柟寮?- Stata 鍙岃窇鍛戒护鎴栬Е鍙戞柟寮?- 鍙岃窇鎴愬姛瀛楁
+- 灏氭湭瀹屾垚鐨勫瓧娈?- 鏄惁瀛樺湪闇€瑕?Codex 瑁佸喅鐨勯棶棰?
+## 鏈疆楠屾敹鏍囧噯
 
-## 本轮建议测试顺序
+- Python 鍖呴鏋跺凡寤虹珛
+- result schema 鏈€灏忓疄鐜板彲搴忓垪鍖?- runner 鏈€灏忛摼璺彲鎵ц
+- `p0_min_ols_auto` 宸茶惤鍦板苟閫氳繃
+- 鏂囨。鐘舵€佸凡鍥炲～
 
-1. 包导入 smoke test
-2. result schema 序列化测试
-3. runner smoke test
-4. 首个 OLS 双跑测试
+## 鏈疆绂佹浜嬮」
 
-## QwenCode 回报格式
+- 涓嶈瀹炵幇瀹屾暣绾挎€фā鍨?API
+- 涓嶈鎻愬墠杩涘叆 robust銆乧luster銆丗E
+- 涓嶈涓轰簡鈥滃厛璺戦€氣€濊€岀粫杩囩粨鏋勫寲缁撴灉瀵煎嚭
+- 涓嶈淇敼椤圭洰绔犵▼鎴栧叕鍏?API 鍘熷垯
 
-本轮结束后，QwenCode 必须至少回报：
-
-- 修改文件列表
-- 新增测试列表
-- Stata 可执行文件定位方式
-- Stata 双跑命令或触发方式
-- 双跑成功字段
-- 尚未完成的字段
-- 是否存在需要 Codex 裁决的问题
-
-## 本轮验收标准
-
-- Python 包骨架已建立
-- result schema 最小实现可序列化
-- runner 最小链路可执行
-- `p0_min_ols_auto` 已落地并通过
-- 文档状态已回填
-
-## 本轮禁止事项
-
-- 不要实现完整线性模型 API
-- 不要提前进入 robust、cluster、FE
-- 不要为了“先跑通”而绕过结构化结果导出
-- 不要修改项目章程或公共 API 原则
-
-## 失败与升级条件
-
-出现以下任一情况，QwenCode 应停止并上报：
-
-- 无法稳定调用 Stata 17
-- Stata 导出结构无法映射到 result schema
-- 阶段文档与实际实施存在结构性冲突
-- 需要改动结果 schema 的顶层结构
+## 澶辫触涓庡崌绾ф潯浠?
+鍑虹幇浠ヤ笅浠讳竴鎯呭喌锛孮wenCode 搴斿仠姝㈠苟涓婃姤锛?
+- 鏃犳硶绋冲畾璋冪敤 Stata 17
+- Stata 瀵煎嚭缁撴瀯鏃犳硶鏄犲皠鍒?result schema
+- 闃舵鏂囨。涓庡疄闄呭疄鏂藉瓨鍦ㄧ粨鏋勬€у啿绐?- 闇€瑕佹敼鍔ㄧ粨鏋?schema 鐨勯《灞傜粨鏋?

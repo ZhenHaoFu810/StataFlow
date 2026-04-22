@@ -8,8 +8,8 @@ import re
 import pytest
 import pandas as pd
 from pathlib import Path
-from statapy import Logit
-from statapy.stata_runner import StataRunner
+from stataflow import Logit
+from stataflow.stata_runner import StataRunner
 from tests.golden.test_utils import (
     PROJECT_STATA_OUTPUT,
     PROJECT_STATA_CASES,

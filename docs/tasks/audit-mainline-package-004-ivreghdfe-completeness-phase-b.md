@@ -1,127 +1,93 @@
-# 审计主线任务包 004：`ivreghdfe` 完整度推进（Phase B）
+# 瀹¤涓荤嚎浠诲姟鍖?004锛歚ivreghdfe` 瀹屾暣搴︽帹杩涳紙Phase B锛?
+## 浠诲姟瀹氫綅
 
-## 任务定位
+鏈疆杩涘叆瀹¤涓荤嚎鐨勪笅涓€鏉″懡浠ゆ棌锛歚ivreghdfe`銆?
+鐩爣涓嶆槸鍐嶅仛涓€涓€滆兘璺戠殑 2SLS + FE 瀛愰泦鈥濓紝鑰屾槸鎶婂綋鍓嶅疄鐜颁粠楂橀瀛愰泦鎺ㄨ繘鍒版洿鎺ヨ繎 `ivreghdfe` 鍛戒护鏈韩鐨勫畬鏁磋涔夛紝骞朵笖浠ユ湰鍦?vendor 婧愮爜涓虹害鏉燂紝鑰屼笉鏄崟绾洿缁曟祴璇曟暟鍊艰皟鍙傘€?
+## 鐩爣
 
-本轮进入审计主线的下一条命令族：`ivreghdfe`。
+鏈疆鑷冲皯瀹屾垚涓嬮潰涓夌被宸ヤ綔涓殑鍓嶄袱绫伙紝骞跺敖閲忔帹杩涚涓夌被锛?
+1. **鍛戒护闈㈣ˉ榻?*
+   - 澶嶆牳骞惰ˉ榻愬綋鍓?wrapper / core 宸茬己澶变絾灞炰簬楂橀 `ivreghdfe` 浣跨敤闈㈢殑鍙傛暟鎴栬涓恒€?2. **source-backed 鏀跺彛**
+   - 鎶?`docs/research/ivreghdfe-source-map.md` 鏇存柊鎴愮湡姝ｅ彲浣滀负瀹¤渚濇嵁鐨勬槧灏勬枃妗ｃ€?3. **璇佹嵁閾捐ˉ寮?*
+   - 涓烘湰杞柊澧炴垨绾犳鐨勮兘鍔涜ˉ synthetic / real-data / source-backed 璇佹嵁锛岃€屼笉鏄彧琛?wrapper delegation 娴嬭瘯銆?
+## 蹇呴』浣跨敤鐨勪緷鎹?
+- 鏈湴婧愮爜闀滃儚锛?  - `research/vendor/stata_community/ivreghdfe/`
+- 鐜版湁鐮旂┒鏂囨。锛?  - `docs/research/ivreghdfe-source-map.md`
+- 褰撳墠鏀寔鐭╅樀锛?  - `docs/command-support-matrix/ivreghdfe.md`
 
-目标不是再做一个“能跑的 2SLS + FE 子集”，而是把当前实现从高频子集推进到更接近 `ivreghdfe` 命令本身的完整语义，并且以本地 vendor 源码为约束，而不是单纯围绕测试数值调参。
+## 蹇呴』閲嶇偣瀹¤鐨勫唴瀹?
+### A. 鍛戒护璇箟涓庡弬鏁伴潰
 
-## 目标
-
-本轮至少完成下面三类工作中的前两类，并尽量推进第三类：
-
-1. **命令面补齐**
-   - 复核并补齐当前 wrapper / core 已缺失但属于高频 `ivreghdfe` 使用面的参数或行为。
-2. **source-backed 收口**
-   - 把 `docs/research/ivreghdfe-source-map.md` 更新成真正可作为审计依据的映射文档。
-3. **证据链补强**
-   - 为本轮新增或纠正的能力补 synthetic / real-data / source-backed 证据，而不是只补 wrapper delegation 测试。
-
-## 必须使用的依据
-
-- 本地源码镜像：
-  - `research/vendor/stata_community/ivreghdfe/`
-- 现有研究文档：
-  - `docs/research/ivreghdfe-source-map.md`
-- 当前支持矩阵：
-  - `docs/command-support-matrix/ivreghdfe.md`
-
-## 必须重点审视的内容
-
-### A. 命令语义与参数面
-
-至少检查并明确下列项目当前状态：
+鑷冲皯妫€鏌ュ苟鏄庣‘涓嬪垪椤圭洰褰撳墠鐘舵€侊細
 
 - `absorb()`
 - `vce(ols|robust|cluster)`
 - `cluster()`
 - `noconstant`
 - `keepsingletons`
-- `first-stage` / first-stage evidence 是否缺失
-- `predict()` 语义是否完整
-- wrapper 是否真的用 Stata 命令名且公共语义正确
+- `first-stage` / first-stage evidence 鏄惁缂哄け
+- `predict()` 璇箟鏄惁瀹屾暣
+- wrapper 鏄惁鐪熺殑鐢?Stata 鍛戒护鍚嶄笖鍏叡璇箟姝ｇ‘
 
-### B. 估计与推断过程
+### B. 浼拌涓庢帹鏂繃绋?
+鑷冲皯瀹¤骞惰鏄庯細
 
-至少审视并说明：
+- FE 娈嬪樊鍖栦笌 IV 涓ら樁娈垫槸濡備綍缁勫悎鐨?- robust / cluster VCE 鍦?`ivreghdfe` 涓槸鍚︿笌鏈湴婧愮爜閫昏緫鍙槧灏?- DoF / `df_a` / `df_model` / `df_resid` 鍙ｅ緞鏄惁鍜屽綋鍓?`reghdfe` / `ivregress 2sls` 浣撶郴涓€鑷?
+### C. 缁撴灉瀵硅薄涓?postestimation
 
-- FE 残差化与 IV 两阶段是如何组合的
-- robust / cluster VCE 在 `ivreghdfe` 中是否与本地源码逻辑可映射
-- DoF / `df_a` / `df_model` / `df_resid` 口径是否和当前 `reghdfe` / `ivregress 2sls` 体系一致
+鑷冲皯鏄庣‘锛?
+- 褰撳墠 `ResultSchema` 閲屽摢浜涘瓧娈靛凡缁忔湁 `ivreghdfe` 璇箟
+- 鏄惁鏀寔 `predict(type="xb")`
+- 鏄惁闇€瑕佹槑纭嫆缁濆皻鏈敮鎸佺殑 predict 瀛愰€夐」
 
-### C. 结果对象与 postestimation
+## 鏈€浣庝氦浠樿姹?
+### 1. 浠ｇ爜灞?
+濡傜‘鏈夊繀瑕侊紝鍙互淇敼锛?
+- `src/stataflow/estimators/iv.py`
+- `src/stataflow/compat/stata/iv.py`
+- 浠ュ強鐩存帴鐩稿叧鐨勭粨鏋?/ 宸ュ叿灞傛枃浠?
+浣嗙姝細
 
-至少明确：
+- 椤烘墜鏀逛笌 `ivreghdfe` 鏃犲叧鐨?factor grammar
+- 椤烘墜鎵?`reghdfe`銆乣ppmlhdfe`銆丏ID 鍛戒护
 
-- 当前 `ResultSchema` 里哪些字段已经有 `ivreghdfe` 语义
-- 是否支持 `predict(type="xb")`
-- 是否需要明确拒绝尚未支持的 predict 子选项
-
-## 最低交付要求
-
-### 1. 代码层
-
-如确有必要，可以修改：
-
-- `src/statapy/estimators/iv.py`
-- `src/statapy/compat/stata/iv.py`
-- 以及直接相关的结果 / 工具层文件
-
-但禁止：
-
-- 顺手改与 `ivreghdfe` 无关的 factor grammar
-- 顺手扩 `reghdfe`、`ppmlhdfe`、DID 命令
-
-### 2. 文档层
-
-必须更新：
-
+### 2. 鏂囨。灞?
+蹇呴』鏇存柊锛?
 - `docs/research/ivreghdfe-source-map.md`
 - `docs/command-support-matrix/ivreghdfe.md`
 
-如本轮新增测试样例，也必须同步：
+濡傛湰杞柊澧炴祴璇曟牱渚嬶紝涔熷繀椤诲悓姝ワ細
 
 - `docs/testing/test-case-catalog.md`
-- `docs/backlog.md`（若完整度状态发生变化）
+- `docs/backlog.md`锛堣嫢瀹屾暣搴︾姸鎬佸彂鐢熷彉鍖栵級
 
-### 3. 测试层
-
-必须至少补或复核以下证据：
-
+### 3. 娴嬭瘯灞?
+蹇呴』鑷冲皯琛ユ垨澶嶆牳浠ヤ笅璇佹嵁锛?
 - synthetic:
-  - `ivreghdfe` 基础
+  - `ivreghdfe` 鍩虹
   - `ivreghdfe` robust
   - `ivreghdfe` cluster
-  - 如本轮新增 `predict`，需要对应 synthetic 行为测试
+  - 濡傛湰杞柊澧?`predict`锛岄渶瑕佸搴?synthetic 琛屼负娴嬭瘯
 - real-data:
-  - 至少保持现有 real panel dual-run 通过
+  - 鑷冲皯淇濇寔鐜版湁 real panel dual-run 閫氳繃
 - source-backed:
-  - 在 `REPORT.md` 中说明本轮新增能力与 vendor 源码哪一段相对应
+  - 鍦?`REPORT.md` 涓鏄庢湰杞柊澧炶兘鍔涗笌 vendor 婧愮爜鍝竴娈电浉瀵瑰簲
 
-## 明确禁止
+## 鏄庣‘绂佹
 
-- 不允许只靠放宽容差让 dual-run 过关
-- 不允许只补 wrapper delegation 测试就宣称命令完整度提升
-- 不允许在没有源码/手册依据时，为了和现有样例数值一致去硬调实现
-- 不允许把“已支持高频子集”写成“已完整实现 `ivreghdfe`”
+- 涓嶅厑璁稿彧闈犳斁瀹藉宸 dual-run 杩囧叧
+- 涓嶅厑璁稿彧琛?wrapper delegation 娴嬭瘯灏卞绉板懡浠ゅ畬鏁村害鎻愬崌
+- 涓嶅厑璁稿湪娌℃湁婧愮爜/鎵嬪唽渚濇嵁鏃讹紝涓轰簡鍜岀幇鏈夋牱渚嬫暟鍊间竴鑷村幓纭皟瀹炵幇
+- 涓嶅厑璁告妸鈥滃凡鏀寔楂橀瀛愰泦鈥濆啓鎴愨€滃凡瀹屾暣瀹炵幇 `ivreghdfe`鈥?
+## 閫氳繃鏍囧噯
 
-## 通过标准
+Codex 鍙細鍦ㄤ互涓嬫潯浠跺悓鏃舵弧瓒虫椂鏀捐锛?
+1. `ivreghdfe` 鐨勬湰杞洰鏍囪兘鍔涙湁瀹為檯浠ｇ爜鎴栨槑纭殑鍏叡鎺ュ彛鏀跺彛锛屼笉鍙槸鏂囨。淇敼銆?2. `docs/research/ivreghdfe-source-map.md` 涓庡綋鍓嶄唬鐮佷竴鑷达紝涓嶄繚鐣欒繃鏈熺粨璁恒€?3. `docs/command-support-matrix/ivreghdfe.md` 涓?wrapper / estimator / 娴嬭瘯涓€鑷淬€?4. 鏈夎嚦灏戜竴椤规柊澧炵殑 source-backed 璇佹嵁锛岃€屼笉鏄粎澶嶇敤鏃ф祴璇曘€?5. 閲嶆柊璺戠浉鍏充笓椤规祴璇曞拰鍏ㄩ噺娴嬭瘯閫氳繃銆?
+## 鍥炴姤鏍煎紡
 
-Codex 只会在以下条件同时满足时放行：
-
-1. `ivreghdfe` 的本轮目标能力有实际代码或明确的公共接口收口，不只是文档修改。
-2. `docs/research/ivreghdfe-source-map.md` 与当前代码一致，不保留过期结论。
-3. `docs/command-support-matrix/ivreghdfe.md` 与 wrapper / estimator / 测试一致。
-4. 有至少一项新增的 source-backed 证据，而不是仅复用旧测试。
-5. 重新跑相关专项测试和全量测试通过。
-
-## 回报格式
-
-完成后在 `workspace/current-task/REPORT.md` 中按下面结构汇报：
-
-1. 本轮新增或修正了哪些 `ivreghdfe` 能力
-2. 每项能力对应哪段本地源码依据
-3. 哪些仍然缺失，为什么缺失
-4. 新增了哪些测试与证据
-5. fresh run 结果
-6. 你认为本轮后 `ivreghdfe` 的完整度评级：`partial / near-complete / full`，并给出理由
+瀹屾垚鍚庡湪 `workspace/current-task/REPORT.md` 涓寜涓嬮潰缁撴瀯姹囨姤锛?
+1. 鏈疆鏂板鎴栦慨姝ｄ簡鍝簺 `ivreghdfe` 鑳藉姏
+2. 姣忛」鑳藉姏瀵瑰簲鍝鏈湴婧愮爜渚濇嵁
+3. 鍝簺浠嶇劧缂哄け锛屼负浠€涔堢己澶?4. 鏂板浜嗗摢浜涙祴璇曚笌璇佹嵁
+5. fresh run 缁撴灉
+6. 浣犺涓烘湰杞悗 `ivreghdfe` 鐨勫畬鏁村害璇勭骇锛歚partial / near-complete / full`锛屽苟缁欏嚭鐞嗙敱

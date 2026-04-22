@@ -1,7 +1,7 @@
 clear all
 set more off
 
-use "D:/OneDrive - SAIF/PhD3/Stata2Python/stata/cases/a2_factor_test_data.dta", clear
+use "D:/OneDrive - SAIF/PhD3/StataFlow/stata/cases/a2_factor_test_data.dta", clear
 
 // Explore factor syntax coefficient names
 regress y c.x1#c.x2

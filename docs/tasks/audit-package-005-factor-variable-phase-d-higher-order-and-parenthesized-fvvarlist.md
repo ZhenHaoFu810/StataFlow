@@ -1,8 +1,8 @@
-# 审计后任务包 005：Factor Variable Phase D 与更完整 `fvvarlist` 子集
+# 瀹¤鍚庝换鍔″寘 005锛欶actor Variable Phase D 涓庢洿瀹屾暣 `fvvarlist` 瀛愰泦
 
-## 1. 任务背景
+## 1. 浠诲姟鑳屾櫙
 
-任务包 002 到 004 已经把以下高频 factor 语义接入 wrapper 层：
+浠诲姟鍖?002 鍒?004 宸茬粡鎶婁互涓嬮珮棰?factor 璇箟鎺ュ叆 wrapper 灞傦細
 
 - `c.x1#c.x2`
 - `c.x1##c.x2`
@@ -13,127 +13,106 @@
 - `c.x1##i.g1`
 - `x1##x2`
 - `x1##i.g`
-- `ib#.` / `b#.` / `o#.` 的最小 base-level / omitted-level 语义
+- `ib#.` / `b#.` / `o#.` 鐨勬渶灏?base-level / omitted-level 璇箟
 
-这一层已经覆盖了大量常见回归写法，但仍然与 Stata 真实 `fvvarlist` 使用体验有明显差距，尤其是：
+杩欎竴灞傚凡缁忚鐩栦簡澶ч噺甯歌鍥炲綊鍐欐硶锛屼絾浠嶇劧涓?Stata 鐪熷疄 `fvvarlist` 浣跨敤浣撻獙鏈夋槑鏄惧樊璺濓紝灏ゅ叾鏄細
 
-- 三阶 `##` 的常见全因子展开
-- `c.(x1 x2)`、`i.(g1 g2)` 这类括号缩写
-- 上述语义在 `reghdfe`、`ivreghdfe`、非线性命令中的一致证据
+- 涓夐樁 `##` 鐨勫父瑙佸叏鍥犲瓙灞曞紑
+- `c.(x1 x2)`銆乣i.(g1 g2)` 杩欑被鎷彿缂╁啓
+- 涓婅堪璇箟鍦?`reghdfe`銆乣ivreghdfe`銆侀潪绾挎€у懡浠や腑鐨勪竴鑷磋瘉鎹?
+濡傛灉椤圭洰瑕佺户缁悜鈥淪tata 甯哥敤鍛戒护鍙洿鎺ヨ縼绉烩€濇帹杩涳紝杩欎竴灞備笉鑳介暱鏈熺己澶便€?
+## 2. 鎬荤洰鏍?
+鏈疆鎶?factor grammar 浠庡綋鍓?Phase C 鍐嶆帹杩涗竴姝ワ紝褰㈡垚涓€涓洿鎺ヨ繎 Stata 甯哥敤 `fvvarlist` 鐨?**Phase D 瀛愰泦**銆?
+鏈疆鑷冲皯瀹炵幇锛?
+- 闄愬畾鑼冨洿鍐呯殑涓夐樁 `##`
+- 闄愬畾鑼冨洿鍐呯殑鎷彿缂╁啓
+- 鍦ㄦ牳蹇?wrapper 鍛戒护涓殑鐪熷疄鍙敤鎬?- 鎵嬪伐灞曞紑绛変环娴嬭瘯涓?Stata dual-run 璇佹嵁
 
-如果项目要继续向“Stata 常用命令可直接迁移”推进，这一层不能长期缺失。
+鏈疆浠嶇劧涓嶈拷姹傚畬鏁?Stata `fvvarlist` 缁堟€侊紝浣嗗繀椤绘妸杩欏嚑涓珮浠峰€肩己鍙ｅ仛鍑烘潵銆?
+## 3. 蹇呴』瀹屾垚鐨勫唴瀹?
+### A. 鏀寔鏈夐檺鑼冨洿鍐呯殑涓夐樁 `##`
 
-## 2. 总目标
-
-本轮把 factor grammar 从当前 Phase C 再推进一步，形成一个更接近 Stata 常用 `fvvarlist` 的 **Phase D 子集**。
-
-本轮至少实现：
-
-- 限定范围内的三阶 `##`
-- 限定范围内的括号缩写
-- 在核心 wrapper 命令中的真实可用性
-- 手工展开等价测试与 Stata dual-run 证据
-
-本轮仍然不追求完整 Stata `fvvarlist` 终态，但必须把这几个高价值缺口做出来。
-
-## 3. 必须完成的内容
-
-### A. 支持有限范围内的三阶 `##`
-
-扩展 `src/statapy/compat/stata/factor_variables.py`，至少支持：
+鎵╁睍 `src/stataflow/compat/stata/factor_variables.py`锛岃嚦灏戞敮鎸侊細
 
 - `x1##x2##x3`
 - `i.g##c.x1##c.x2`
 - `i.g1##i.g2##c.x1`
 
-语义要求：
+璇箟瑕佹眰锛?
+- `##` 蹇呴』鍋氬畬鏁?factorial expansion
+- 灞曞紑缁撴灉瑕佷笌 Stata 涓€鑷村湴鍖呭惈锛?  - 涓绘晥搴?  - 浜岄樁浜や簰
+  - 涓夐樁浜や簰
+- 瑁稿彉閲忎粛榛樿鎸夎繛缁彉閲?`c.` 瑙ｉ噴
 
-- `##` 必须做完整 factorial expansion
-- 展开结果要与 Stata 一致地包含：
-  - 主效应
-  - 二阶交互
-  - 三阶交互
-- 裸变量仍默认按连续变量 `c.` 解释
+鏈疆涓嶈姹傛敮鎸佷换鎰忔洿楂橀樁浜や簰锛涘洓闃跺強浠ヤ笂蹇呴』缁х画鏄庣‘鎷掔粷銆?
+### B. 鏀寔鏈夐檺鑼冨洿鍐呯殑鎷彿缂╁啓
 
-本轮不要求支持任意更高阶交互；四阶及以上必须继续明确拒绝。
-
-### B. 支持有限范围内的括号缩写
-
-至少支持：
-
+鑷冲皯鏀寔锛?
 - `c.(x1 x2)`
 - `i.(g1 g2)`
 - `c.(x1 x2)##i.g`
 - `i.(g1 g2)##c.x1`
 
-语义要求：
+璇箟瑕佹眰锛?
+- 鎷彿缂╁啓瑕佸湪 wrapper 灞傚厛灞曞紑锛屽啀璧扮幇鏈?factor parser
+- 灞曞紑缁撴灉蹇呴』涓庢墜宸ュ啓鍑虹殑绛変环寮忎竴鑷?- 涓嶅厑璁?silent ignore
 
-- 括号缩写要在 wrapper 层先展开，再走现有 factor parser
-- 展开结果必须与手工写出的等价式一致
-- 不允许 silent ignore
+### C. 鎺ュ埌楂橀 wrapper 鍛戒护
 
-### C. 接到高频 wrapper 命令
-
-至少接到：
-
+鑷冲皯鎺ュ埌锛?
 - `regress`
 - `reghdfe`
 - `ivreghdfe`
-- `logit` 或 `poisson`
+- `logit` 鎴?`poisson`
 
-并验证：
+骞堕獙璇侊細
 
-- `reghdfe(..., absorb="firm year")` 与 factor expansion 共存
-- 主效应可被 absorb 掉时，仍保留有 variation 的交互项
+- `reghdfe(..., absorb="firm year")` 涓?factor expansion 鍏卞瓨
+- 涓绘晥搴斿彲琚?absorb 鎺夋椂锛屼粛淇濈暀鏈?variation 鐨勪氦浜掗」
 
-### D. 更新研究文档与支持矩阵
-
-至少更新：
-
+### D. 鏇存柊鐮旂┒鏂囨。涓庢敮鎸佺煩闃?
+鑷冲皯鏇存柊锛?
 - `docs/research/factor-variable-semantics.md`
 - `docs/command-support-matrix/regress.md`
 - `docs/command-support-matrix/reghdfe.md`
 - `docs/command-support-matrix/ivreghdfe.md`
-- `docs/command-support-matrix/logit.md` 或 `poisson.md`
+- `docs/command-support-matrix/logit.md` 鎴?`poisson.md`
 
-必须明确区分：
+蹇呴』鏄庣‘鍖哄垎锛?
+- 鏈疆鏂版敮鎸佺殑涓夐樁 / 鎷彿缂╁啓璇箟
+- 缁х画鏈敮鎸佺殑璇硶
+- 鏄庣‘鎷掔粷瑙勫垯
 
-- 本轮新支持的三阶 / 括号缩写语义
-- 继续未支持的语法
-- 明确拒绝规则
+## 4. 娴嬭瘯瑕佹眰
 
-## 4. 测试要求
+### A. 鍗曞厓娴嬭瘯
 
-### A. 单元测试
+鎵╁睍 `tests/test_factor_variables.py`锛岃嚦灏戣鐩栵細
 
-扩展 `tests/test_factor_variables.py`，至少覆盖：
+- `x1##x2##x3` 灞曞紑缁撴灉
+- `i.g##c.x1##c.x2` 灞曞紑缁撴灉
+- `c.(x1 x2)` 涓庢墜宸ュ睍寮€绛変环
+- `i.(g1 g2)##c.x1` 涓庢墜宸ュ睍寮€绛変环
+- 鍥涢樁浜や簰缁х画鎶?`ValueError`
+- 鏈敮鎸佺殑澶嶆潅鎷彿缁勫悎缁х画鎶?`ValueError`
 
-- `x1##x2##x3` 展开结果
-- `i.g##c.x1##c.x2` 展开结果
-- `c.(x1 x2)` 与手工展开等价
-- `i.(g1 g2)##c.x1` 与手工展开等价
-- 四阶交互继续抛 `ValueError`
-- 未支持的复杂括号组合继续抛 `ValueError`
+### B. 鎵嬪伐灞曞紑绛変环娴嬭瘯
 
-### B. 手工展开等价测试
-
-至少覆盖：
-
+鑷冲皯瑕嗙洊锛?
 - `regress(..., x=["x1##x2##x3"])`
 - `reghdfe(..., x=["i.g##c.x1##c.x2"], absorb="firm year")`
 - `ivreghdfe(..., x=["i.(g1 g2)##c.x1"], absorb="firm year")`
 
 ### C. Stata dual-run
 
-至少新增并通过：
-
+鑷冲皯鏂板骞堕€氳繃锛?
 - `regress y x1##x2##x3`
 - `reghdfe y i.g##c.x1##c.x2, absorb(firm year)`
-- 一个 `ivreghdfe` 或非线性命令的括号缩写 case
+- 涓€涓?`ivreghdfe` 鎴栭潪绾挎€у懡浠ょ殑鎷彿缂╁啓 case
 
-### D. 全量验证
+### D. 鍏ㄩ噺楠岃瘉
 
-完成后至少回报：
+瀹屾垚鍚庤嚦灏戝洖鎶ワ細
 
 ```powershell
 python -m pytest tests/test_factor_variables.py -v
@@ -141,22 +120,16 @@ python -m pytest tests/test_compat_stata_linear.py tests/test_compat_stata_hdfe.
 python -m pytest tests -v
 ```
 
-## 5. 禁止事项
+## 5. 绂佹浜嬮」
 
-本轮不要顺手做：
+鏈疆涓嶈椤烘墜鍋氾細
 
-- 时间序列算子 `L.` / `F.` / `D.`
-- 五阶及以上交互
-- 全量 Stata `fvvarlist` 终态
-- 与 factor grammar 无关的估计器扩展
+- 鏃堕棿搴忓垪绠楀瓙 `L.` / `F.` / `D.`
+- 浜旈樁鍙婁互涓婁氦浜?- 鍏ㄩ噺 Stata `fvvarlist` 缁堟€?- 涓?factor grammar 鏃犲叧鐨勪及璁″櫒鎵╁睍
 
-## 6. 完成标准
+## 6. 瀹屾垚鏍囧噯
 
-本轮通过的最低标准：
+鏈疆閫氳繃鐨勬渶浣庢爣鍑嗭細
 
-- 三阶 `##` 的最小可用子集进入 wrapper 层
-- 括号缩写的最小可用子集进入 wrapper 层
-- `regress` / `reghdfe` / `ivreghdfe` / 至少一个非线性命令具备真实证据
-- 文档、支持矩阵、测试、报告同步一致
-
-如果 Claude Code 在报告中把本轮夸大成“完整 `fvvarlist` 已完成”，视为未完成。
+- 涓夐樁 `##` 鐨勬渶灏忓彲鐢ㄥ瓙闆嗚繘鍏?wrapper 灞?- 鎷彿缂╁啓鐨勬渶灏忓彲鐢ㄥ瓙闆嗚繘鍏?wrapper 灞?- `regress` / `reghdfe` / `ivreghdfe` / 鑷冲皯涓€涓潪绾挎€у懡浠ゅ叿澶囩湡瀹炶瘉鎹?- 鏂囨。銆佹敮鎸佺煩闃点€佹祴璇曘€佹姤鍛婂悓姝ヤ竴鑷?
+濡傛灉 Claude Code 鍦ㄦ姤鍛婁腑鎶婃湰杞じ澶ф垚鈥滃畬鏁?`fvvarlist` 宸插畬鎴愨€濓紝瑙嗕负鏈畬鎴愩€?

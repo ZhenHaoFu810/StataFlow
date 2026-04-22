@@ -7,7 +7,7 @@ Two-stage least squares instrumental-variables regression, aligned with Stata 17
 ## Python Entry
 
 ```python
-from statapy.compat.stata import ivregress_2sls
+from stataflow.compat.stata import ivregress_2sls
 
 result = ivregress_2sls(
     data, y="depvar",
@@ -57,10 +57,11 @@ Unsupported factor syntax (`ib#.`, `o.`, `b.`, time-series operators, three-way+
 
 ## Alignment Evidence
 
+
 - Synthetic cases: `tests/golden/test_w2_ivregress_basic.py`, `tests/golden/test_w2_ivregress_cluster.py`
 - Real-data cases: `tests/golden/test_w2_ivregress_real_card.py`
 - Stata 17 dual-run verified for 2SLS with conventional, robust, and cluster-robust VCE
 
 ## Core Implementation
 
-`src/statapy/estimators/iv.py` (`IV2SLS`)
+`src/stataflow/estimators/iv.py` (`IV2SLS`)

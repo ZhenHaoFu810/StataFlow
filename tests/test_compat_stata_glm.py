@@ -4,8 +4,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from statapy.compat.stata import logit, probit, poisson
-from statapy.estimators import Logit, Probit, Poisson
+from stataflow.compat.stata import logit, probit, poisson
+from stataflow.estimators import Logit, Probit, Poisson
 
 
 def _make_binary_data(n=200, seed=42):

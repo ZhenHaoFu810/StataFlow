@@ -1,58 +1,49 @@
-# Wave 4 Completion: DID / Event Study Stage B/C 收口任务
+# Wave 4 Completion: DID / Event Study Stage B/C 鏀跺彛浠诲姟
 
-## 基本信息
+## 鍩烘湰淇℃伅
 
-- 任务名称：Wave 4 收口任务
-- 执行人：Claude Code
-- 审查人：Codex
+- 浠诲姟鍚嶇О锛歐ave 4 鏀跺彛浠诲姟
+- 鎵ц浜猴細Claude Code
+- 瀹℃煡浜猴細Codex
 
-## 目标
+## 鐩爣
 
-在现有 synthetic 最小实现基础上，**完成整个 Wave 4 的剩余部分并正式收口**。
+鍦ㄧ幇鏈?synthetic 鏈€灏忓疄鐜板熀纭€涓婏紝**瀹屾垚鏁翠釜 Wave 4 鐨勫墿浣欓儴鍒嗗苟姝ｅ紡鏀跺彛**銆?
+鏈疆涓嶆槸閲嶆柊鍋?Stage A锛岃€屾槸琛ラ綈锛?
+- `Stage B` 缂哄け鐨勫疄鐜版暣鐞嗕笌娴嬭瘯鐧昏
+- `Stage C` 鐨勭湡瀹炲叕寮€鏁版嵁鍙岃窇涓庣姸鎬佸洖濉?
+瀹屾垚鍚庯紝`Wave 4` 鎵嶈兘杩涘叆 `done`銆?
+## 蹇呭仛鑼冨洿
 
-本轮不是重新做 Stage A，而是补齐：
-
-- `Stage B` 缺失的实现整理与测试登记
-- `Stage C` 的真实公开数据双跑与状态回填
-
-完成后，`Wave 4` 才能进入 `done`。
-
-## 必做范围
-
-必须覆盖三个命令：
-
+蹇呴』瑕嗙洊涓変釜鍛戒护锛?
 - `did_imputation`
 - `eventstudyinteract`
 - `csdid`
 
-每个命令都必须至少补齐：
+姣忎釜鍛戒护閮藉繀椤昏嚦灏戣ˉ榻愶細
 
-1. 1 个真实公开数据双跑样例
-2. 1 份可复核的 Stata 命令记录
-3. 1 份 Python 调用记录
-4. 字段级对齐说明
+1. 1 涓湡瀹炲叕寮€鏁版嵁鍙岃窇鏍蜂緥
+2. 1 浠藉彲澶嶆牳鐨?Stata 鍛戒护璁板綍
+3. 1 浠?Python 璋冪敤璁板綍
+4. 瀛楁绾у榻愯鏄?
+## 鐪熷疄鏁版嵁瑕佹眰
 
-## 真实数据要求
+浼樺厛浣跨敤鏈湴宸茬粡钀藉湴銆佸苟鑳芥瀯閫?staggered adoption 缁撴瀯鐨勫叕寮€鏁版嵁锛涘纭疄涓嶈冻锛屽彲鏂板涓€涓湰鍦板叕寮€鏀跨瓥闈㈡澘鏁版嵁闆嗭紝浣嗗繀椤伙細
 
-优先使用本地已经落地、并能构造 staggered adoption 结构的公开数据；如确实不足，可新增一个本地公开政策面板数据集，但必须：
+- 涓嬭浇鍒版湰鍦扮爺绌剁洰褰?- 鍐欏叆鏁版嵁鏂囨。
+- 淇濊瘉鍙鐜?
+鑷冲皯瑕佸湪鏂囨。涓啓娓咃細
 
-- 下载到本地研究目录
-- 写入数据文档
-- 保证可复现
+- 鏁版嵁鏉ユ簮
+- 涓嬭浇鏂瑰紡
+- 娓呮礂姝ラ
+- 澶勭悊鍙橀噺瀹氫箟
+- 鍗曚綅涓庢椂闂寸淮搴?- Stata 鍛戒护
+- Python 鍛戒护
 
-至少要在文档中写清：
+## 娴嬭瘯瑕佹眰
 
-- 数据来源
-- 下载方式
-- 清洗步骤
-- 处理变量定义
-- 单位与时间维度
-- Stata 命令
-- Python 命令
-
-## 测试要求
-
-本轮至少新增并运行：
+鏈疆鑷冲皯鏂板骞惰繍琛岋細
 
 ```powershell
 python -m pytest tests/golden/test_w4_did_imputation_basic.py -v
@@ -64,32 +55,22 @@ python -m pytest tests/golden/test_w4_csdid_real*.py -v
 python -m pytest tests -v
 ```
 
-如果文件名不同，必须在报告里逐项列出实际命令。
-
-## 允许修改的文件
-
-- `src/statapy/estimators/` 下与 Wave 4 相关文件
-- `tests/golden/` 下新增或调整的 Wave 4 测试
+濡傛灉鏂囦欢鍚嶄笉鍚岋紝蹇呴』鍦ㄦ姤鍛婇噷閫愰」鍒楀嚭瀹為檯鍛戒护銆?
+## 鍏佽淇敼鐨勬枃浠?
+- `src/stataflow/estimators/` 涓嬩笌 Wave 4 鐩稿叧鏂囦欢
+- `tests/golden/` 涓嬫柊澧炴垨璋冩暣鐨?Wave 4 娴嬭瘯
 - `docs/testing/test-case-catalog.md`
 - `docs/backlog.md`
 - `docs/research/public-datasets.md`
 - `workspace/current-task/REPORT.md`
 
-## 禁止事项
+## 绂佹浜嬮」
 
-- 不要推进到 `Wave 5`
-- 不要扩展到 `drdid`、`did2s`、`bacondecomp`、`honestdid`
-- 不要引入多向 cluster、复杂 bootstrap 或图形输出
-- 不要把缺失真实数据验证的命令标成 `done`
-- 不要把未解释的统计偏差写成“可接受”
+- 涓嶈鎺ㄨ繘鍒?`Wave 5`
+- 涓嶈鎵╁睍鍒?`drdid`銆乣did2s`銆乣bacondecomp`銆乣honestdid`
+- 涓嶈寮曞叆澶氬悜 cluster銆佸鏉?bootstrap 鎴栧浘褰㈣緭鍑?- 涓嶈鎶婄己澶辩湡瀹炴暟鎹獙璇佺殑鍛戒护鏍囨垚 `done`
+- 涓嶈鎶婃湭瑙ｉ噴鐨勭粺璁″亸宸啓鎴愨€滃彲鎺ュ彈鈥?
+## 閫氳繃鏍囧噯
 
-## 通过标准
-
-只有同时满足以下条件，Codex 才会放行整个 Wave 4：
-
-1. 三个命令都保留 synthetic 黄金样例并通过。
-2. 三个命令都至少新增 1 个真实公开数据双跑样例并通过。
-3. `docs/testing/test-case-catalog.md` 状态与实际完成情况一致。
-4. `docs/backlog.md` 状态与 catalog 一致。
-5. `workspace/current-task/REPORT.md` 按 Stage A/B/C 完整回报。
-6. 全量测试通过。
+鍙湁鍚屾椂婊¤冻浠ヤ笅鏉′欢锛孋odex 鎵嶄細鏀捐鏁翠釜 Wave 4锛?
+1. 涓変釜鍛戒护閮戒繚鐣?synthetic 榛勯噾鏍蜂緥骞堕€氳繃銆?2. 涓変釜鍛戒护閮借嚦灏戞柊澧?1 涓湡瀹炲叕寮€鏁版嵁鍙岃窇鏍蜂緥骞堕€氳繃銆?3. `docs/testing/test-case-catalog.md` 鐘舵€佷笌瀹為檯瀹屾垚鎯呭喌涓€鑷淬€?4. `docs/backlog.md` 鐘舵€佷笌 catalog 涓€鑷淬€?5. `workspace/current-task/REPORT.md` 鎸?Stage A/B/C 瀹屾暣鍥炴姤銆?6. 鍏ㄩ噺娴嬭瘯閫氳繃銆?

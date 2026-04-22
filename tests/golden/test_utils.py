@@ -8,8 +8,8 @@ import re
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from statapy import OLS, IV2SLS, IVAbsorbingOLS
-from statapy.stata_runner import StataRunner
+from stataflow import OLS, IV2SLS, IVAbsorbingOLS
+from stataflow.stata_runner import StataRunner
 
 # Project paths
 PROJECT_ROOT = Path(__file__).parent.parent.parent

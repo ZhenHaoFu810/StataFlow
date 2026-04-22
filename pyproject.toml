@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "StataFlow"
-version = "0.1.1"
-description = "Stata2Python: A Python econometrics toolkit aligned with Stata 17"
+version = "0.1.4"
+description = "StataFlow: A Python econometrics toolkit aligned with Stata 17"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [{name = "Zhenhao Fu", email = "zhenhaofu2001@gmail.com"}]

@@ -1,4 +1,4 @@
-from statapy.stata_runner import StataRunner
+from stataflow.stata_runner import StataRunner
 runner = StataRunner()
 do = '''
 clear all

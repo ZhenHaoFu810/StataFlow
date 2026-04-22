@@ -11,7 +11,7 @@ Sun & Abraham interaction-weighted event-study estimator, aligned with Stata com
 ## Python Entry
 
 ```python
-from statapy.compat.stata import eventstudyinteract
+from stataflow.compat.stata import eventstudyinteract
 
 # Auto-generation mode (command-semantic interface)
 result = eventstudyinteract(
@@ -62,6 +62,7 @@ Interaction-weighted event-study coefficients, standard errors, z-statistics, p-
 
 ## Alignment Evidence
 
+
 - Synthetic cases: `tests/golden/test_w4_eventstudyinteract_basic.py`
 - Real-data cases: `tests/golden/test_w4_eventstudyinteract_real_ezunem.py`
 - Local source mirror: `research/vendor/stata_community/eventstudyinteract/`
@@ -69,4 +70,4 @@ Interaction-weighted event-study coefficients, standard errors, z-statistics, p-
 
 ## Core Implementation
 
-`src/statapy/estimators/eventstudyinteract.py`
+`src/stataflow/estimators/eventstudyinteract.py`

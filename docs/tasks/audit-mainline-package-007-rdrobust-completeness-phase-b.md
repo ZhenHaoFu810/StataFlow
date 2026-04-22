@@ -1,187 +1,131 @@
-# 审计主线任务包 007：`rdrobust` 完整度推进（Phase B）
+# 瀹¤涓荤嚎浠诲姟鍖?007锛歚rdrobust` 瀹屾暣搴︽帹杩涳紙Phase B锛?
+## 浠诲姟瀹氫綅
 
-## 任务定位
+`rdrobust` 鐩墠宸茬粡浠?鈥渕issing鈥?鎺ㄨ繘鍒?**鍙獙璇佺殑鏈€灏?sharp RD 瀛愰泦**锛屼絾璺濈甯歌鐮旂┒宸ヤ綔娴佷粛鏈夋槑鏄剧己鍙ｃ€?
+褰撳墠鏀寔鐭╅樀鎶?`rdrobust` 瀹氫负 **Partial / Minimal Subset**锛屾渶澶х殑鍙敤鎬х己鍙ｆ槸锛?
+- 蹇呴』鏄惧紡鎻愪緵 `h`锛屼笉鑳借嚜鍔ㄥ甫瀹介€夋嫨
+- 涓嶆敮鎸?`covs()`
+- 涓嶆敮鎸佹洿瀹屾暣鐨勭粨鏋滀笌鍛戒护灞傝涔?
+涓嬩竴姝ヤ笉鍐嶆í鍚戞墿鍏朵粬鍛戒护锛岃€屾槸鎶?`rdrobust` 浠庘€滄渶灏忓彲璺戔€濇帹杩涘埌鈥滃父瑙?sharp RD 宸ヤ綔娴佸彲鐢ㄢ€濈殑 **Phase B 瀛愰泦**銆?
+## 鐩爣
 
-`rdrobust` 目前已经从 “missing” 推进到 **可验证的最小 sharp RD 子集**，但距离常见研究工作流仍有明显缺口。
+鏈疆鑷冲皯瀹屾垚涓嬮潰涓夌被宸ヤ綔涓殑鍓嶄袱绫伙紝鏈€濂戒笁绫诲叏閮ㄥ畬鎴愶細
 
-当前支持矩阵把 `rdrobust` 定为 **Partial / Minimal Subset**，最大的可用性缺口是：
-
-- 必须显式提供 `h`，不能自动带宽选择
-- 不支持 `covs()`
-- 不支持更完整的结果与命令层语义
-
-下一步不再横向扩其他命令，而是把 `rdrobust` 从“最小可跑”推进到“常见 sharp RD 工作流可用”的 **Phase B 子集**。
-
-## 目标
-
-本轮至少完成下面三类工作中的前两类，最好三类全部完成：
-
-1. **自动带宽选择进入主线**
-   - 支持至少一个常见 selector，并给出清晰的 source-backed 对应关系。
-2. **covariate-adjusted sharp RD 进入主线**
-   - 支持 `covs()` 的最小但正确子集。
-3. **`rdrobust` 对外文档与验证证据收口**
-   - source map、support matrix、README / release-facing 文档同步更新。
-
-## 必须使用的依据
-
-- 审计文档：
-  - `docs/audit/audit-findings.md`
+1. **鑷姩甯﹀閫夋嫨杩涘叆涓荤嚎**
+   - 鏀寔鑷冲皯涓€涓父瑙?selector锛屽苟缁欏嚭娓呮櫚鐨?source-backed 瀵瑰簲鍏崇郴銆?2. **covariate-adjusted sharp RD 杩涘叆涓荤嚎**
+   - 鏀寔 `covs()` 鐨勬渶灏忎絾姝ｇ‘瀛愰泦銆?3. **`rdrobust` 瀵瑰鏂囨。涓庨獙璇佽瘉鎹敹鍙?*
+   - source map銆乻upport matrix銆丷EADME / release-facing 鏂囨。鍚屾鏇存柊銆?
+## 蹇呴』浣跨敤鐨勪緷鎹?
+- 瀹¤鏂囨。锛?  - `docs/audit/audit-findings.md`
   - `docs/audit/project-gaps.md`
   - `docs/audit/next-development-plan.md`
-- 研究档案：
-  - `docs/research/rdrobust-source-map.md`
-- 本地源码镜像：
-  - `research/vendor/stata_community/rdrobust/`
-- 当前支持矩阵：
-  - `docs/command-support-matrix/rdrobust.md`
-- 审查协议：
-  - `docs/operations/codex-review-protocol.md`
+- 鐮旂┒妗ｆ锛?  - `docs/research/rdrobust-source-map.md`
+- 鏈湴婧愮爜闀滃儚锛?  - `research/vendor/stata_community/rdrobust/`
+- 褰撳墠鏀寔鐭╅樀锛?  - `docs/command-support-matrix/rdrobust.md`
+- 瀹℃煡鍗忚锛?  - `docs/operations/codex-review-protocol.md`
 
-## 数学与实现要求
+## 鏁板涓庡疄鐜拌姹?
+### A. 涓ョ鈥滀负杩囨祴璇曞弽鎺ㄦ暟鍊尖€?
+鏈疆蹇呴』鍧氭寔浠ヤ笅瑙勫垯锛?
+- 鍏堟槑纭?Stata / 瀹樻柟 Python / 璁烘枃鍏紡鐨勫搴斿叧绯伙紝鍐嶅啓瀹炵幇
+- 涓嶅厑璁搁€氳繃鏀惧瀹瑰樊銆佺壒娈?case 淇ˉ銆佸鍗曚竴鏍蜂緥璋冨弬鏉ュ绉板畬鎴?- 鑷姩甯﹀涓?covariate-adjusted RD 鐨勫疄鐜板繀椤昏兘瑙ｉ噴娓呮浼拌娴佺▼銆佸亸宸慨姝ｅ拰 VCE 鍙ｅ緞
 
-### A. 严禁“为过测试反推数值”
+### B. 鑷姩甯﹀閫夋嫨
 
-本轮必须坚持以下规则：
+鑷冲皯鏀寔 **涓€涓?* 楂橀 selector锛屽苟鏄庣‘鍐欐竻妤氾細
 
-- 先明确 Stata / 官方 Python / 论文公式的对应关系，再写实现
-- 不允许通过放宽容差、特殊 case 修补、对单一样例调参来宣称完成
-- 自动带宽与 covariate-adjusted RD 的实现必须能解释清楚估计流程、偏差修正和 VCE 口径
+- 閫変腑鐨?selector 鏄粈涔?- 涓?Stata `rdrobust` / `rdbwselect` 鐨勫摢涓垎鏀搴?- 褰撳墠鏄惁鍙敮鎸?sharp RD / local linear / 鏌愪簺 kernel 缁勫悎
 
-### B. 自动带宽选择
+浼樺厛寤鸿锛?
+- `bwselect="mserd"` 鎴栫瓑浠风殑鏈€甯歌 sharp RD selector
 
-至少支持 **一个** 高频 selector，并明确写清楚：
+鏈疆涓嶈姹備竴娆℃€ц鐩栧叏閮?selector 瀹舵棌锛屼絾蹇呴』锛?
+- wrapper 鑳芥帴鍙?`bwselect=...`
+- 鑻ユ湭鏀寔鍏朵粬 selector锛屽繀椤绘樉寮?hard-reject
+- 鑻?`h` 涓?`bwselect` 鍚屾椂缁欏嚭锛岃涓哄繀椤绘槑纭笖鏂囨。鍖?
+### C. `covs()` 鏈€灏忓瓙闆?
+鏈疆鑻ュ疄鐜?`covs()`锛屽繀椤绘弧瓒筹細
 
-- 选中的 selector 是什么
-- 与 Stata `rdrobust` / `rdbwselect` 的哪个分支对应
-- 当前是否只支持 sharp RD / local linear / 某些 kernel 组合
+- 浠呭湪 sharp RD 涓嬪厛鏀寔
+- 鏄庣‘鏍锋湰绛涢€夊拰缂哄け鍊煎鐞?- 鏄庣‘ covariate-adjusted local polynomial 鐨勪及璁″彛寰?- 瀵逛笉鏀寔鐨勬墿灞曞満鏅紙濡?fuzzy + covs銆乧luster + covs锛夋樉寮?hard-reject
 
-优先建议：
+### D. 缁撴灉瀵硅薄涓庡懡浠よ涔?
+鑻ユ柊澧炶嚜鍔ㄥ甫瀹芥垨 covariates锛岃嚦灏戣淇濊瘉锛?
+- 缁撴灉瀵硅薄涓富甯﹀銆佸亸宸甫瀹藉拰鏈夋晥鏍锋湰浠嶇劧鍙
+- wrapper 鍛戒护灞傚弬鏁颁笌 Stata 鍛戒护璇箟涓€鑷?- 涓嶅厑璁稿嚭鐜?README / support matrix 鍐欐敮鎸併€佷絾 wrapper 瀹為檯涓嶆帴鍙楃殑鎯呭喌
 
-- `bwselect="mserd"` 或等价的最常见 sharp RD selector
+## 蹇呴』閲嶇偣瀹¤鐨勫唴瀹?
+### 1. 婧愮爜鏄犲皠
 
-本轮不要求一次性覆盖全部 selector 家族，但必须：
+蹇呴』鎶婁互涓嬮€昏緫鍐欒繘 `docs/research/rdrobust-source-map.md`锛?
+- 鑷姩甯﹀閫夋嫨瀵瑰簲鐨勬簮鐮佸叆鍙ｄ笌 Python 鏄犲皠
+- `covs()` 瀵瑰簲鐨勬簮鐮?/ 鍏紡鍒嗘敮涓?Python 鏄犲皠
+- 褰撳墠浠嶆湭瀹炵幇鐨勫弬鏁伴潰
 
-- wrapper 能接受 `bwselect=...`
-- 若未支持其他 selector，必须显式 hard-reject
-- 若 `h` 与 `bwselect` 同时给出，行为必须明确且文档化
+### 2. 鏀寔鐭╅樀
 
-### C. `covs()` 最小子集
-
-本轮若实现 `covs()`，必须满足：
-
-- 仅在 sharp RD 下先支持
-- 明确样本筛选和缺失值处理
-- 明确 covariate-adjusted local polynomial 的估计口径
-- 对不支持的扩展场景（如 fuzzy + covs、cluster + covs）显式 hard-reject
-
-### D. 结果对象与命令语义
-
-若新增自动带宽或 covariates，至少要保证：
-
-- 结果对象中主带宽、偏差带宽和有效样本仍然可读
-- wrapper 命令层参数与 Stata 命令语义一致
-- 不允许出现 README / support matrix 写支持、但 wrapper 实际不接受的情况
-
-## 必须重点审视的内容
-
-### 1. 源码映射
-
-必须把以下逻辑写进 `docs/research/rdrobust-source-map.md`：
-
-- 自动带宽选择对应的源码入口与 Python 映射
-- `covs()` 对应的源码 / 公式分支与 Python 映射
-- 当前仍未实现的参数面
-
-### 2. 支持矩阵
-
-必须更新 `docs/command-support-matrix/rdrobust.md`：
-
+蹇呴』鏇存柊 `docs/command-support-matrix/rdrobust.md`锛?
 - `Supported Parameters`
 - `Planned Parameters`
 - `Explicitly Unsupported Parameters`
 - `Alignment Evidence`
 
-不允许再把已实现参数放在 planned，也不允许把未实现参数写得模糊。
+涓嶅厑璁稿啀鎶婂凡瀹炵幇鍙傛暟鏀惧湪 planned锛屼篃涓嶅厑璁告妸鏈疄鐜板弬鏁板啓寰楁ā绯娿€?
+### 3. 娴嬭瘯璁捐
 
-### 3. 测试设计
+鏈疆娴嬭瘯涓嶈兘鍙仛鈥滄暟鍊煎涓€涓嬧€濄€?
+鑷冲皯瑕佸寘鍚細
 
-本轮测试不能只做“数值对一下”。
-
-至少要包含：
-
-- synthetic：
-  - 自动带宽 selector 行为
+- synthetic锛?  - 鑷姩甯﹀ selector 琛屼负
   - covariate-adjusted sharp RD
-  - `h` / `bwselect` 冲突或优先级语义
-- real-data：
-  - 至少一个公开 RD 数据上的 dual-run（继续可用 `rdrobust_senate.dta`，如需要可补新数据）
-- negative tests：
-  - 不支持的参数必须显式报错，不能静默忽略
+  - `h` / `bwselect` 鍐茬獊鎴栦紭鍏堢骇璇箟
+- real-data锛?  - 鑷冲皯涓€涓叕寮€ RD 鏁版嵁涓婄殑 dual-run锛堢户缁彲鐢?`rdrobust_senate.dta`锛屽闇€瑕佸彲琛ユ柊鏁版嵁锛?- negative tests锛?  - 涓嶆敮鎸佺殑鍙傛暟蹇呴』鏄惧紡鎶ラ敊锛屼笉鑳介潤榛樺拷鐣?
+### 4. wrapper / example / 鏂囨。涓€鑷存€?
+鑻?README 鎴?support matrix 瀹ｇО `bwselect` / `covs` 鍙敤锛屽垯锛?
+- wrapper 蹇呴』鐪熺殑鎺ュ彈
+- 鑷冲皯涓€涓?example 鎴?smoke 璇佹嵁蹇呴』鑳借窇
 
-### 4. wrapper / example / 文档一致性
+## 鏈€浣庝氦浠樿姹?
+### 1. 浠ｇ爜灞?
+鍏佽淇敼锛?
+- `src/stataflow/estimators/rdrobust.py`
+- `src/stataflow/compat/stata/rd.py` 鎴栧搴?wrapper 鏂囦欢
+- 蹇呰鐨勭粨鏋?schema / helper
 
-若 README 或 support matrix 宣称 `bwselect` / `covs` 可用，则：
-
-- wrapper 必须真的接受
-- 至少一个 example 或 smoke 证据必须能跑
-
-## 最低交付要求
-
-### 1. 代码层
-
-允许修改：
-
-- `src/statapy/estimators/rdrobust.py`
-- `src/statapy/compat/stata/rd.py` 或对应 wrapper 文件
-- 必要的结果 schema / helper
-
-### 2. 文档层
-
-必须更新：
-
+### 2. 鏂囨。灞?
+蹇呴』鏇存柊锛?
 - `docs/research/rdrobust-source-map.md`
 - `docs/command-support-matrix/rdrobust.md`
 
-如确有必要，可同步更新：
+濡傜‘鏈夊繀瑕侊紝鍙悓姝ユ洿鏂帮細
 
 - `README.md`
 - `docs/release/open-source-alpha-status.md`
 - `docs/release/known-issues.md`
 
-### 3. 测试层
-
-至少必须新增或更新：
+### 3. 娴嬭瘯灞?
+鑷冲皯蹇呴』鏂板鎴栨洿鏂帮細
 
 - `tests/test_rdrobust.py`
-- 必要的 golden / dual-run 测试
-- 若新增 example，则补 smoke 证据
+- 蹇呰鐨?golden / dual-run 娴嬭瘯
+- 鑻ユ柊澧?example锛屽垯琛?smoke 璇佹嵁
 
-## 明确禁止
+## 鏄庣‘绂佹
 
-- 不顺手改 `reghdfe` / `ppmlhdfe` / `ivreghdfe` / DID 内核
-- 不把 fuzzy RD、cluster RD、全部 selector 家族一口气塞进本轮后再用大容差放行
-- 不允许对 unsupported 参数静默忽略
-- 不允许只依据官方 Python 包输出而不解释 Stata / 论文 / 源码对应关系
+- 涓嶉『鎵嬫敼 `reghdfe` / `ppmlhdfe` / `ivreghdfe` / DID 鍐呮牳
+- 涓嶆妸 fuzzy RD銆乧luster RD銆佸叏閮?selector 瀹舵棌涓€鍙ｆ皵濉炶繘鏈疆鍚庡啀鐢ㄥぇ瀹瑰樊鏀捐
+- 涓嶅厑璁稿 unsupported 鍙傛暟闈欓粯蹇界暐
+- 涓嶅厑璁稿彧渚濇嵁瀹樻柟 Python 鍖呰緭鍑鸿€屼笉瑙ｉ噴 Stata / 璁烘枃 / 婧愮爜瀵瑰簲鍏崇郴
 
-## 通过标准
+## 閫氳繃鏍囧噯
 
-Codex 只会在以下条件同时满足时放行：
+Codex 鍙細鍦ㄤ互涓嬫潯浠跺悓鏃舵弧瓒虫椂鏀捐锛?
+1. 鑷冲皯涓€涓嚜鍔ㄥ甫瀹?selector 杩涘叆鍛戒护灞傦紝涓?source-backed 璇存槑娓呮銆?2. 鑻ュ疄鐜?`covs()`锛屽叾浼拌鍙ｅ緞銆乂CE 鍙ｅ緞鍜岀己澶卞€煎鐞嗘湁鏄庣‘渚濇嵁銆?3. `rdrobust` source map銆乻upport matrix銆亀rapper銆佹祴璇曡瘉鎹竴鑷淬€?4. 鍏ㄩ噺娴嬭瘯閫氳繃锛屽苟涓?`rdrobust` 涓撻」娴嬭瘯 / dual-run 閫氳繃銆?5. 涓嶆敮鎸佺殑鍙傛暟浠嶇劧琚樉寮?hard-reject銆?
+## 鍥炴姤鏍煎紡
 
-1. 至少一个自动带宽 selector 进入命令层，且 source-backed 说明清楚。
-2. 若实现 `covs()`，其估计口径、VCE 口径和缺失值处理有明确依据。
-3. `rdrobust` source map、support matrix、wrapper、测试证据一致。
-4. 全量测试通过，并且 `rdrobust` 专项测试 / dual-run 通过。
-5. 不支持的参数仍然被显式 hard-reject。
-
-## 回报格式
-
-完成后在 `workspace/current-task/REPORT.md` 中按下面结构汇报：
-
-1. 自动带宽选择实现了什么、没有实现什么
-2. `covs()` 实现了什么、没有实现什么
-3. 估计过程 / 偏差修正 / VCE 是如何与 Stata 或官方源码对应的
-4. 更新了哪些 source map / support matrix / release-facing 文档
-5. 跑了哪些 synthetic / dual-run / full pytest
-6. 最新 fresh run 结果
-7. 当前 `rdrobust` 距离“完整 community command 复现”还差什么
+瀹屾垚鍚庡湪 `workspace/current-task/REPORT.md` 涓寜涓嬮潰缁撴瀯姹囨姤锛?
+1. 鑷姩甯﹀閫夋嫨瀹炵幇浜嗕粈涔堛€佹病鏈夊疄鐜颁粈涔?2. `covs()` 瀹炵幇浜嗕粈涔堛€佹病鏈夊疄鐜颁粈涔?3. 浼拌杩囩▼ / 鍋忓樊淇 / VCE 鏄浣曚笌 Stata 鎴栧畼鏂规簮鐮佸搴旂殑
+4. 鏇存柊浜嗗摢浜?source map / support matrix / release-facing 鏂囨。
+5. 璺戜簡鍝簺 synthetic / dual-run / full pytest
+6. 鏈€鏂?fresh run 缁撴灉
+7. 褰撳墠 `rdrobust` 璺濈鈥滃畬鏁?community command 澶嶇幇鈥濊繕宸粈涔?

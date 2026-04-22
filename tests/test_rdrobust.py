@@ -10,8 +10,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from statapy.compat.stata import rdrobust
-from statapy.estimators.rdrobust import RDRobust
+from stataflow.compat.stata import rdrobust
+from stataflow.estimators.rdrobust import RDRobust
 
 
 def _make_rd_data(n=500, seed=42, jump=2.0, cutoff=0.0):
@@ -56,7 +56,7 @@ def test_rdrobust_senate_real_data_matches_stata():
     Stata command: rdrobust vote margin, c(0) h(15)
     """
     df = pd.read_stata(
-        "research/vendor/stata_community/rdrobust/rdrobust-master/stata/rdrobust_senate.dta"
+        "tests/data/rdrobust_senate.dta"
     )
     res = rdrobust(df, y="vote", x="margin", c=0.0, h=15.0)
 
@@ -80,7 +80,7 @@ def test_rdrobust_senate_hc0_uniform_matches_stata():
     Stata command: rdrobust vote margin, c(0) h(15) vce(hc0) kernel(uniform)
     """
     df = pd.read_stata(
-        "research/vendor/stata_community/rdrobust/rdrobust-master/stata/rdrobust_senate.dta"
+        "tests/data/rdrobust_senate.dta"
     )
     res = rdrobust(df, y="vote", x="margin", c=0.0, h=15.0, vce="hc0", kernel="uniform")
 
@@ -158,7 +158,7 @@ def test_rdrobust_bwselect_mserd_real_data_matches_stata():
     deviations.
     """
     df = pd.read_stata(
-        "research/vendor/stata_community/rdrobust/rdrobust-master/stata/rdrobust_senate.dta"
+        "tests/data/rdrobust_senate.dta"
     )
     res = rdrobust(df, y="vote", x="margin", c=0.0, bwselect="mserd")
 
@@ -187,7 +187,7 @@ def test_rdrobust_covs_explicit_h_matches_stata():
     Because h is fixed, the estimation path is fully deterministic and
     matches Stata to 1e-6 relative tolerance.
     """
-    df = pd.read_stata("stata/output/rdrobust_senate_with_z.dta")
+    df = pd.read_stata("tests/data/rdrobust_senate_with_z.dta")
     res = rdrobust(df, y="vote", x="margin", c=0.0, h=15.0, covs="z")
 
     stata = {
@@ -211,7 +211,7 @@ def test_rdrobust_covs_bwselect_mserd_matches_stata():
     As with the no-covs bwselect case, plug-in bandwidth selection
     introduces small numerical differences; 5e-4 tolerance is used.
     """
-    df = pd.read_stata("stata/output/rdrobust_senate_with_z.dta")
+    df = pd.read_stata("tests/data/rdrobust_senate_with_z.dta")
     res = rdrobust(df, y="vote", x="margin", c=0.0, bwselect="mserd", covs="z")
 
     stata = {
@@ -232,7 +232,7 @@ def test_rdrobust_covs_bwselect_mserd_matches_stata():
 def test_rdrobust_h_overrides_bwselect():
     """When both h and bwselect are provided, h takes precedence."""
     df = pd.read_stata(
-        "research/vendor/stata_community/rdrobust/rdrobust-master/stata/rdrobust_senate.dta"
+        "tests/data/rdrobust_senate.dta"
     )
     res_h_only = rdrobust(df, y="vote", x="margin", c=0.0, h=15.0)
     res_both = rdrobust(df, y="vote", x="margin", c=0.0, h=15.0, bwselect="mserd")

@@ -1,6 +1,9 @@
 # Command Support Matrix
 
-This directory lists the current support status for every Stata-compatible command exposed by `statapy.compat.stata`.
+This directory lists the current support status for every Stata-compatible command exposed by `stataflow.compat.stata`.
+
+Cross-command validation evidence is collected separately in:
+
 
 ## Quick Reference
 
@@ -34,13 +37,3 @@ This directory lists the current support status for every Stata-compatible comma
 - Weights beyond `aweight` are not yet supported.
 - Any parameter not explicitly listed in a command matrix is hard-rejected via `ValueError`.
 
-## Research Archives
-
-For commands marked **Alpha**, detailed source-to-Python mapping documents are available in `docs/research/`:
-
-- `reghdfe-source-map.md`
-- `ivreghdfe-source-map.md`
-- `ppmlhdfe-source-map.md`
-- `did_imputation-source-map.md`
-- `eventstudyinteract-source-map.md`
-- `rdrobust-source-map.md`

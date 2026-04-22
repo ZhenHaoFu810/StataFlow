@@ -4,7 +4,7 @@ import re
 import pytest
 import pandas as pd
 from pathlib import Path
-from statapy.estimators.did_imputation import DIDImputation
+from stataflow.estimators.did_imputation import DIDImputation
 from tests.golden.test_utils import tolerance_close
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent

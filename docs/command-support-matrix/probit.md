@@ -7,7 +7,7 @@ Probit regression (MLE), aligned with Stata 17 `probit`.
 ## Python Entry
 
 ```python
-from statapy.compat.stata import probit
+from stataflow.compat.stata import probit
 
 result = probit(data, y="depvar", x=["x1", "x2"], vce="robust")
 ```
@@ -43,7 +43,7 @@ Unsupported factor syntax (`ib.` without level, `o.` without level, `b.` without
 
 ## Postestimation (Core Estimator Layer Only)
 
-The `compat.stata` wrapper returns a `ResultSchema` object. To use `predict()` or `margins()`, call the core estimator (`statapy.estimators.Probit`) directly.
+The `compat.stata` wrapper returns a `ResultSchema` object. To use `predict()` or `margins()`, call the core estimator (`stataflow.estimators.Probit`) directly.
 
 - `predict(type="xb")`
 - `predict(type="pr")`
@@ -64,10 +64,11 @@ All other Stata `probit` options are hard-rejected via `ValueError`.
 
 ## Alignment Evidence
 
+
 - Synthetic cases: `tests/golden/test_w3_probit_basic.py`, `tests/golden/test_w3_probit_robust.py`
 - Real-data cases: `tests/golden/test_w3_probit_real.py`
 - Stata 17 dual-run verified for MLE with conventional, robust, and cluster-robust VCE
 
 ## Core Implementation
 
-`src/statapy/estimators/glm.py` (`Probit`)
+`src/stataflow/estimators/glm.py` (`Probit`)

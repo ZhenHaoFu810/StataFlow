@@ -1,6 +1,6 @@
 import pytest
 from pathlib import Path
-from statapy.stata_runner import StataRunner
+from stataflow.stata_runner import StataRunner
 
 PROJECT_STATA_OUTPUT = Path(__file__).parent.parent.parent / "stata" / "output"
 

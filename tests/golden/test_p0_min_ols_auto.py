@@ -15,9 +15,9 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 
-from statapy import OLS
-from statapy.stata_runner import StataRunner
-from statapy.results import ResultSchema
+from stataflow import OLS
+from stataflow.stata_runner import StataRunner
+from stataflow.results import ResultSchema
 
 # Project paths - all outputs stay in project directory
 PROJECT_ROOT = Path(__file__).parent.parent.parent
@@ -26,7 +26,7 @@ PROJECT_STATA_CASES = PROJECT_ROOT / "stata" / "cases"
 
 # Ensure output directory exists
 PROJECT_STATA_OUTPUT.mkdir(parents=True, exist_ok=True)
-TEMP_DIR = Path(tempfile.mkdtemp(prefix="statapy_p0_"))
+TEMP_DIR = Path(tempfile.mkdtemp(prefix="stataflow_p0_"))
 
 
 def _generate_test_data() -> pd.DataFrame:

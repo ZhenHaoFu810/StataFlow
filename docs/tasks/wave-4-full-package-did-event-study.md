@@ -1,153 +1,131 @@
 # Wave 4 Full Package: DID / Event Study Extensions
 
-## 基本信息
+## 鍩烘湰淇℃伅
 
-- 任务名称：Wave 4 整包任务：DID / Event Study Extensions
-- 所属命令族：`DID / Event Study Extensions`
-- 优先级：P4
-- 执行人：Claude Code
-- 审查人：Codex
+- 浠诲姟鍚嶇О锛歐ave 4 鏁村寘浠诲姟锛欴ID / Event Study Extensions
+- 鎵€灞炲懡浠ゆ棌锛歚DID / Event Study Extensions`
+- 浼樺厛绾э細P4
+- 鎵ц浜猴細Claude Code
+- 瀹℃煡浜猴細Codex
 
-## 任务目标
+## 浠诲姟鐩爣
 
-一次性推进整个 Wave 4，但必须按内部阶段顺序完成，不能跳阶段宣称整包完成。
-
-本 wave 的目标命令为：
-
+涓€娆℃€ф帹杩涙暣涓?Wave 4锛屼絾蹇呴』鎸夊唴閮ㄩ樁娈甸『搴忓畬鎴愶紝涓嶈兘璺抽樁娈靛绉版暣鍖呭畬鎴愩€?
+鏈?wave 鐨勭洰鏍囧懡浠や负锛?
 - `did_imputation`
 - `eventstudyinteract`
 - `csdid`
 
-目标不是复刻每个命令的全部历史选项，而是交付一个**最小但统计口径清楚、可双跑验证、能进入回归测试**的兼容子集。
-
-## 内部阶段
+鐩爣涓嶆槸澶嶅埢姣忎釜鍛戒护鐨勫叏閮ㄥ巻鍙查€夐」锛岃€屾槸浜や粯涓€涓?*鏈€灏忎絾缁熻鍙ｅ緞娓呮銆佸彲鍙岃窇楠岃瘉銆佽兘杩涘叆鍥炲綊娴嬭瘯**鐨勫吋瀹瑰瓙闆嗐€?
+## 鍐呴儴闃舵
 
 ### Stage A: Research Closure
 
-必须先完成以下研究工作，再进入实现：
+蹇呴』鍏堝畬鎴愪互涓嬬爺绌跺伐浣滐紝鍐嶈繘鍏ュ疄鐜帮細
 
-- 补齐或重写下列研究文档：
+- 琛ラ綈鎴栭噸鍐欎笅鍒楃爺绌舵枃妗ｏ細
   - `docs/research/did_imputation.md`
   - `docs/research/eventstudyinteract.md`
   - `docs/research/csdid.md`
-- 对每个命令写清：
-  - 目标 estimand
-  - 数据结构要求
-  - 识别假设
-  - 核心估计公式
-  - 推断口径
-  - Stata/社区命令的关键选项
-  - 最小兼容子集
-  - 明确不做的选项
-- 在 `docs/testing/test-case-catalog.md` 预登记：
-  - synthetic 样例
-  - real-data 样例
-  - 对齐字段
+- 瀵规瘡涓懡浠ゅ啓娓咃細
+  - 鐩爣 estimand
+  - 鏁版嵁缁撴瀯瑕佹眰
+  - 璇嗗埆鍋囪
+  - 鏍稿績浼拌鍏紡
+  - 鎺ㄦ柇鍙ｅ緞
+  - Stata/绀惧尯鍛戒护鐨勫叧閿€夐」
+  - 鏈€灏忓吋瀹瑰瓙闆?  - 鏄庣‘涓嶅仛鐨勯€夐」
+- 鍦?`docs/testing/test-case-catalog.md` 棰勭櫥璁帮細
+  - synthetic 鏍蜂緥
+  - real-data 鏍蜂緥
+  - 瀵归綈瀛楁
 
 ### Stage B: Minimum Implementation
 
-对三个命令都做最小实现，但范围必须收紧。
-
+瀵逛笁涓懡浠ら兘鍋氭渶灏忓疄鐜帮紝浣嗚寖鍥村繀椤绘敹绱с€?
 #### `did_imputation`
 
-最小子集要求：
+鏈€灏忓瓙闆嗚姹傦細
 
 - staggered adoption panel
-- balanced 或近平衡 panel
-- 单次吸收处理
-- 单位聚类标准误
-- event time 动态效应输出
-
-明确不做：
-
+- balanced 鎴栬繎骞宠　 panel
+- 鍗曟鍚告敹澶勭悊
+- 鍗曚綅鑱氱被鏍囧噯璇?- event time 鍔ㄦ€佹晥搴旇緭鍑?
+鏄庣‘涓嶅仛锛?
 - repeated cross-section
-- 多值处理
-- 多层 bootstrap
-- 复杂 aggregation 变体
+- 澶氬€煎鐞?- 澶氬眰 bootstrap
+- 澶嶆潅 aggregation 鍙樹綋
 
 #### `eventstudyinteract`
 
-最小子集要求：
+鏈€灏忓瓙闆嗚姹傦細
 
 - Sun-Abraham interaction-weighted event-study
-- cohort × relative-time 结构
-- 单位 FE + 时间 FE
-- 单位聚类标准误
-- 基准期显式可控
-
-明确不做：
-
-- 多向 cluster
-- 高级 postestimation
-- 图形输出
+- cohort 脳 relative-time 缁撴瀯
+- 鍗曚綅 FE + 鏃堕棿 FE
+- 鍗曚綅鑱氱被鏍囧噯璇?- 鍩哄噯鏈熸樉寮忓彲鎺?
+鏄庣‘涓嶅仛锛?
+- 澶氬悜 cluster
+- 楂樼骇 postestimation
+- 鍥惧舰杈撳嚭
 
 #### `csdid`
 
-最小子集要求：
+鏈€灏忓瓙闆嗚姹傦細
 
-- panel 版本优先
-- group-time ATT 输出
-- 至少支持一个常用 aggregation
-- 单位聚类标准误
-
-明确不做：
-
+- panel 鐗堟湰浼樺厛
+- group-time ATT 杈撳嚭
+- 鑷冲皯鏀寔涓€涓父鐢?aggregation
+- 鍗曚綅鑱氱被鏍囧噯璇?
+鏄庣‘涓嶅仛锛?
 - repeated cross-section
-- doubly robust 的所有分支变体一次性全开
-- bootstrap-based 全部推断选项
+- doubly robust 鐨勬墍鏈夊垎鏀彉浣撲竴娆℃€у叏寮€
+- bootstrap-based 鍏ㄩ儴鎺ㄦ柇閫夐」
 
 ### Stage C: Real-Data Validation And Hardening
 
-每个命令都必须至少有：
+姣忎釜鍛戒护閮藉繀椤昏嚦灏戞湁锛?
+- 1 涓?synthetic 榛勯噾鏍蜂緥
+- 1 涓湡瀹炲叕寮€鏁版嵁鏍蜂緥
 
-- 1 个 synthetic 黄金样例
-- 1 个真实公开数据样例
+骞跺畬鎴愶細
 
-并完成：
+- Stata / Python 鍙岃窇
+- 瀛楁绾у榻愭姤鍛?- 宸茬煡宸紓鏂囨。鍖?- `docs/backlog.md` 涓?`docs/testing/test-case-catalog.md` 鐘舵€佸悓姝?
+## 鐪熷疄鏁版嵁瑕佹眰
 
-- Stata / Python 双跑
-- 字段级对齐报告
-- 已知差异文档化
-- `docs/backlog.md` 与 `docs/testing/test-case-catalog.md` 状态同步
+浼樺厛浣跨敤鍏紑銆佸彲澶嶇幇銆佸甫鏈夌粡鍏?staggered adoption 缁撴瀯鐨勬暟鎹€?
+鎺ㄨ崘鍊欓€夛細
 
-## 真实数据要求
+- Castle Doctrine / stand-your-ground 椋庢牸宸炲勾闈㈡澘
+- minimum wage / policy adoption 宸炲勾闈㈡澘
+- 鍏紑鍘垮勾鏀跨瓥 panel
+- Stata / Wooldridge / teaching datasets 涓彲澶嶇幇鐨?staggered treatment 瀛愰泦
 
-优先使用公开、可复现、带有经典 staggered adoption 结构的数据。
+瑕佹眰锛?
+- 鏁版嵁蹇呴』钀藉埌鏈湴鐮旂┒鐩綍
+- 鏂囨。涓褰曟潵婧愩€佹竻娲椼€佸彉閲忓畾涔夈€丼tata 鍛戒护銆丳ython 鍛戒护
 
-推荐候选：
-
-- Castle Doctrine / stand-your-ground 风格州年面板
-- minimum wage / policy adoption 州年面板
-- 公开县年政策 panel
-- Stata / Wooldridge / teaching datasets 中可复现的 staggered treatment 子集
-
-要求：
-
-- 数据必须落到本地研究目录
-- 文档中记录来源、清洗、变量定义、Stata 命令、Python 命令
-
-## 允许修改的文件
-
-- `src/statapy/estimators/` 下与 DID / event study 相关的新文件
-- `src/statapy/__init__.py`
-- `src/statapy/estimators/__init__.py`
-- `tests/golden/` 下新增的 Wave 4 测试
-- `docs/research/` 下的 Wave 4 文档
+## 鍏佽淇敼鐨勬枃浠?
+- `src/stataflow/estimators/` 涓嬩笌 DID / event study 鐩稿叧鐨勬柊鏂囦欢
+- `src/stataflow/__init__.py`
+- `src/stataflow/estimators/__init__.py`
+- `tests/golden/` 涓嬫柊澧炵殑 Wave 4 娴嬭瘯
+- `docs/research/` 涓嬬殑 Wave 4 鏂囨。
 - `docs/testing/test-case-catalog.md`
 - `docs/backlog.md`
 - `workspace/current-task/REPORT.md`
 
-## 禁止事项
+## 绂佹浜嬮」
 
-- 不要扩展到 `drdid`、`did2s`、`bacondecomp`、`honestdid`
-- 不要在本 wave 混入 `predict`、`margins`、图形接口
-- 不要一次性实现所有 bootstrap / simulation / randomization inference
-- 不要引入多向 cluster
-- 不要把未验证的统计差异写成“可接受”后直接放行
+- 涓嶈鎵╁睍鍒?`drdid`銆乣did2s`銆乣bacondecomp`銆乣honestdid`
+- 涓嶈鍦ㄦ湰 wave 娣峰叆 `predict`銆乣margins`銆佸浘褰㈡帴鍙?- 涓嶈涓€娆℃€у疄鐜版墍鏈?bootstrap / simulation / randomization inference
+- 涓嶈寮曞叆澶氬悜 cluster
+- 涓嶈鎶婃湭楠岃瘉鐨勭粺璁″樊寮傚啓鎴愨€滃彲鎺ュ彈鈥濆悗鐩存帴鏀捐
 
-## 强制验证命令
+## 寮哄埗楠岃瘉鍛戒护
 
-完成后必须至少运行：
+瀹屾垚鍚庡繀椤昏嚦灏戣繍琛岋細
 
 ```bash
 python -m pytest tests/golden/test_w4_did_imputation_basic.py -v
@@ -156,26 +134,20 @@ python -m pytest tests/golden/test_w4_csdid_basic.py -v
 python -m pytest tests -v
 ```
 
-如果新增了更多 Wave 4 golden tests，必须在报告中逐项列出并运行。
+濡傛灉鏂板浜嗘洿澶?Wave 4 golden tests锛屽繀椤诲湪鎶ュ憡涓€愰」鍒楀嚭骞惰繍琛屻€?
+## 鍥炴姤瑕佹眰
 
-## 回报要求
+鎶ュ憡蹇呴』鍒?Stage A / Stage B / Stage C 涓夋锛屾槑纭啓娓咃細
 
-报告必须分 Stage A / Stage B / Stage C 三段，明确写清：
+1. 涓変釜鍛戒护鍚勮嚜鐨勬渶灏忓疄鐜拌竟鐣?2. 姣忎釜鍛戒护鐨勮瘑鍒亣璁句笌 estimand
+3. 姣忎釜鍛戒护鏂板浜嗗摢浜?synthetic 鏍蜂緥
+4. 姣忎釜鍛戒护鐢ㄤ簡鍝簺鐪熷疄鍏紑鏁版嵁
+5. 鍝簺瀛楁涓?Stata 瀵归綈锛屽摢浜涘瓧娈佃嫢浠嶆湁鍋忓樊锛屽亸宸師鍥犳槸浠€涔?6. 鍏ㄩ噺娴嬭瘯缁撴灉
 
-1. 三个命令各自的最小实现边界
-2. 每个命令的识别假设与 estimand
-3. 每个命令新增了哪些 synthetic 样例
-4. 每个命令用了哪些真实公开数据
-5. 哪些字段与 Stata 对齐，哪些字段若仍有偏差，偏差原因是什么
-6. 全量测试结果
+## 閫氳繃鏍囧噯
 
-## 通过标准
-
-只有同时满足以下条件，Codex 才会放行整个 Wave 4：
-
-- `did_imputation`、`eventstudyinteract`、`csdid` 都完成研究档案
-- 三个命令都至少有 synthetic 黄金样例
-- 三个命令都至少有一个真实公开数据双跑样例
-- 全量测试通过
-- `docs/backlog.md` 与 `docs/testing/test-case-catalog.md` 状态一致
-- 没有未解释的关键统计口径偏差
+鍙湁鍚屾椂婊¤冻浠ヤ笅鏉′欢锛孋odex 鎵嶄細鏀捐鏁翠釜 Wave 4锛?
+- `did_imputation`銆乣eventstudyinteract`銆乣csdid` 閮藉畬鎴愮爺绌舵。妗?- 涓変釜鍛戒护閮借嚦灏戞湁 synthetic 榛勯噾鏍蜂緥
+- 涓変釜鍛戒护閮借嚦灏戞湁涓€涓湡瀹炲叕寮€鏁版嵁鍙岃窇鏍蜂緥
+- 鍏ㄩ噺娴嬭瘯閫氳繃
+- `docs/backlog.md` 涓?`docs/testing/test-case-catalog.md` 鐘舵€佷竴鑷?- 娌℃湁鏈В閲婄殑鍏抽敭缁熻鍙ｅ緞鍋忓樊

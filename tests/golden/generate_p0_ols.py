@@ -21,7 +21,7 @@ CASES_DIR = PROJECT_ROOT / "stata" / "cases"
 OUTPUT_DIR = PROJECT_ROOT / "stata" / "output"
 
 # Use temp directory to avoid OneDrive file locking
-TEMP_DIR = Path(tempfile.mkdtemp(prefix="statapy_p0_"))
+TEMP_DIR = Path(tempfile.mkdtemp(prefix="stataflow_p0_"))
 
 
 def generate_data():
@@ -49,7 +49,7 @@ def generate_data():
 
 def run_stata():
     """Run Stata .do file and read exported results."""
-    from statapy.stata_runner import StataRunner
+    from stataflow.stata_runner import StataRunner
     
     do_file = CASES_DIR / "p0_min_ols_auto.do"
     do_content = do_file.read_text(encoding="utf-8")

@@ -1,26 +1,21 @@
-# 下一轮任务包 004 返工：Wrapper Postestimation 公开语义收口
+# 涓嬩竴杞换鍔″寘 004 杩斿伐锛歐rapper Postestimation 鍏紑璇箟鏀跺彛
 
-## 基本信息
+## 鍩烘湰淇℃伅
 
-- 任务名称：Wrapper Postestimation 公开语义收口
-- 所属阶段：开源初版下一轮
-- 来源：任务包 004 被 Codex 退回后的定向返工
-- 优先级：P0
-- 执行人：Claude Code
-- 审查人：Codex
+- 浠诲姟鍚嶇О锛歐rapper Postestimation 鍏紑璇箟鏀跺彛
+- 鎵€灞為樁娈碉細寮€婧愬垵鐗堜笅涓€杞?- 鏉ユ簮锛氫换鍔″寘 004 琚?Codex 閫€鍥炲悗鐨勫畾鍚戣繑宸?- 浼樺厛绾э細P0
+- 鎵ц浜猴細Claude Code
+- 瀹℃煡浜猴細Codex
 
-## 返工目标
+## 杩斿伐鐩爣
 
-本次返工 **不要求新增新的计量算法**，只要求把公开 API 文档与真实 wrapper 语义收口。
+鏈杩斿伐 **涓嶈姹傛柊澧炴柊鐨勮閲忕畻娉?*锛屽彧瑕佹眰鎶婂叕寮€ API 鏂囨。涓庣湡瀹?wrapper 璇箟鏀跺彛銆?
+褰撳墠闃诲鐐规槸锛?
+- `compat.stata` wrapper 瀹為檯杩斿洖 `ResultSchema`
+- 浣?README 涓庢敮鎸佺煩闃垫妸杩欎簺 wrapper 鎻忚堪鎴愮洿鎺ユ敮鎸?`.predict()` / `.margins()`
 
-当前阻塞点是：
-
-- `compat.stata` wrapper 实际返回 `ResultSchema`
-- 但 README 与支持矩阵把这些 wrapper 描述成直接支持 `.predict()` / `.margins()`
-
-必须先解决这个公开语义冲突，才能把仓库当作开源 Alpha 对外发布。
-
-## 必读材料
+蹇呴』鍏堣В鍐宠繖涓叕寮€璇箟鍐茬獊锛屾墠鑳芥妸浠撳簱褰撲綔寮€婧?Alpha 瀵瑰鍙戝竷銆?
+## 蹇呰鏉愭枡
 
 1. `workspace/current-task/review-next-round-package-004-codex.md`
 2. `README.md`
@@ -29,53 +24,40 @@
 5. `docs/command-support-matrix/probit.md`
 6. `docs/command-support-matrix/poisson.md`
 7. `docs/command-support-matrix/ppmlhdfe.md`
-8. `src/statapy/compat/stata/`
+8. `src/stataflow/compat/stata/`
 
-## 必须完成的工作
+## 蹇呴』瀹屾垚鐨勫伐浣?
+### A. 缁熶竴 wrapper 鐨勫叕寮€璇箟
 
-### A. 统一 wrapper 的公开语义
+蹇呴』鏄庣‘骞惰惤瀹炰竴绉嶆柟妗堬細
 
-必须明确并落实一种方案：
+1. **淇濈暀褰撳墠璇箟**
+   - wrapper 杩斿洖 `ResultSchema`
+   - 鏂囨。涓嶈兘鍐嶆殫绀哄彲浠ョ洿鎺?`.predict()` / `.margins()`
 
-1. **保留当前语义**
-   - wrapper 返回 `ResultSchema`
-   - 文档不能再暗示可以直接 `.predict()` / `.margins()`
+鎴?
+2. **鎻愬崌褰撳墠璇箟**
+   - wrapper 杩斿洖鏀寔 postestimation 鐨勫璞?   - 闇€瑕佺湡姝ｈˉ鎺ュ彛鍜屾祴璇?
+涓嶅緱缁存寔褰撳墠鈥滀唬鐮佷竴绉嶈涔夛紝鏂囨。鍙︿竴绉嶈涔夆€濈殑鐘舵€併€?
+### B. 鏇存柊鍏紑鏂囨。
 
-或
-
-2. **提升当前语义**
-   - wrapper 返回支持 postestimation 的对象
-   - 需要真正补接口和测试
-
-不得维持当前“代码一种语义，文档另一种语义”的状态。
-
-### B. 更新公开文档
-
-至少必须同步更新：
-
+鑷冲皯蹇呴』鍚屾鏇存柊锛?
 - `README.md`
 - `docs/command-support-matrix/README.md`
-- 受影响命令的支持矩阵
+- 鍙楀奖鍝嶅懡浠ょ殑鏀寔鐭╅樀
 - `workspace/current-task/REPORT.md`
 
-### C. 增加公共接口测试
+### C. 澧炲姞鍏叡鎺ュ彛娴嬭瘯
 
-必须新增直接针对 wrapper 返回对象的测试，明确断言：
+蹇呴』鏂板鐩存帴閽堝 wrapper 杩斿洖瀵硅薄鐨勬祴璇曪紝鏄庣‘鏂█锛?
+- 鍝簺鏂规硶瀛樺湪
+- 鍝簺鏂规硶涓嶅瓨鍦?
+涓嶈兘鍐嶅彧闈犱及璁″櫒灞傛祴璇曟潵鎺╃洊 wrapper 璇箟閿欒銆?
+## 鏄庣‘涓嶅仛
 
-- 哪些方法存在
-- 哪些方法不存在
+- 涓嶆柊澧炴柊鐨勫懡浠?- 涓嶆墿鏂扮殑浼拌鑳藉姏
+- 涓嶆彁鍓嶅紑鍚笅涓€杞鍒?
+## 楠屾敹鏍囧噯
 
-不能再只靠估计器层测试来掩盖 wrapper 语义错误。
-
-## 明确不做
-
-- 不新增新的命令
-- 不扩新的估计能力
-- 不提前开启下一轮规划
-
-## 验收标准
-
-- [ ] README 示例与真实公开 API 一致
-- [ ] 支持矩阵不再夸大 wrapper postestimation 能力
-- [ ] wrapper 返回对象语义有直接测试覆盖
-- [ ] `pytest tests -v` 通过
+- [ ] README 绀轰緥涓庣湡瀹炲叕寮€ API 涓€鑷?- [ ] 鏀寔鐭╅樀涓嶅啀澶稿ぇ wrapper postestimation 鑳藉姏
+- [ ] wrapper 杩斿洖瀵硅薄璇箟鏈夌洿鎺ユ祴璇曡鐩?- [ ] `pytest tests -v` 閫氳繃

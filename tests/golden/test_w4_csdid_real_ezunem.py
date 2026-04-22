@@ -5,7 +5,7 @@ import pytest
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from statapy.estimators.csdid import CSDID
+from stataflow.estimators.csdid import CSDID
 from tests.golden.test_utils import tolerance_close
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent

@@ -1,27 +1,21 @@
-# Wave 2 Full Package：`IV / GMM` 整包任务
+# Wave 2 Full Package锛歚IV / GMM` 鏁村寘浠诲姟
 
-## 基本信息
+## 鍩烘湰淇℃伅
 
-- 任务名称：Wave 2 全包推进：`ivregress 2sls` + `ivreghdfe` 最小闭环
-- 所属命令族：`IV / GMM`
-- 对应 backlog 条目：
-  - `ivregress 2sls`
+- 浠诲姟鍚嶇О锛歐ave 2 鍏ㄥ寘鎺ㄨ繘锛歚ivregress 2sls` + `ivreghdfe` 鏈€灏忛棴鐜?- 鎵€灞炲懡浠ゆ棌锛歚IV / GMM`
+- 瀵瑰簲 backlog 鏉＄洰锛?  - `ivregress 2sls`
   - `ivreghdfe`
-- 优先级：P2
-- 执行人：Claude Code
-- 审查人：Codex
+- 浼樺厛绾э細P2
+- 鎵ц浜猴細Claude Code
+- 瀹℃煡浜猴細Codex
 
-## 任务目标
+## 浠诲姟鐩爣
 
-这是一个**整包 wave 任务**。Claude Code 需要在一个连续任务中完成 Wave 2 的研究、最小实现和真实数据验证，但必须按本任务卡内部的阶段门禁推进，不能跳步。
+杩欐槸涓€涓?*鏁村寘 wave 浠诲姟**銆侰laude Code 闇€瑕佸湪涓€涓繛缁换鍔′腑瀹屾垚 Wave 2 鐨勭爺绌躲€佹渶灏忓疄鐜板拰鐪熷疄鏁版嵁楠岃瘉锛屼絾蹇呴』鎸夋湰浠诲姟鍗″唴閮ㄧ殑闃舵闂ㄧ鎺ㄨ繘锛屼笉鑳借烦姝ャ€?
+鏈€缁堢洰鏍囷細
 
-最终目标：
-
-1. 完成 `ivregress 2sls` 的研究、最小实现、synthetic 对齐和真实数据对齐。
-2. 完成 `ivreghdfe` 的研究收束、最小实现、synthetic 对齐和真实数据对齐。
-3. 若全部通过，则将 Wave 2 对应条目标记为 `done`，并在回报中明确建议进入下一 wave。
-
-## 必读文档
+1. 瀹屾垚 `ivregress 2sls` 鐨勭爺绌躲€佹渶灏忓疄鐜般€乻ynthetic 瀵归綈鍜岀湡瀹炴暟鎹榻愩€?2. 瀹屾垚 `ivreghdfe` 鐨勭爺绌舵敹鏉熴€佹渶灏忓疄鐜般€乻ynthetic 瀵归綈鍜岀湡瀹炴暟鎹榻愩€?3. 鑻ュ叏閮ㄩ€氳繃锛屽垯灏?Wave 2 瀵瑰簲鏉＄洰鏍囪涓?`done`锛屽苟鍦ㄥ洖鎶ヤ腑鏄庣‘寤鸿杩涘叆涓嬩竴 wave銆?
+## 蹇呰鏂囨。
 
 1. `docs/operations/executor-playbook.md`
 2. `docs/project-charter.md`
@@ -32,125 +26,106 @@
 7. `docs/research/stata-source-inventory.md`
 8. `docs/research/public-datasets.md`
 9. `docs/research/ivreghdfe.md`
-10. 本任务卡
+10. 鏈换鍔″崱
 
-## 总体范围
+## 鎬讳綋鑼冨洿
 
-### 必做
+### 蹇呭仛
 
 - `ivregress 2sls`
 - `ivreghdfe`
-- synthetic 黄金样例
-- 至少一组真实公开数据样例
+- synthetic 榛勯噾鏍蜂緥
+- 鑷冲皯涓€缁勭湡瀹炲叕寮€鏁版嵁鏍蜂緥
 
-### 不做
+### 涓嶅仛
 
 - `liml`
 - `gmm`
-- 过度识别/弱工具的完整工具链
-- multi-way cluster
+- 杩囧害璇嗗埆/寮卞伐鍏风殑瀹屾暣宸ュ叿閾?- multi-way cluster
 - `ppmlhdfe`
-- 新的 DID 命令
+- 鏂扮殑 DID 鍛戒护
 
-## 执行原则
+## 鎵ц鍘熷垯
 
-本任务虽然是一整包，但仍必须按三个内部阶段推进：
-
+鏈换鍔¤櫧鐒舵槸涓€鏁村寘锛屼絾浠嶅繀椤绘寜涓変釜鍐呴儴闃舵鎺ㄨ繘锛?
 1. `Stage A: Research closure`
 2. `Stage B: Minimum implementation + synthetic`
 3. `Stage C: Real-data validation + hardening`
 
-任何一个阶段未通过，不得在回报中写成整个 Wave 2 完成。
+浠讳綍涓€涓樁娈垫湭閫氳繃锛屼笉寰楀湪鍥炴姤涓啓鎴愭暣涓?Wave 2 瀹屾垚銆?
+## Stage A锛歊esearch closure
 
-## Stage A：Research closure
-
-### 需要完成
-
-1. 将 `docs/research/ivreghdfe.md` 从占位文档补成可执行研究档案。
-2. 新增或补齐 `docs/research/ivregress-2sls.md`。
-3. 在 `docs/testing/test-case-catalog.md` 预登记以下样例：
+### 闇€瑕佸畬鎴?
+1. 灏?`docs/research/ivreghdfe.md` 浠庡崰浣嶆枃妗ｈˉ鎴愬彲鎵ц鐮旂┒妗ｆ銆?2. 鏂板鎴栬ˉ榻?`docs/research/ivregress-2sls.md`銆?3. 鍦?`docs/testing/test-case-catalog.md` 棰勭櫥璁颁互涓嬫牱渚嬶細
    - `w2_ivregress_basic`
    - `w2_ivregress_cluster`
    - `w2_ivregress_real_card`
    - `w2_ivreghdfe_basic`
    - `w2_ivreghdfe_cluster`
    - `w2_ivreghdfe_real_panel`
-4. 明确：
-   - `ivregress 2sls` 的结果字段、第一阶段与第二阶段统计口径
-   - `ivreghdfe` 与 `reghdfe` / `ivreg2` 的依赖关系
-   - 最小兼容子集
-   - 暂不支持的选项面
+4. 鏄庣‘锛?   - `ivregress 2sls` 鐨勭粨鏋滃瓧娈点€佺涓€闃舵涓庣浜岄樁娈电粺璁″彛寰?   - `ivreghdfe` 涓?`reghdfe` / `ivreg2` 鐨勪緷璧栧叧绯?   - 鏈€灏忓吋瀹瑰瓙闆?   - 鏆備笉鏀寔鐨勯€夐」闈?
+### 鐮旂┒缁撹蹇呴』鍥炵瓟
 
-### 研究结论必须回答
-
-- 2SLS 点估计与协方差的实现路径是什么
-- `vce(robust)` 和单 `cluster` 是否纳入本 wave 的最小实现
-- `ivreghdfe` 如何复用现有 `AbsorbingOLS` / `reghdfe` 基础
-- 真实数据样例使用哪一组数据
-
-## Stage B：Minimum implementation + synthetic
+- 2SLS 鐐逛及璁′笌鍗忔柟宸殑瀹炵幇璺緞鏄粈涔?- `vce(robust)` 鍜屽崟 `cluster` 鏄惁绾冲叆鏈?wave 鐨勬渶灏忓疄鐜?- `ivreghdfe` 濡備綍澶嶇敤鐜版湁 `AbsorbingOLS` / `reghdfe` 鍩虹
+- 鐪熷疄鏁版嵁鏍蜂緥浣跨敤鍝竴缁勬暟鎹?
+## Stage B锛歁inimum implementation + synthetic
 
 ### `ivregress 2sls`
 
-至少实现：
-
+鑷冲皯瀹炵幇锛?
 - `IV2SLS(data, y, x_exog, x_endog, instruments, add_constant=True)`
 - `fit(vce="ols")`
 - `fit(vce="cluster", cluster="...")`
-- 结果对象至少表达：
-  - `nobs`
+- 缁撴灉瀵硅薄鑷冲皯琛ㄨ揪锛?  - `nobs`
   - `df_model`
   - `df_resid`
   - `r2`
   - `rmse`
   - `f_stat`
-  - 系数与协方差
+  - 绯绘暟涓庡崗鏂瑰樊
 
 ### `ivreghdfe`
 
-至少实现：
-
-- 在 HDFE 基础上支持最小 2SLS 路径
-- `absorb` 支持 1-2 个 FE
+鑷冲皯瀹炵幇锛?
+- 鍦?HDFE 鍩虹涓婃敮鎸佹渶灏?2SLS 璺緞
+- `absorb` 鏀寔 1-2 涓?FE
 - `fit(vce="ols")`
-- 单 `cluster`
-- 默认 singleton drop 口径延续 `reghdfe`
+- 鍗?`cluster`
+- 榛樿 singleton drop 鍙ｅ緞寤剁画 `reghdfe`
 
-### synthetic 必做样例
+### synthetic 蹇呭仛鏍蜂緥
 
 - `w2_ivregress_basic`
 - `w2_ivregress_cluster`
 - `w2_ivreghdfe_basic`
 - `w2_ivreghdfe_cluster`
 
-## Stage C：Real-data validation + hardening
+## Stage C锛歊eal-data validation + hardening
 
-### `ivregress 2sls` 真实数据
+### `ivregress 2sls` 鐪熷疄鏁版嵁
 
-至少完成一组公开真实数据样例。优先候选：
+鑷冲皯瀹屾垚涓€缁勫叕寮€鐪熷疄鏁版嵁鏍蜂緥銆備紭鍏堝€欓€夛細
 
-- `Card` returns-to-schooling 数据
-- 其他公开可复现的教学 IV 数据
+- `Card` returns-to-schooling 鏁版嵁
+- 鍏朵粬鍏紑鍙鐜扮殑鏁欏 IV 鏁版嵁
 
-若本地不存在，可下载到：
+鑻ユ湰鍦颁笉瀛樺湪锛屽彲涓嬭浇鍒帮細
 
 - `research/data/public/iv/`
 
-并补数据文档。
+骞惰ˉ鏁版嵁鏂囨。銆?
+### `ivreghdfe` 鐪熷疄鏁版嵁
 
-### `ivreghdfe` 真实数据
-
-至少完成一组公开真实 panel 数据样例。优先候选：
+鑷冲皯瀹屾垚涓€缁勫叕寮€鐪熷疄 panel 鏁版嵁鏍蜂緥銆備紭鍏堝€欓€夛細
 
 - `wagepan`
 
-允许为了计算验证而构造派生变量（如滞后工具、外生工具变量），但必须在回报中明确：
+鍏佽涓轰簡璁＄畻楠岃瘉鑰屾瀯閫犳淳鐢熷彉閲忥紙濡傛粸鍚庡伐鍏枫€佸鐢熷伐鍏峰彉閲忥級锛屼絾蹇呴』鍦ㄥ洖鎶ヤ腑鏄庣‘锛?
+- 娲剧敓瑙勫垯
+- Stata 涓?Python 浣跨敤瀹屽叏鐩稿悓鐨勬牱鏈笌鍙橀噺瀹氫箟
+- 杩欓噷鐨勭洰鐨勫彧鏄獙璇佹暟鍊煎疄鐜帮紝涓嶅璇嗗埆鏈夋晥鎬т綔棰濆鎵胯
 
-- 派生规则
-- Stata 与 Python 使用完全相同的样本与变量定义
-- 这里的目的只是验证数值实现，不对识别有效性作额外承诺
-
-### 必须比对字段
+### 蹇呴』姣斿瀛楁
 
 - `nobs`
 - `df_model`
@@ -158,35 +133,29 @@
 - `r2`
 - `rmse`
 - `f_stat`
-- 系数
-- 标准误
-- `cluster_count`（cluster 时）
-- `absorb_vars`（`ivreghdfe` 时）
+- 绯绘暟
+- 鏍囧噯璇?- `cluster_count`锛坈luster 鏃讹級
+- `absorb_vars`锛坄ivreghdfe` 鏃讹級
 
-## 允许修改的文件
-
-- `src/statapy/estimators/` 下 IV / HDFE 相关最小实现
-- `src/statapy/results/result.py`
-- `src/statapy/__init__.py`
-- `src/statapy/estimators/__init__.py`
-- `tests/golden/` 下 Wave 2 对应测试
-- 必要的测试工具文件
-- `docs/research/` 下对应研究档案
-- `docs/testing/test-case-catalog.md`
+## 鍏佽淇敼鐨勬枃浠?
+- `src/stataflow/estimators/` 涓?IV / HDFE 鐩稿叧鏈€灏忓疄鐜?- `src/stataflow/results/result.py`
+- `src/stataflow/__init__.py`
+- `src/stataflow/estimators/__init__.py`
+- `tests/golden/` 涓?Wave 2 瀵瑰簲娴嬭瘯
+- 蹇呰鐨勬祴璇曞伐鍏锋枃浠?- `docs/research/` 涓嬪搴旂爺绌舵。妗?- `docs/testing/test-case-catalog.md`
 - `docs/backlog.md`
 - `docs/research/public-datasets.md`
 - `workspace/current-task/REPORT.md`
 
-## 禁止事项
+## 绂佹浜嬮」
 
-- 不得把未完成的子阶段写成整个 Wave 2 完成
-- 不得把真实数据失败写成“可接受”直接放行
-- 不得顺势扩展到 `liml`、`gmm`、多向 cluster、`ppmlhdfe`
-- 不得修改项目章程或公共 API 原则
+- 涓嶅緱鎶婃湭瀹屾垚鐨勫瓙闃舵鍐欐垚鏁翠釜 Wave 2 瀹屾垚
+- 涓嶅緱鎶婄湡瀹炴暟鎹け璐ュ啓鎴愨€滃彲鎺ュ彈鈥濈洿鎺ユ斁琛?- 涓嶅緱椤哄娍鎵╁睍鍒?`liml`銆乣gmm`銆佸鍚?cluster銆乣ppmlhdfe`
+- 涓嶅緱淇敼椤圭洰绔犵▼鎴栧叕鍏?API 鍘熷垯
 
-## 强制验证命令
+## 寮哄埗楠岃瘉鍛戒护
 
-至少必须运行并在回报中给出结果：
+鑷冲皯蹇呴』杩愯骞跺湪鍥炴姤涓粰鍑虹粨鏋滐細
 
 ```bash
 python -m pytest tests/golden/test_w2_ivregress_basic.py -v
@@ -198,36 +167,29 @@ python -m pytest tests/golden/test_w2_ivreghdfe_real_panel.py -v
 python -m pytest tests -v
 ```
 
-若最终采用不同测试文件名，需在回报中解释并给出实际命令。
+鑻ユ渶缁堥噰鐢ㄤ笉鍚屾祴璇曟枃浠跺悕锛岄渶鍦ㄥ洖鎶ヤ腑瑙ｉ噴骞剁粰鍑哄疄闄呭懡浠ゃ€?
+## 鍥炴姤瑕佹眰
 
-## 回报要求
-
-回报必须分三段写：
-
+鍥炴姤蹇呴』鍒嗕笁娈靛啓锛?
 1. `Stage A`
-   - 研究档案改动
-   - 数据与样例登记
-   - 最小实现边界
-2. `Stage B`
-   - 实现文件
-   - synthetic 对齐结果
-   - 尚存统计风险
+   - 鐮旂┒妗ｆ鏀瑰姩
+   - 鏁版嵁涓庢牱渚嬬櫥璁?   - 鏈€灏忓疄鐜拌竟鐣?2. `Stage B`
+   - 瀹炵幇鏂囦欢
+   - synthetic 瀵归綈缁撴灉
+   - 灏氬瓨缁熻椋庨櫓
 3. `Stage C`
-   - 真实数据来源
-   - 数据预处理与工具变量定义
-   - Stata 命令
-   - Python 调用
-   - 对齐字段
-   - Wave 2 是否可标记为完成
+   - 鐪熷疄鏁版嵁鏉ユ簮
+   - 鏁版嵁棰勫鐞嗕笌宸ュ叿鍙橀噺瀹氫箟
+   - Stata 鍛戒护
+   - Python 璋冪敤
+   - 瀵归綈瀛楁
+   - Wave 2 鏄惁鍙爣璁颁负瀹屾垚
 
-## Wave 2 通过标准
+## Wave 2 閫氳繃鏍囧噯
 
-只有同时满足以下条件，Codex 才会认定整个 Wave 2 完成：
-
-- `ivregress 2sls` synthetic + real-data 全通过
-- `ivreghdfe` synthetic + real-data 全通过
-- 全量回归测试通过
-- `docs/backlog.md` 与 `docs/testing/test-case-catalog.md` 状态一致
-- 无未解释的关键统计偏差
-
-若任一项不满足，Codex 将只认定已完成的子阶段，不会放行整个 wave。
+鍙湁鍚屾椂婊¤冻浠ヤ笅鏉′欢锛孋odex 鎵嶄細璁ゅ畾鏁翠釜 Wave 2 瀹屾垚锛?
+- `ivregress 2sls` synthetic + real-data 鍏ㄩ€氳繃
+- `ivreghdfe` synthetic + real-data 鍏ㄩ€氳繃
+- 鍏ㄩ噺鍥炲綊娴嬭瘯閫氳繃
+- `docs/backlog.md` 涓?`docs/testing/test-case-catalog.md` 鐘舵€佷竴鑷?- 鏃犳湭瑙ｉ噴鐨勫叧閿粺璁″亸宸?
+鑻ヤ换涓€椤逛笉婊¤冻锛孋odex 灏嗗彧璁ゅ畾宸插畬鎴愮殑瀛愰樁娈碉紝涓嶄細鏀捐鏁翠釜 wave銆?

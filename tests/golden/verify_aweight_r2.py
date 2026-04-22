@@ -13,7 +13,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from tests.golden.test_utils import run_stata_ols
 import tempfile
 
-TEMP_DIR = Path(tempfile.mkdtemp(prefix="statapy_aweight_r2_"))
+TEMP_DIR = Path(tempfile.mkdtemp(prefix="stataflow_aweight_r2_"))
 
 
 def main():

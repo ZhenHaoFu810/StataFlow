@@ -14,7 +14,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from tests.golden.test_utils import run_stata_ols, StataRunner
 
-TEMP_DIR = Path(tempfile.mkdtemp(prefix="statapy_fe_full_"))
+TEMP_DIR = Path(tempfile.mkdtemp(prefix="stataflow_fe_full_"))
 
 
 def generate_panel_data() -> pd.DataFrame:

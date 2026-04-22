@@ -7,7 +7,7 @@ Ordinary least squares (OLS) linear regression, aligned with Stata 17 `regress`.
 ## Python Entry
 
 ```python
-from statapy.compat.stata import regress
+from stataflow.compat.stata import regress
 
 result = regress(data, y="depvar", x=["x1", "x2"], vce="robust")
 ```
@@ -57,11 +57,12 @@ Unsupported factor syntax (`ib.` without level, `o.` without level, `b.` without
 
 ## Alignment Evidence
 
+
 - Synthetic cases: `tests/golden/test_p1_ols_basic.py`, `tests/golden/test_p1_cluster_firm.py`
 - Factor-syntax cases: `tests/golden/test_a2_factor_regress_basic.py` — `regress y i.g##c.x1`; `tests/golden/test_a2_factor_regress_bare.py` — `regress y x1##x2` mapped to Stata `c.x1##c.x2`; `tests/golden/test_a2_factor_regress_base.py` — `regress y ib2.g##c.x1`
-- Real-data cases: `tests/golden/test_p1_ols_missing_drop.py` (Wooldridge wage1 subset)
+- Real-data cases: `tests/golden/test_v1_regress_real_grunfeld.py` (Grunfeld investment panel)
 - Stata 17 dual-run verified for OLS, HC1 robust, and cluster-robust VCE
 
 ## Core Implementation
 
-`src/statapy/estimators/ols.py`
+`src/stataflow/estimators/ols.py`

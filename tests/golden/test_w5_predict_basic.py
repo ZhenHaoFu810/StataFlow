@@ -5,8 +5,8 @@ import pandas as pd
 from pathlib import Path
 import pytest
 
-from statapy import OLS, Logit
-from statapy.stata_runner import StataRunner
+from stataflow import OLS, Logit
+from stataflow.stata_runner import StataRunner
 from tests.golden.test_utils import (
     PROJECT_ROOT,
     PROJECT_STATA_OUTPUT,

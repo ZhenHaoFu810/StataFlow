@@ -14,9 +14,9 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from tests.golden.test_utils import run_stata_ols
-from statapy import OLS
+from stataflow import OLS
 
-TEMP_DIR = Path(tempfile.mkdtemp(prefix="statapy_aweight_verify_"))
+TEMP_DIR = Path(tempfile.mkdtemp(prefix="stataflow_aweight_verify_"))
 
 
 def generate_test_data() -> pd.DataFrame:

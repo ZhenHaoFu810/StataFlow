@@ -1,26 +1,23 @@
-# Wave 3 Rework：`Binary / Count` 推断语义返工
+# Wave 3 Rework锛歚Binary / Count` 鎺ㄦ柇璇箟杩斿伐
 
-## 基本信息
+## 鍩烘湰淇℃伅
 
-- 任务名称：Wave 3 返工：修正 MLE 推断分布、probit sandwich score、`ppmlhdfe` VCE 语义
-- 所属命令族：`Binary / Count`
-- 优先级：P0
-- 执行人：Claude Code
-- 审查人：Codex
+- 浠诲姟鍚嶇О锛歐ave 3 杩斿伐锛氫慨姝?MLE 鎺ㄦ柇鍒嗗竷銆乸robit sandwich score銆乣ppmlhdfe` VCE 璇箟
+- 鎵€灞炲懡浠ゆ棌锛歚Binary / Count`
+- 浼樺厛绾э細P0
+- 鎵ц浜猴細Claude Code
+- 瀹℃煡浜猴細Codex
 
-## 返工背景
+## 杩斿伐鑳屾櫙
 
-Wave 3 当前 **测试全绿但不予放行**。阻塞原因不是系数不对，而是推断层统计口径存在错误：
+Wave 3 褰撳墠 **娴嬭瘯鍏ㄧ豢浣嗕笉浜堟斁琛?*銆傞樆濉炲師鍥犱笉鏄郴鏁颁笉瀵癸紝鑰屾槸鎺ㄦ柇灞傜粺璁″彛寰勫瓨鍦ㄩ敊璇細
 
-1. `logit` / `probit` / `poisson` 把 MLE 推断做成了 `t` 分布，而不是 Stata 的 `z` 分布。
-2. `probit` 的 robust / cluster meat 没有使用正确的 score。
-3. `PPMLHDFE.fit(vce="ols")` 的实现语义与命名不一致。
-
-详细问题见：
+1. `logit` / `probit` / `poisson` 鎶?MLE 鎺ㄦ柇鍋氭垚浜?`t` 鍒嗗竷锛岃€屼笉鏄?Stata 鐨?`z` 鍒嗗竷銆?2. `probit` 鐨?robust / cluster meat 娌℃湁浣跨敤姝ｇ‘鐨?score銆?3. `PPMLHDFE.fit(vce="ols")` 鐨勫疄鐜拌涔変笌鍛藉悕涓嶄竴鑷淬€?
+璇︾粏闂瑙侊細
 
 - `workspace/current-task/review-wave-3-codex.md`
 
-## 必读文档
+## 蹇呰鏂囨。
 
 1. `workspace/current-task/review-wave-3-codex.md`
 2. `docs/research/logit.md`
@@ -29,63 +26,55 @@ Wave 3 当前 **测试全绿但不予放行**。阻塞原因不是系数不对�
 5. `docs/research/ppmlhdfe.md`
 6. `docs/tasks/wave-3-full-package-binary-count.md`
 
-## 任务目标
+## 浠诲姟鐩爣
 
-### A. 修正 MLE 推断分布
+### A. 淇 MLE 鎺ㄦ柇鍒嗗竷
 
-对以下命令：
+瀵逛互涓嬪懡浠わ細
 
 - `logit`
 - `probit`
 - `poisson`
 
-将：
+灏嗭細
 
 - `p_value`
 - `ci_low`
 - `ci_high`
 
-改为基于 **标准正态分布** 计算，而不是 `t` 分布。
+鏀逛负鍩轰簬 **鏍囧噯姝ｆ€佸垎甯?* 璁＄畻锛岃€屼笉鏄?`t` 鍒嗗竷銆?
+### B. 淇 `probit` 鐨?robust / cluster score
 
-### B. 修正 `probit` 的 robust / cluster score
+鍦?`Probit._compute_vce()` 涓細
 
-在 `Probit._compute_vce()` 中：
+- robust meat 蹇呴』浣跨敤姝ｇ‘鐨?probit 瑙傛祴寰楀垎
+- cluster meat 蹇呴』浣跨敤鎸?cluster 鑱氬悎鐨勬纭?probit score
 
-- robust meat 必须使用正确的 probit 观测得分
-- cluster meat 必须使用按 cluster 聚合的正确 probit score
+涓嶅緱缁х画浣跨敤 `X' (y - mu)` 鐨勭畝鍖栧舰寮忋€?
+### C. 鏀跺彛 `ppmlhdfe` 鐨?`vce="ols"` 璇箟
 
-不得继续使用 `X' (y - mu)` 的简化形式。
-
-### C. 收口 `ppmlhdfe` 的 `vce="ols"` 语义
-
-二选一，但必须明确完成：
-
-1. 严格实现 `vce="ols"` 的 conventional VCE；或
-2. 重构 API / 文档 / 元数据，使默认稳健语义与 `vce="ols"` 不再混淆。
-
-不允许继续保持“名字叫 ols，代码跑 robust”的状态。
-
-## 允许修改的文件
-
-- `src/statapy/estimators/glm.py`
-- `src/statapy/estimators/ppmlhdfe.py`
-- `src/statapy/results/result.py`
-- `tests/golden/` 下 Wave 3 相关测试
-- 必要的测试工具文件
-- `docs/research/ppmlhdfe.md`
+浜岄€変竴锛屼絾蹇呴』鏄庣‘瀹屾垚锛?
+1. 涓ユ牸瀹炵幇 `vce="ols"` 鐨?conventional VCE锛涙垨
+2. 閲嶆瀯 API / 鏂囨。 / 鍏冩暟鎹紝浣块粯璁ょǔ鍋ヨ涔変笌 `vce="ols"` 涓嶅啀娣锋穯銆?
+涓嶅厑璁哥户缁繚鎸佲€滃悕瀛楀彨 ols锛屼唬鐮佽窇 robust鈥濈殑鐘舵€併€?
+## 鍏佽淇敼鐨勬枃浠?
+- `src/stataflow/estimators/glm.py`
+- `src/stataflow/estimators/ppmlhdfe.py`
+- `src/stataflow/results/result.py`
+- `tests/golden/` 涓?Wave 3 鐩稿叧娴嬭瘯
+- 蹇呰鐨勬祴璇曞伐鍏锋枃浠?- `docs/research/ppmlhdfe.md`
 - `workspace/current-task/REPORT.md`
 
-## 必须新增或补强的测试
+## 蹇呴』鏂板鎴栬ˉ寮虹殑娴嬭瘯
 
-至少新增以下一类：
+鑷冲皯鏂板浠ヤ笅涓€绫伙細
 
-- `probit` 的 robust 或 cluster golden test
-- `logit/probit/poisson` 的 `p_value` / `ci` 字段断言
-- `ppmlhdfe` 的 `vcetype` / VCE 语义断言
+- `probit` 鐨?robust 鎴?cluster golden test
+- `logit/probit/poisson` 鐨?`p_value` / `ci` 瀛楁鏂█
+- `ppmlhdfe` 鐨?`vcetype` / VCE 璇箟鏂█
 
-建议三类都补。
-
-## 强制验证命令
+寤鸿涓夌被閮借ˉ銆?
+## 寮哄埗楠岃瘉鍛戒护
 
 ```bash
 python -m pytest tests/golden/test_w3_logit_basic.py -v
@@ -100,24 +89,19 @@ python -m pytest tests/golden/test_w3_ppmlhdfe_real_gravity.py -v
 python -m pytest tests -v
 ```
 
-如新增新的 golden 测试文件，必须在回报中列出并实际运行。
+濡傛柊澧炴柊鐨?golden 娴嬭瘯鏂囦欢锛屽繀椤诲湪鍥炴姤涓垪鍑哄苟瀹為檯杩愯銆?
+## 鍥炴姤瑕佹眰
 
-## 回报要求
+鍥炴姤蹇呴』鏄庣‘璇存槑锛?
+1. MLE 鍛戒护鐨?`z` 鍒嗗竷鎺ㄦ柇濡備綍瀹炵幇
+2. `probit` score 鐨勫叕寮忎笌瀹炵幇瀵瑰簲鍏崇郴
+3. `ppmlhdfe` 鏈€缁堥€夋嫨浜嗗摢绉?`vce="ols"` 璇箟鏀跺彛鏂规
+4. 鍝簺娴嬭瘯鏄繖娆℃柊澧炵殑锛岃鐩栦簡鍝簺涔嬪墠鏈鐩栫殑瀛楁
+5. 鍏ㄩ噺娴嬭瘯缁撴灉
 
-回报必须明确说明：
+## 閫氳繃鏍囧噯
 
-1. MLE 命令的 `z` 分布推断如何实现
-2. `probit` score 的公式与实现对应关系
-3. `ppmlhdfe` 最终选择了哪种 `vce="ols"` 语义收口方案
-4. 哪些测试是这次新增的，覆盖了哪些之前未覆盖的字段
-5. 全量测试结果
-
-## 通过标准
-
-只有同时满足以下条件，Codex 才会重新考虑放行 Wave 3：
-
-- `logit` / `probit` / `poisson` 的推断分布改为 `z`
-- `probit` 的 robust / cluster sandwich 实现与研究档案一致
-- `ppmlhdfe` 的 `vce="ols"` 命名与实现不再冲突
-- 新增测试确实覆盖了这次发现的问题
-- 全量回归测试通过
+鍙湁鍚屾椂婊¤冻浠ヤ笅鏉′欢锛孋odex 鎵嶄細閲嶆柊鑰冭檻鏀捐 Wave 3锛?
+- `logit` / `probit` / `poisson` 鐨勬帹鏂垎甯冩敼涓?`z`
+- `probit` 鐨?robust / cluster sandwich 瀹炵幇涓庣爺绌舵。妗堜竴鑷?- `ppmlhdfe` 鐨?`vce="ols"` 鍛藉悕涓庡疄鐜颁笉鍐嶅啿绐?- 鏂板娴嬭瘯纭疄瑕嗙洊浜嗚繖娆″彂鐜扮殑闂
+- 鍏ㄩ噺鍥炲綊娴嬭瘯閫氳繃

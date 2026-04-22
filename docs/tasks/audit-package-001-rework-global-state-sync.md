@@ -1,73 +1,51 @@
-# 审计后任务包 001 返工：`rdrobust` 全局状态与证据链同步
+# 瀹¤鍚庝换鍔″寘 001 杩斿伐锛歚rdrobust` 鍏ㄥ眬鐘舵€佷笌璇佹嵁閾惧悓姝?
+## 1. 杩斿伐鐩爣
 
-## 1. 返工目标
+鏈杩斿伐**涓嶈姹傜户缁墿 `rdrobust` 绠楁硶涓昏矾寰?*銆?
+涓荤洰鏍囧彧鏈変竴涓細
 
-本次返工**不要求继续扩 `rdrobust` 算法主路径**。
+鎶?`rdrobust` 浠庘€滃眬閮ㄥ疄鐜板凡瀹屾垚鈥濇帹杩涘埌鈥滈」鐩叏灞€鐘舵€併€佹祴璇曠洰褰曘€乻upport matrix 鍏ュ彛銆佹墽琛屾姤鍛娾€濆叏閮ㄥ悓姝ヤ竴鑷淬€?
+## 2. 蹇呴』瀹屾垚鐨勫唴瀹?
+### A. 鍚屾鍏ㄥ眬浠诲姟姹?
+鏇存柊 [docs/backlog.md](</D:/OneDrive - SAIF/PhD3/StataFlow/docs/backlog.md>)锛?
+- 姝ｅ紡澧炲姞 `rdrobust` 鏉＄洰
+- 鏄庣‘瀹冨綋鍓嶇殑鍛戒护鏃忓綊灞?- 鏄庣‘瀹冨綋鍓嶇殑鐘舵€佷笉鏄?`done/full`锛岃€屾槸涓?support matrix 涓€鑷寸殑瀛愰泦鐘舵€?
+### B. 鍚屾娴嬭瘯鏍蜂緥鐩綍
 
-主目标只有一个：
+鏇存柊 [docs/testing/test-case-catalog.md](</D:/OneDrive - SAIF/PhD3/StataFlow/docs/testing/test-case-catalog.md>)锛?
+- 澧炲姞 `rdrobust` 鐨?synthetic case
+- 澧炲姞 `rdrobust` 鐨?real-data / official-example case
+- 鐘舵€佸簲涓庡綋鍓嶇湡瀹炴祴璇曟儏鍐典竴鑷?
+### C. 鍚屾 support matrix 鎬诲叆鍙?
+鏇存柊 [docs/command-support-matrix/README.md](</D:/OneDrive - SAIF/PhD3/StataFlow/docs/command-support-matrix/README.md>)锛?
+- 鍦?`Research Archives` 娈佃惤涓姞鍏?`rdrobust-source-map.md`
+- 濡傛湁蹇呰锛岃皟鏁?`Alpha 鈥?Partial` 鐨勭姸鎬佽鏄庯紝浣垮叾涓?`rdrobust.md` 淇濇寔涓€鑷?
+### D. 淇鎵ц鎶ュ憡
 
-把 `rdrobust` 从“局部实现已完成”推进到“项目全局状态、测试目录、support matrix 入口、执行报告”全部同步一致。
+鏇存柊 [workspace/current-task/REPORT.md](</D:/OneDrive - SAIF/PhD3/StataFlow/workspace/current-task/REPORT.md>)锛?
+- 鎾ゅ洖鈥滃叚鍛戒护瀹屾暣搴︾姸鎬佸凡缁熶竴鏀跺彛鈥濊繖绫讳笉鍑嗙‘琛ㄨ堪
+- 鍥炲～鏈€鏂?fresh run 缁撴灉
+- 鏄庣‘璇存槑鏈疆杩斿伐鍙仛鐘舵€佸悓姝ワ紝涓嶆墿绠楁硶闈?
+## 3. 涓嶉渶瑕佸仛鐨勪簨
 
-## 2. 必须完成的内容
+鏈疆涓嶈棰濆鍋氾細
 
-### A. 同步全局任务池
+- `rdrobust` 鏂扮畻娉曟墿灞?- `fuzzy` / `bwselect` / `cluster` 鏂板姛鑳?- 鍏朵粬 vendor 鍛戒护鍔熻兘鎵╁睍
 
-更新 [docs/backlog.md](</D:/OneDrive - SAIF/PhD3/Stata2Python/docs/backlog.md>)：
+闄ら潪浣犲湪鍚屾鏂囨。鏃跺彂鐜颁細鐩存帴褰卞搷鐜版湁缁撹鐨勪弗閲嶉敊璇€?
+## 4. 楠岃瘉瑕佹眰
 
-- 正式增加 `rdrobust` 条目
-- 明确它当前的命令族归属
-- 明确它当前的状态不是 `done/full`，而是与 support matrix 一致的子集状态
-
-### B. 同步测试样例目录
-
-更新 [docs/testing/test-case-catalog.md](</D:/OneDrive - SAIF/PhD3/Stata2Python/docs/testing/test-case-catalog.md>)：
-
-- 增加 `rdrobust` 的 synthetic case
-- 增加 `rdrobust` 的 real-data / official-example case
-- 状态应与当前真实测试情况一致
-
-### C. 同步 support matrix 总入口
-
-更新 [docs/command-support-matrix/README.md](</D:/OneDrive - SAIF/PhD3/Stata2Python/docs/command-support-matrix/README.md>)：
-
-- 在 `Research Archives` 段落中加入 `rdrobust-source-map.md`
-- 如有必要，调整 `Alpha — Partial` 的状态说明，使其与 `rdrobust.md` 保持一致
-
-### D. 修正执行报告
-
-更新 [workspace/current-task/REPORT.md](</D:/OneDrive - SAIF/PhD3/Stata2Python/workspace/current-task/REPORT.md>)：
-
-- 撤回“六命令完整度状态已统一收口”这类不准确表述
-- 回填最新 fresh run 结果
-- 明确说明本轮返工只做状态同步，不扩算法面
-
-## 3. 不需要做的事
-
-本轮不要额外做：
-
-- `rdrobust` 新算法扩展
-- `fuzzy` / `bwselect` / `cluster` 新功能
-- 其他 vendor 命令功能扩展
-
-除非你在同步文档时发现会直接影响现有结论的严重错误。
-
-## 4. 验证要求
-
-至少执行并回报：
+鑷冲皯鎵ц骞跺洖鎶ワ細
 
 ```powershell
 python -m pytest tests/test_rdrobust.py -v
 python -m pytest tests -v
 ```
 
-如果代码本身没有变化，可以在报告里说明“fresh run 主要用于确认返工未引入回归”。
+濡傛灉浠ｇ爜鏈韩娌℃湁鍙樺寲锛屽彲浠ュ湪鎶ュ憡閲岃鏄庘€渇resh run 涓昏鐢ㄤ簬纭杩斿伐鏈紩鍏ュ洖褰掆€濄€?
+## 5. 瀹屾垚鏍囧噯
 
-## 5. 完成标准
-
-本轮返工通过的条件是：
-
-- `rdrobust` 已正式进入 backlog
-- `rdrobust` 已进入 test-case-catalog
-- `rdrobust-source-map.md` 已进入 command-support-matrix README 的总入口
-- 报告不再夸大完成度
-
+鏈疆杩斿伐閫氳繃鐨勬潯浠舵槸锛?
+- `rdrobust` 宸叉寮忚繘鍏?backlog
+- `rdrobust` 宸茶繘鍏?test-case-catalog
+- `rdrobust-source-map.md` 宸茶繘鍏?command-support-matrix README 鐨勬€诲叆鍙?- 鎶ュ憡涓嶅啀澶稿ぇ瀹屾垚搴?

@@ -86,7 +86,7 @@ class TestP3AregBasic:
     @pytest.fixture(scope="class")
     def python_result(self, test_data):
         """Run Python AbsorbingOLS."""
-        from statapy import AbsorbingOLS
+        from stataflow import AbsorbingOLS
         model = AbsorbingOLS(
             data=test_data,
             y="y",

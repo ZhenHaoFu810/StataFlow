@@ -1,90 +1,68 @@
-# Codex Review：审计主线任务包 002（`reghdfe` 完整度推进 Phase B）
+# Codex Review锛氬璁′富绾夸换鍔″寘 002锛坄reghdfe` 瀹屾暣搴︽帹杩?Phase B锛?
+## 瀹℃煡缁撹
 
-## 审查结论
+**缁撹锛氭墦鍥炪€?*
 
-**结论：打回。**
-
-本轮 `reghdfe` 的实现主线和测试主线基本成立，但还不能下放下一步主线任务，原因不是算法失败，而是 **核心证据链文档没有完全收口**。
-
-我实际复跑了：
-
+鏈疆 `reghdfe` 鐨勫疄鐜颁富绾垮拰娴嬭瘯涓荤嚎鍩烘湰鎴愮珛锛屼絾杩樹笉鑳戒笅鏀句笅涓€姝ヤ富绾夸换鍔★紝鍘熷洜涓嶆槸绠楁硶澶辫触锛岃€屾槸 **鏍稿績璇佹嵁閾炬枃妗ｆ病鏈夊畬鍏ㄦ敹鍙?*銆?
+鎴戝疄闄呭璺戜簡锛?
 ```powershell
 python -m pytest tests/test_hdfe_synthetic.py -v
 python -m pytest tests/golden/test_p3_reghdfe_basic.py tests/golden/test_p3_reghdfe_cluster.py tests/golden/test_p3_reghdfe_two_fe.py tests/golden/test_p3_reghdfe_real_panel.py tests/golden/test_p3_reghdfe_keepsingletons.py -v
 python -m pytest tests -v
 ```
 
-结果分别为：
+缁撴灉鍒嗗埆涓猴細
 
 - `25 passed`
 - `74 passed`
 - `663 passed`
 
-这说明：
+杩欒鏄庯細
 
 - `keepsingletons`
 - `noconstant`
 - `predict(xb/xbd/d/residuals/dresiduals)`
 
-这批新增能力在实现层和测试层都已经站住。
+杩欐壒鏂板鑳藉姏鍦ㄥ疄鐜板眰鍜屾祴璇曞眰閮藉凡缁忕珯浣忋€?
+闃诲鐐瑰湪浜庯細浠诲姟鍖?002 鏄庣‘瑕佹眰鍚屾鏇存柊 `reghdfe-source-map.md` 涓?`reghdfe.md`锛屼絾杩欎袱浠芥枃妗ｄ粛淇濈暀浜嗕笌褰撳墠瀹炵幇鐩稿啿绐佺殑鏃х粨璁恒€?
+## 闃诲闂
 
-阻塞点在于：任务包 002 明确要求同步更新 `reghdfe-source-map.md` 与 `reghdfe.md`，但这两份文档仍保留了与当前实现相冲突的旧结论。
+### 1. `reghdfe-source-map.md` 鍐呴儴浠嶄繚鐣欐棫鐨?Phase A `predict` 缁撹
 
-## 阻塞问题
+鏂囦欢浣嶇疆锛?
+- [docs/research/reghdfe-source-map.md](</D:/OneDrive - SAIF/PhD3/StataFlow/docs/research/reghdfe-source-map.md>)
 
-### 1. `reghdfe-source-map.md` 内部仍保留旧的 Phase A `predict` 结论
+闂锛?
+- 绗?4 鑺備粛鍐欙細
+  - `xb` = 鍚?FE 鐨勫畬鏁撮娴?  - `d` / `xbd` = 鏈疄鐜?- 杩欏拰褰撳墠鐪熷疄浠ｇ爜銆乻upport matrix銆乻ynthetic tests銆佹姤鍛婇兘鐭涚浘銆?
+杩欎笉鏄帾杈為棶棰橈紝鑰屾槸 source-backed 瀹¤鏂囨。鍐呴儴鑷浉鐭涚浘锛屼細鐩存帴璇鍚庣画鐨勬簮鐮佺骇瀹屾暣澶嶇幇宸ヤ綔銆?
+### 2. `reghdfe-source-map.md` 鐨?wrapper parameter matrix 浠嶄繚鐣欐棫鐨勬湭鏀寔缁撹
 
-文件位置：
+鍚屼竴鏂囦欢涓紝绗?5 鑺備粛鍐欙細
 
-- [docs/research/reghdfe-source-map.md](</D:/OneDrive - SAIF/PhD3/Stata2Python/docs/research/reghdfe-source-map.md>)
+- `keepsingletons`锛歸rapper 涓嶆毚闇?- `noconstant`锛歸rapper 鎬绘槸鍔犲父鏁?
+浣嗗綋鍓嶅疄闄呬唬鐮侊細
 
-问题：
+- `stataflow.compat.stata.reghdfe(..., keepsingletons=True)`
+- `stataflow.compat.stata.reghdfe(..., noconstant=True)`
 
-- 第 4 节仍写：
-  - `xb` = 含 FE 的完整预测
-  - `d` / `xbd` = 未实现
-- 这和当前真实代码、support matrix、synthetic tests、报告都矛盾。
+閮藉凡鏀寔銆?
+### 3. `reghdfe.md` 椤堕儴瀹屾暣搴︾姸鎬佷粛鍋滅暀鍦?鈥淧hase A Subset鈥?
+鏂囦欢浣嶇疆锛?
+- [docs/command-support-matrix/reghdfe.md](</D:/OneDrive - SAIF/PhD3/StataFlow/docs/command-support-matrix/reghdfe.md>)
 
-这不是措辞问题，而是 source-backed 审计文档内部自相矛盾，会直接误导后续的源码级完整复现工作。
+闂锛?
+- 椤堕儴浠嶅啓 `Partial / Phase A Subset`
+- 浣嗘湰杞换鍔℃湰韬氨鏄鎺ㄨ繘鍒?Phase B锛屽苟涓旂‘瀹炶ˉ榻愪簡 Phase B 琛屼负
 
-### 2. `reghdfe-source-map.md` 的 wrapper parameter matrix 仍保留旧的未支持结论
+濡傛灉瀹屾暣搴︾姸鎬佷笉鏀癸紝鍚庣画涓荤嚎浠诲姟鍜屽璁＄粨璁洪兘浼氬け鐪熴€?
+## 闈為樆濉炶鏄?
+- [workspace/current-task/REPORT.md](</D:/OneDrive - SAIF/PhD3/StataFlow/workspace/current-task/REPORT.md>) 鐨?fresh run 鏁板瓧鐜板湪宸茬粡鏇存柊涓?`663 passed`锛岃繖涓€鐐逛笉鍐嶉樆濉炪€?- 褰撳墠鎴戞病鏈夊彂鐜版湰杞柊澧?`reghdfe` 璇箟瀛樺湪蹇呴』闃诲鐨勬暟瀛﹂敊璇€?
+## 杩斿伐瑕佹眰
 
-同一文件中，第 5 节仍写：
+鏈杩斿伐鍙仛鏂囨。涓庣姸鎬佹敹鍙ｏ紝涓嶅啀鎵╁疄鐜帮細
 
-- `keepsingletons`：wrapper 不暴露
-- `noconstant`：wrapper 总是加常数
-
-但当前实际代码：
-
-- `statapy.compat.stata.reghdfe(..., keepsingletons=True)`
-- `statapy.compat.stata.reghdfe(..., noconstant=True)`
-
-都已支持。
-
-### 3. `reghdfe.md` 顶部完整度状态仍停留在 “Phase A Subset”
-
-文件位置：
-
-- [docs/command-support-matrix/reghdfe.md](</D:/OneDrive - SAIF/PhD3/Stata2Python/docs/command-support-matrix/reghdfe.md>)
-
-问题：
-
-- 顶部仍写 `Partial / Phase A Subset`
-- 但本轮任务本身就是要推进到 Phase B，并且确实补齐了 Phase B 行为
-
-如果完整度状态不改，后续主线任务和审计结论都会失真。
-
-## 非阻塞说明
-
-- [workspace/current-task/REPORT.md](</D:/OneDrive - SAIF/PhD3/Stata2Python/workspace/current-task/REPORT.md>) 的 fresh run 数字现在已经更新为 `663 passed`，这一点不再阻塞。
-- 当前我没有发现本轮新增 `reghdfe` 语义存在必须阻塞的数学错误。
-
-## 返工要求
-
-本次返工只做文档与状态收口，不再扩实现：
-
-1. 统一修正 `docs/research/reghdfe-source-map.md`
-2. 更新 `docs/command-support-matrix/reghdfe.md` 的完整度状态与文字描述
-3. 确保 source map / support matrix / report / 当前代码四者一致
-
-通过后，我再决定是否下放下一步主线任务（`ppmlhdfe` 完整度推进）。
+1. 缁熶竴淇 `docs/research/reghdfe-source-map.md`
+2. 鏇存柊 `docs/command-support-matrix/reghdfe.md` 鐨勫畬鏁村害鐘舵€佷笌鏂囧瓧鎻忚堪
+3. 纭繚 source map / support matrix / report / 褰撳墠浠ｇ爜鍥涜€呬竴鑷?
+閫氳繃鍚庯紝鎴戝啀鍐冲畾鏄惁涓嬫斁涓嬩竴姝ヤ富绾夸换鍔★紙`ppmlhdfe` 瀹屾暣搴︽帹杩涳級銆?

@@ -2,7 +2,7 @@ clear all
 set more off
 
 * Use absolute path for the data file
-cd "D:\OneDrive - SAIF\PhD3\Stata2Python"
+cd "D:\OneDrive - SAIF\PhD3\StataFlow"
 use "research/vendor/stata_community/rdrobust/rdrobust-master/stata/rdrobust_senate.dta", clear
 
 * Generate a synthetic covariate correlated with margin

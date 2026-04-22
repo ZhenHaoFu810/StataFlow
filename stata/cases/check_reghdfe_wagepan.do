@@ -1,6 +1,6 @@
 clear all
 set more off
-import delimited "D:\OneDrive - SAIF\PhD3\Stata2Python\research\data\public\panel\wooldridge\wagepan.csv", clear
+import delimited "D:\OneDrive - SAIF\PhD3\StataFlow\research\data\public\panel\wooldridge\wagepan.csv", clear
 reghdfe lwage educ exper expersq union, absorb(nr year) vce(cluster nr)
 display "E_N=" e(N)
 display "E_DF_M=" e(df_m)

@@ -4,19 +4,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Stata2Python** (`statapy`) is an econometrics toolkit that reproduces Stata 17 estimation results in Python with high precision. **Stata 17 is the default ground truth.** Every public capability must have Stata-Python dual-run evidence.
+**StataFlow** (`stataflow`) is an econometrics toolkit that reproduces Stata 17 estimation results in Python with high precision. **Stata 17 is the default ground truth.** Every public capability must have Stata-Python dual-run evidence.
 
 ## Common Commands
 
 ### Installation
 ```bash
-pip install -e .
+pip install -e ".[dev]"
 ```
 
 ### Running Tests
 ```bash
 # Unit and integration tests (exclude golden dual-run tests)
 pytest tests/ -v --ignore=tests/golden/
+
+# Run a single non-golden test file
+pytest tests/test_compat_stata_linear.py -v
 
 # Run a specific golden test
 pytest tests/golden/test_p1_ols_basic.py -v
@@ -28,6 +31,14 @@ pytest tests/golden/ -v
 python tests/golden/run_dual_test.py
 ```
 
+### Example Smoke Tests (run in CI)
+```bash
+python examples/demo_regress.py
+python examples/demo_reghdfe.py
+python examples/demo_ppmlhdfe.py
+python examples/demo_ivregress_2sls.py
+```
+
 ### Stata Execution
 - **Executable:** `D:\Software\Stata17\StataMP-64.exe`
 - **Batch command:** `cmd /c "cd /d <output_dir> && StataMP-64.exe /e do <do_file>"`
@@ -37,12 +48,12 @@ python tests/golden/run_dual_test.py
 
 | Layer | Responsibility | Key Files |
 |-------|---------------|-----------|
-| `stata_runner` | Calls local Stata 17, generates `.do` files, collects logs | `src/statapy/stata_runner/runner.py` |
-| `result_spec` | Unified result schema for Stata-Python comparison | `src/statapy/results/result.py` |
-| `estimators.linear` | OLS, weighted OLS, robust, cluster, single FE | `src/statapy/estimators/ols.py`, `src/statapy/estimators/fe.py` |
+| `stata_runner` | Calls local Stata 17, generates `.do` files, collects logs | `src/stataflow/stata_runner/runner.py` |
+| `result_spec` | Unified result schema for Stata-Python comparison | `src/stataflow/results/result.py` |
+| `estimators` | Core estimation algorithms (OLS, FE, IV, GLM, DID, RD) | `src/stataflow/estimators/` |
 | `testing_harness` | Drives dual-run, field-level comparison, diff reports | `tests/golden/run_dual_test.py`, `tests/golden/test_utils.py` |
 
-**Dependency direction:** `estimators.linear → result_spec`; `testing_harness → stata_runner + result_spec + estimators.linear`
+**Dependency direction:** `estimators` → `result_spec`; `testing_harness` → `stata_runner + result_spec + estimators`
 
 **Layer boundaries:**
 - `stata_runner` must not contain estimation algorithms or comparison logic.
@@ -51,15 +62,23 @@ python tests/golden/run_dual_test.py
 
 ## Code Structure
 
-- `src/statapy/` — Main Python package
-  - `estimators/` — Core estimators (`OLS`, `FixedEffectsOLS`)
+- `src/stataflow/` — Main Python package
+  - `estimators/` — Core estimators (`OLS`, `FixedEffectsOLS`, `AbsorbingOLS`, `IV2SLS`, `IVAbsorbingOLS`, `Logit`, `Probit`, `Poisson`, `PPMLHDFE`, `DIDImputation`, `EventStudyInteract`, `CSDID`, `RDRobust`)
   - `results/` — `ResultSchema` dataclasses
   - `stata_runner/` — Stata batch runner
+  - `compat/stata/` — Stata command wrappers (`regress`, `reghdfe`, `ivregress_2sls`, etc.)
 - `tests/golden/` — Stata-Python dual-run tests and utilities
 - `stata/cases/` — Stata `.do` files and test data
 - `stata/output/` — Stata execution outputs
 - `docs/` — Governance docs (architecture, roadmap, backlog, tasks)
 - `workspace/current-task/` — Active task instructions and reports
+
+## Factor-Variable Syntax
+
+Stata-style factor variables are supported in wrapper commands. Bare variables inside `#` / `##` are treated as continuous (matching common Stata usage):
+```python
+reghdfe(df, y="wage", x=["i.industry##c.post"], absorb="firm_id year_id")
+```
 
 ## Development Workflow
 
@@ -70,9 +89,11 @@ Always read in this order before coding:
 3. `docs/architecture/overview.md`
 4. `docs/architecture/public-api.md`
 5. `docs/architecture/stata-compatibility.md`
-6. `docs/roadmap.md`
-7. `docs/backlog.md`
-8. Relevant `docs/tasks/*.md` task card
+6. `docs/operations/executor-playbook.md`
+7. `docs/operations/review-gates.md`
+8. `docs/roadmap.md`
+9. `docs/backlog.md`
+10. Relevant `docs/tasks/*.md` task card
 
 ### Execution Order
 1. Tests first → 2. Minimal code → 3. Dual-run validation → 4. Backfill evidence and status
@@ -82,6 +103,9 @@ Always read in this order before coding:
 - `codex/<topic>` — Codex maintains docs, governance, architecture
 - `claude/<topic>` — Claude Code implements code and tests
 - Create `claude/<topic>` from the latest stable baseline.
+
+### Reporting
+When completing a task, update `workspace/current-task/REPORT.md` with: modified files, research archives added, synthetic/real-data test results, Stata dual-run results, risks, and any Codex escalation needed.
 
 ## Stata-Python Dual-Run Requirements
 

@@ -15,9 +15,9 @@ import re
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from statapy import OLS
-from statapy.stata_runner import StataRunner
-from statapy.results import ResultSchema
+from stataflow import OLS
+from stataflow.stata_runner import StataRunner
+from stataflow.results import ResultSchema
 
 # Project paths - ALL outputs stay here
 PROJECT_ROOT = Path(__file__).parent.parent.parent

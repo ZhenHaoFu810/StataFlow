@@ -18,10 +18,10 @@ from tests.golden.test_utils import (
     run_stata_ols,
     tolerance_close,
 )
-from statapy import FixedEffectsOLS
+from stataflow import FixedEffectsOLS
 
 # Use temp directory to avoid OneDrive file locking
-TEMP_DIR = Path(tempfile.mkdtemp(prefix="statapy_fe_basic_"))
+TEMP_DIR = Path(tempfile.mkdtemp(prefix="stataflow_fe_basic_"))
 
 
 def _generate_test_data() -> pd.DataFrame:

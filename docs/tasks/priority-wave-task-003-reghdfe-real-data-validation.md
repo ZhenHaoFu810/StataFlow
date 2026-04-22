@@ -1,100 +1,82 @@
-# Priority Wave Task 003：`reghdfe` 真实数据验证与收口
+# Priority Wave Task 003锛歚reghdfe` 鐪熷疄鏁版嵁楠岃瘉涓庢敹鍙?
+## 鍩烘湰淇℃伅
 
-## 基本信息
+- 浠诲姟鍚嶇О锛歚reghdfe` 鐪熷疄鏁版嵁楠岃瘉涓庢敹鍙?- 鎵€灞炲懡浠ゆ棌锛歚Panel / FE / HDFE`
+- 瀵瑰簲 backlog 鏉＄洰锛歚reghdfe`
+- 浼樺厛绾э細P1
+- 鎵ц浜猴細Claude Code
+- 瀹℃煡浜猴細Codex
 
-- 任务名称：`reghdfe` 真实数据验证与收口
-- 所属命令族：`Panel / FE / HDFE`
-- 对应 backlog 条目：`reghdfe`
-- 优先级：P1
-- 执行人：Claude Code
-- 审查人：Codex
+## 浠诲姟鐩爣
 
-## 任务目标
+鏈疆鏄?`Priority Wave: reghdfe` 鐨?Round 3锛屼篃鏄浼樺厛娉㈡鐨勬敹鍙ｈ疆銆?
+闇€瑕佷氦浠橈細
 
-本轮是 `Priority Wave: reghdfe` 的 Round 3，也是该优先波次的收口轮。
-
-需要交付：
-
-1. 完成 `p3_reghdfe_real_panel` 的真实数据双跑。
-2. 使用本地公开数据至少覆盖一组真实面板样例，优先：
-   - `wagepan`
-   - 如有必要再补 `Grunfeld`
-3. 确认真实数据下：
-   - 样本筛选
-   - singleton drop
-   - 自动 omitted 的 time-invariant / FE 共线变量
-   - 系数
-   - 标准误
-   - `df_a`
+1. 瀹屾垚 `p3_reghdfe_real_panel` 鐨勭湡瀹炴暟鎹弻璺戙€?2. 浣跨敤鏈湴鍏紑鏁版嵁鑷冲皯瑕嗙洊涓€缁勭湡瀹為潰鏉挎牱渚嬶紝浼樺厛锛?   - `wagepan`
+   - 濡傛湁蹇呰鍐嶈ˉ `Grunfeld`
+3. 纭鐪熷疄鏁版嵁涓嬶細
+   - 鏍锋湰绛涢€?   - singleton drop
+   - 鑷姩 omitted 鐨?time-invariant / FE 鍏辩嚎鍙橀噺
+   - 绯绘暟
+   - 鏍囧噯璇?   - `df_a`
    - `df_resid`
    - `r2`
    - `rmse`
    - `f_stat`
-   与 Stata 一致。
-4. 若通过，则回填 `docs/backlog.md` 和 `docs/testing/test-case-catalog.md`，将 `reghdfe` 正式推进为 `done`。
-5. 若通过，则在回报中明确建议结束 `Priority Wave: reghdfe`，进入下一个 wave。
-
-## 必读文档
+   涓?Stata 涓€鑷淬€?4. 鑻ラ€氳繃锛屽垯鍥炲～ `docs/backlog.md` 鍜?`docs/testing/test-case-catalog.md`锛屽皢 `reghdfe` 姝ｅ紡鎺ㄨ繘涓?`done`銆?5. 鑻ラ€氳繃锛屽垯鍦ㄥ洖鎶ヤ腑鏄庣‘寤鸿缁撴潫 `Priority Wave: reghdfe`锛岃繘鍏ヤ笅涓€涓?wave銆?
+## 蹇呰鏂囨。
 
 1. `docs/operations/executor-playbook.md`
 2. `docs/project-charter.md`
 3. `docs/roadmap.md`
 4. `docs/research/public-datasets.md`
 5. `docs/research/reghdfe.md`
-6. 本任务卡
+6. 鏈换鍔″崱
 
-## 本轮允许修改的文件
-
-- `tests/golden/` 下 `p3_reghdfe_real_panel` 对应测试
-- 必要的测试工具文件
-- 若真实数据暴露最小实现缺陷，可最小修改：
-  - `src/statapy/estimators/absorbing_ols.py`
-  - 如确有必要，最小范围修改 `src/statapy/results/result.py`
+## 鏈疆鍏佽淇敼鐨勬枃浠?
+- `tests/golden/` 涓?`p3_reghdfe_real_panel` 瀵瑰簲娴嬭瘯
+- 蹇呰鐨勬祴璇曞伐鍏锋枃浠?- 鑻ョ湡瀹炴暟鎹毚闇叉渶灏忓疄鐜扮己闄凤紝鍙渶灏忎慨鏀癸細
+  - `src/stataflow/estimators/absorbing_ols.py`
+  - 濡傜‘鏈夊繀瑕侊紝鏈€灏忚寖鍥翠慨鏀?`src/stataflow/results/result.py`
 - `docs/testing/test-case-catalog.md`
 - `docs/backlog.md`
 - `workspace/current-task/REPORT.md`
 
-## 本轮禁止事项
+## 鏈疆绂佹浜嬮」
 
-- 不得实现 `ivreghdfe`
-- 不得实现 `ppmlhdfe`
-- 不得实现 multi-way cluster
-- 不得新增新的大功能面
-- 不得把真实数据验证失败写成“可接受”后直接推进 `done`
+- 涓嶅緱瀹炵幇 `ivreghdfe`
+- 涓嶅緱瀹炵幇 `ppmlhdfe`
+- 涓嶅緱瀹炵幇 multi-way cluster
+- 涓嶅緱鏂板鏂扮殑澶у姛鑳介潰
+- 涓嶅緱鎶婄湡瀹炴暟鎹獙璇佸け璐ュ啓鎴愨€滃彲鎺ュ彈鈥濆悗鐩存帴鎺ㄨ繘 `done`
 
-## 真实数据要求
+## 鐪熷疄鏁版嵁瑕佹眰
 
-优先顺序：
-
+浼樺厛椤哄簭锛?
 1. `wagepan`
 2. `Grunfeld`
 
-本轮至少完成一组真实数据双跑；若第一组已足以覆盖：
+鏈疆鑷冲皯瀹屾垚涓€缁勭湡瀹炴暟鎹弻璺戯紱鑻ョ涓€缁勫凡瓒充互瑕嗙洊锛?
+- 鍙屽悜 FE
+- 鍗?cluster
+- omitted 鍙橀噺
+- `df_a` 宓屽鎵ｅ噺
 
-- 双向 FE
-- 单 cluster
-- omitted 变量
-- `df_a` 嵌套扣减
-
-则不强制做第二组。
-
-固定使用本地数据路径：
-
+鍒欎笉寮哄埗鍋氱浜岀粍銆?
+鍥哄畾浣跨敤鏈湴鏁版嵁璺緞锛?
 - `research/data/public/panel/wooldridge/wagepan.csv`
 - `research/data/public/panel/grunfeld.csv`
 
-## 测试要求
+## 娴嬭瘯瑕佹眰
 
-### 必做
+### 蹇呭仛
 
-- 新增或补齐 `p3_reghdfe_real_panel`
-- 先让测试失败
-- 修正必要的最小问题
-- 跑通 `python -m pytest tests/golden/test_p3_reghdfe_real_panel.py -v`
-- 再跑 `python -m pytest tests -v`
+- 鏂板鎴栬ˉ榻?`p3_reghdfe_real_panel`
+- 鍏堣娴嬭瘯澶辫触
+- 淇蹇呰鐨勬渶灏忛棶棰?- 璺戦€?`python -m pytest tests/golden/test_p3_reghdfe_real_panel.py -v`
+- 鍐嶈窇 `python -m pytest tests -v`
 
-### 必须比对的字段
-
+### 蹇呴』姣斿鐨勫瓧娈?
 - `nobs`
 - `df_model`
 - `df_a`
@@ -103,30 +85,26 @@
 - `r2_adj`
 - `rmse`
 - `f_stat`
-- 系数
-- 标准误
-- `cluster_count`
+- 绯绘暟
+- 鏍囧噯璇?- `cluster_count`
 - `absorb_vars`
 
-## 回报要求
+## 鍥炴姤瑕佹眰
 
-回报必须至少包含：
+鍥炴姤蹇呴』鑷冲皯鍖呭惈锛?
+- 浣跨敤浜嗗摢涓€涓湡瀹炴暟鎹泦
+- 鏁版嵁棰勫鐞嗕笌鏍锋湰绛涢€夎鏄?- singleton drop 涓?omitted 鍙橀噺璇存槑
+- Stata 鍛戒护
+- Python 璋冪敤
+- 鎴愬姛瀵归綈鐨勫瓧娈?- 鑻ユ湁鍋忓樊锛屽亸宸瓧娈靛拰瑙ｉ噴
+- 鏄惁寤鸿鎶?`reghdfe` 鏍囪涓?`done`
+- 鏄惁寤鸿缁撴潫 `Priority Wave: reghdfe`
 
-- 使用了哪一个真实数据集
-- 数据预处理与样本筛选说明
-- singleton drop 与 omitted 变量说明
-- Stata 命令
-- Python 调用
-- 成功对齐的字段
-- 若有偏差，偏差字段和解释
-- 是否建议把 `reghdfe` 标记为 `done`
-- 是否建议结束 `Priority Wave: reghdfe`
+## 楠屾敹鏍囧噯
 
-## 验收标准
-
-- `p3_reghdfe_real_panel` 通过
-- `python -m pytest tests -v` 全绿
-- `docs/testing/test-case-catalog.md` 中 `p3_reghdfe_real_panel` 更新为 `done`
-- `docs/backlog.md` 中 `reghdfe` 更新为 `done`
-- 本轮未引入 `ivreghdfe`、`ppmlhdfe` 或 multi-way cluster
-- 无未解释统计偏差
+- `p3_reghdfe_real_panel` 閫氳繃
+- `python -m pytest tests -v` 鍏ㄧ豢
+- `docs/testing/test-case-catalog.md` 涓?`p3_reghdfe_real_panel` 鏇存柊涓?`done`
+- `docs/backlog.md` 涓?`reghdfe` 鏇存柊涓?`done`
+- 鏈疆鏈紩鍏?`ivreghdfe`銆乣ppmlhdfe` 鎴?multi-way cluster
+- 鏃犳湭瑙ｉ噴缁熻鍋忓樊

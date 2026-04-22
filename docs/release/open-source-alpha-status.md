@@ -7,10 +7,10 @@
 
 ## What this project is
 
-`statapy` is a Python econometrics toolkit that reproduces Stata 17 estimation results with high precision. It provides:
+`stataflow` is a Python econometrics toolkit that reproduces Stata 17 estimation results with high precision. It provides:
 
-- A **Stata-compatible command layer** (`statapy.compat.stata`) for researchers migrating from Stata.
-- A **native Python estimator layer** (`statapy.estimators`) for advanced users who want direct control.
+- A **Stata-compatible command layer** (`stataflow.compat.stata`) for researchers migrating from Stata.
+- A **native Python estimator layer** (`stataflow.estimators`) for advanced users who want direct control.
 - **Field-level dual-run verification** against Stata 17 on both synthetic and real public datasets.
 
 ---
@@ -38,9 +38,9 @@ Specifically:
 | Binary | `logit` | Stable | MLE, robust, cluster |
 | Binary | `probit` | Stable | MLE, robust, cluster |
 | Count | `poisson` | Stable | MLE, robust, cluster |
-| HDFE | `reghdfe` | Alpha | 1–2 categorical FEs, singleton drop, robust/cluster |
-| IV / HDFE | `ivreghdfe` | Alpha | IV + 1–2 FEs, robust/cluster |
-| Count / HDFE | `ppmlhdfe` | Alpha | PPML + 1–2 FEs, offset/exposure, robust/cluster |
+| HDFE | `reghdfe` | Alpha | 1–2  categorical FEs, singleton drop, robust/cluster |
+| IV / HDFE | `ivreghdfe` | Alpha | IV + 1–2  FEs, robust/cluster |
+| Count / HDFE | `ppmlhdfe` | Alpha | PPML + 1–2  FEs, offset/exposure, robust/cluster |
 | DID | `did_imputation` | Alpha | BJS imputation, allhorizons, autosample, cluster |
 | DID | `eventstudyinteract` | Alpha | Sun-Abraham IW estimator, auto dummy generation, cluster |
 | DID | `csdid` | Alpha | Callaway-Sant'Anna `method="reg"` only, `estat_event` |
@@ -58,7 +58,7 @@ Specifically:
 - **Single-cluster robust inference only.** Multi-way clustering is not yet supported.
 - **`aweight` only.** `fweight`, `pweight`, `iweight` are not yet supported.
 - **Post-estimation on wrappers.** `predict` and `margins` are available on core estimator classes only. The `compat.stata` wrapper layer returns `ResultSchema` objects and does not expose `.predict()` / `.margins()` directly.
-- **No CI/CD pipeline** is configured yet.
+- **CI/CD pipeline** is configured via GitHub Actions (`.github/workflows/ci.yml`) and runs on Python 3.10, 3.11, and 3.12.
 
 ---
 
@@ -71,11 +71,19 @@ Every public command is validated with two lines of evidence:
 
 Current test status: **681 passed, 0 failed** (as of 2026-04-18).
 
+Out-of-sample validation status (Validation Package 001): **16 passed, 1 blocked** (as of 2026-04-20).
+
+Public validation evidence:
+
+- [`docs/validation/overview.md`](../validation/overview.md)
+- [`docs/validation/evidence-matrix.md`](../validation/evidence-matrix.md)
+- [`research/results/validation/oos/oos_master_summary.md`](../research/results/validation/oos/oos_master_summary.md)
+
 ---
 
 ## Roadmap
 
-See [`docs/audit/next-development-plan.md`](../audit/next-development-plan.md) for the detailed development plan. High-level priorities:
+High-level priorities:
 
 1. Deepen vendor command completeness (HDFE series first, then DID, then RD).
 2. Expand `rdrobust` bandwidth selectors beyond `mserd` (`msetwo`, `cerrd`, etc.).
@@ -87,5 +95,5 @@ See [`docs/audit/next-development-plan.md`](../audit/next-development-plan.md) f
 
 ## Feedback and contributions
 
-- Issues: [https://github.com/ZhenHaoFu810/Statapy/issues](https://github.com/ZhenHaoFu810/Statapy/issues)
+- Issues: [https://github.com/ZhenHaoFu810/StataFlow/issues](https://github.com/ZhenHaoFu810/StataFlow/issues)
 - The project uses a dual-governance model: **Codex** (architecture and review) and **Claude Code** (implementation and testing).

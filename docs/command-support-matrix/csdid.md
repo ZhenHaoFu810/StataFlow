@@ -11,7 +11,7 @@ Callaway-Sant'Anna DID estimator, aligned with Stata community command `csdid`.
 ## Python Entry
 
 ```python
-from statapy.compat.stata import csdid
+from stataflow.compat.stata import csdid
 
 result = csdid(
     data, y="y", id="county_id", time="year",
@@ -50,10 +50,11 @@ ATT(g,t) estimates, event-study aggregation coefficients, standard errors, z-sta
 
 ## Alignment Evidence
 
+
 - Synthetic cases: `tests/golden/test_w4_csdid_basic.py`
 - Real-data cases: `tests/golden/test_w4_csdid_real_ezunem.py`
 - Stata 17 dual-run verified for `method="reg"` with event-study aggregation
 
 ## Core Implementation
 
-`src/statapy/estimators/csdid.py`
+`src/stataflow/estimators/csdid.py`

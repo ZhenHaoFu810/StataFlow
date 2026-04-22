@@ -1,0 +1,114 @@
+"""Stata-compatible wrapper for rdrobust (sharp RD with bandwidth selection and covariates)."""
+
+from __future__ import annotations
+
+import pandas as pd
+
+from stataflow.estimators.rdrobust import RDRobust
+from stataflow.results.result import (
+    CoefficientRow,
+    DiagnosticsInfo,
+    FitInfo,
+    ModelInfo,
+    ProvenanceInfo,
+    ResultSchema,
+    SampleInfo,
+    VarianceInfo,
+)
+
+
+def rdrobust(
+    data: pd.DataFrame,
+    y: str,
+    x: str,
+    c: float = 0.0,
+    h: float | tuple[float, float] | None = None,
+    b: float | tuple[float, float] | None = None,
+    p: int = 1,
+    q: int = 2,
+    deriv: int = 0,
+    kernel: str = "triangular",
+    vce: str = "nn",
+    nnmatch: int = 3,
+    level: int = 95,
+    bwselect: str | None = None,
+    covs: list[str] | str | None = None,
+    covs_drop: bool = True,
+    scaleregul: float = 1.0,
+    **kwargs,
+) -> ResultSchema:
+    """
+    Stata-compatible wrapper for sharp Regression Discontinuity estimation.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+    y : str
+        Outcome variable.
+    x : str
+        Running variable.
+    c : float, default 0.0
+        Cutoff.
+    h : float or tuple[float, float] or None
+        Main bandwidth(s). If provided, overrides bwselect.
+    b : float or tuple[float, float] or None
+        Bias bandwidth(s). Defaults to h if None.
+    p : int, default 1
+        Polynomial order for point estimation.
+    q : int, default 2
+        Polynomial order for bias correction.
+    deriv : int, default 0
+        Derivative order (only 0 supported).
+    kernel : str, default "triangular"
+    vce : str, default "nn"
+        Variance estimator: "nn" or "hc0".
+    nnmatch : int, default 3
+        Minimum neighbors for nn VCE.
+    level : int, default 95
+        Confidence level.
+    bwselect : str or None
+        Bandwidth selector. Supported: "mserd". Ignored if h is provided.
+    covs : list[str] or str or None
+        Covariate variable name(s).
+    covs_drop : bool, default True
+        Drop collinear covariates.
+    scaleregul : float, default 1.0
+        Regularization scaling for bandwidth selectors.
+
+    Returns
+    -------
+    ResultSchema
+    """
+    if kwargs:
+        # Hard-reject unsupported parameters explicitly
+        unsupported = set(kwargs.keys())
+        raise ValueError(
+            f"Unsupported arguments for rdrobust wrapper: {sorted(unsupported)}"
+        )
+
+    if h is None and bwselect is None:
+        raise NotImplementedError(
+            "Automatic bandwidth selection is required when h is not provided. "
+            "Use bwselect='mserd' or provide h explicitly."
+        )
+
+    model = RDRobust(
+        data=data,
+        y=y,
+        x=x,
+        c=c,
+        h=h,
+        b=b,
+        p=p,
+        q=q,
+        deriv=deriv,
+        kernel=kernel,
+        vce=vce,
+        nnmatch=nnmatch,
+        level=level,
+        bwselect=bwselect,
+        covs=covs,
+        covs_drop=covs_drop,
+        scaleregul=scaleregul,
+    )
+    return model.fit()

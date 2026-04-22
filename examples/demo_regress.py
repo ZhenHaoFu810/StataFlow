@@ -2,7 +2,7 @@
 
 import numpy as np
 import pandas as pd
-from statapy.compat.stata import regress
+from stataflow.compat.stata import regress
 
 # Synthetic data
 rng = np.random.default_rng(42)

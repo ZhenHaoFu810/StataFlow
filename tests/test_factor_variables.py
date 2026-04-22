@@ -12,12 +12,12 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from statapy.compat.stata.factor_variables import (
+from stataflow.compat.stata.factor_variables import (
     expand_factor_terms,
     parse_absorb,
     _expand_single_term,
 )
-from statapy.compat.stata import regress, reghdfe, logit, ivreghdfe, ppmlhdfe
+from stataflow.compat.stata import regress, reghdfe, logit, ivreghdfe, ppmlhdfe
 
 
 # ---------------------------------------------------------------------------

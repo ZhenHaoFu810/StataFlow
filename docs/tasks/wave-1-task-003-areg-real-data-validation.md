@@ -1,93 +1,75 @@
-# Wave 1 Task 003：`areg` 真实数据验证与收口
+# Wave 1 Task 003锛歚areg` 鐪熷疄鏁版嵁楠岃瘉涓庢敹鍙?
+## 鍩烘湰淇℃伅
 
-## 基本信息
+- 浠诲姟鍚嶇О锛歚areg` 鐪熷疄鏁版嵁楠岃瘉涓庢敹鍙?- 鎵€灞炲懡浠ゆ棌锛歚Panel / FE / HDFE`
+- 瀵瑰簲 backlog 鏉＄洰锛歚areg`
+- 浼樺厛绾э細P1
+- 鎵ц浜猴細Claude Code
+- 瀹℃煡浜猴細Codex
 
-- 任务名称：`areg` 真实数据验证与收口
-- 所属命令族：`Panel / FE / HDFE`
-- 对应 backlog 条目：`areg`
-- 优先级：P1
-- 执行人：Claude Code
-- 审查人：Codex
+## 浠诲姟鐩爣
 
-## 任务目标
+鏈疆鏄?Wave 1 鐨?Round 3锛屽彧鍋?`areg` 鐨勭湡瀹炴暟鎹弻璺戜笌鏀跺彛锛屼笉鍐嶆墿灞曟柊鍔熻兘銆?
+闇€瑕佷氦浠橈細
 
-本轮是 Wave 1 的 Round 3，只做 `areg` 的真实数据双跑与收口，不再扩展新功能。
-
-需要交付：
-
-1. 完成 `p3_areg_real_panel` 的真实数据双跑。
-2. 使用本地公开数据至少覆盖一组真实面板样例，优先：
-   - `wagepan`
+1. 瀹屾垚 `p3_areg_real_panel` 鐨勭湡瀹炴暟鎹弻璺戙€?2. 浣跨敤鏈湴鍏紑鏁版嵁鑷冲皯瑕嗙洊涓€缁勭湡瀹為潰鏉挎牱渚嬶紝浼樺厛锛?   - `wagepan`
    - `Grunfeld`
-3. 确认真实数据下：
-   - 样本筛选
-   - 缺失值处理
-   - 系数
-   - 标准误
-   - `df_a`
+3. 纭鐪熷疄鏁版嵁涓嬶細
+   - 鏍锋湰绛涢€?   - 缂哄け鍊煎鐞?   - 绯绘暟
+   - 鏍囧噯璇?   - `df_a`
    - `r2`
    - `rmse`
    - `f_stat`
-   与 Stata 一致。
-4. 若通过，则回填 `docs/backlog.md` 和 `docs/testing/test-case-catalog.md`，将 `areg` 正式推进为 `done`。
-
-## 必读文档
+   涓?Stata 涓€鑷淬€?4. 鑻ラ€氳繃锛屽垯鍥炲～ `docs/backlog.md` 鍜?`docs/testing/test-case-catalog.md`锛屽皢 `areg` 姝ｅ紡鎺ㄨ繘涓?`done`銆?
+## 蹇呰鏂囨。
 
 1. `docs/operations/executor-playbook.md`
 2. `docs/project-charter.md`
 3. `docs/research/public-datasets.md`
 4. `docs/research/areg.md`
 5. `docs/research/xtreg-fe.md`
-6. 本任务卡
+6. 鏈换鍔″崱
 
-## 本轮允许修改的文件
-
-- `tests/golden/` 下 `p3_areg_real_panel` 对应测试
-- 必要的测试工具文件
-- `docs/testing/test-case-catalog.md`
+## 鏈疆鍏佽淇敼鐨勬枃浠?
+- `tests/golden/` 涓?`p3_areg_real_panel` 瀵瑰簲娴嬭瘯
+- 蹇呰鐨勬祴璇曞伐鍏锋枃浠?- `docs/testing/test-case-catalog.md`
 - `docs/backlog.md`
-- `workspace/current-task/` 下回报文件
+- `workspace/current-task/` 涓嬪洖鎶ユ枃浠?
+鑻ョ湡瀹炴暟鎹獙璇佹毚闇茶交寰疄鐜扮己闄凤紝鍙渶灏忎慨鏀癸細
 
-若真实数据验证暴露轻微实现缺陷，可最小修改：
+- `src/stataflow/estimators/absorbing_ols.py`
 
-- `src/statapy/estimators/absorbing_ols.py`
+浣嗕笉寰楅『鍔挎墿灞曟柊鍔熻兘闈€?
+## 鏈疆绂佹浜嬮」
 
-但不得顺势扩展新功能面。
+- 涓嶅緱瀹炵幇 `reghdfe`
+- 涓嶅緱鎺ㄨ繘鍙屽悜 FE
+- 涓嶅緱鏂板 `areg` 鐨?`robust` / `cluster` / `aweight` 鏀寔
+- 涓嶅緱鏂板绗簩涓湡瀹炴暟鎹懡浠ゆ棌浠诲姟
+- 涓嶅緱鎶婄湡瀹炴暟鎹獙璇佸け璐ュ啓鎴愨€滃彲鎺ュ彈鈥濆悗鐩存帴鎺ㄨ繘 `done`
 
-## 本轮禁止事项
+## 鐪熷疄鏁版嵁瑕佹眰
 
-- 不得实现 `reghdfe`
-- 不得推进双向 FE
-- 不得新增 `areg` 的 `robust` / `cluster` / `aweight` 支持
-- 不得新增第二个真实数据命令族任务
-- 不得把真实数据验证失败写成“可接受”后直接推进 `done`
-
-## 真实数据要求
-
-优先顺序：
-
+浼樺厛椤哄簭锛?
 1. `wagepan`
 2. `Grunfeld`
 
-本轮至少完成一组真实数据双跑；如果两组都能完成更好，但不是硬要求。
-
-Stata 脚本和 Python 测试都必须固定使用本地数据路径：
+鏈疆鑷冲皯瀹屾垚涓€缁勭湡瀹炴暟鎹弻璺戯紱濡傛灉涓ょ粍閮借兘瀹屾垚鏇村ソ锛屼絾涓嶆槸纭姹傘€?
+Stata 鑴氭湰鍜?Python 娴嬭瘯閮藉繀椤诲浐瀹氫娇鐢ㄦ湰鍦版暟鎹矾寰勶細
 
 - `research/data/public/panel/wooldridge/wagepan.csv`
 - `research/data/public/panel/grunfeld.csv`
 
-## 测试要求
+## 娴嬭瘯瑕佹眰
 
-### 必做
+### 蹇呭仛
 
-- 新增 `p3_areg_real_panel` 黄金测试
-- 先让测试失败
-- 修正必要的最小问题
-- 跑通 `pytest tests/golden/test_p3_areg_real_panel.py -v`
-- 再跑 `pytest tests -v`
+- 鏂板 `p3_areg_real_panel` 榛勯噾娴嬭瘯
+- 鍏堣娴嬭瘯澶辫触
+- 淇蹇呰鐨勬渶灏忛棶棰?- 璺戦€?`pytest tests/golden/test_p3_areg_real_panel.py -v`
+- 鍐嶈窇 `pytest tests -v`
 
-### 必须比对的字段
-
+### 蹇呴』姣斿鐨勫瓧娈?
 - `nobs`
 - `df_model`
 - `df_a`
@@ -95,25 +77,21 @@ Stata 脚本和 Python 测试都必须固定使用本地数据路径：
 - `r2`
 - `rmse`
 - `f_stat`
-- 系数
-- 标准误
+- 绯绘暟
+- 鏍囧噯璇?
+## 鍥炴姤瑕佹眰
 
-## 回报要求
+鍥炴姤蹇呴』鑷冲皯鍖呭惈锛?
+- 浣跨敤浜嗗摢涓€涓湡瀹炴暟鎹泦
+- 鏁版嵁棰勫鐞嗕笌鏍锋湰绛涢€夎鏄?- Stata 鍛戒护
+- Python 璋冪敤
+- 鎴愬姛瀵归綈鐨勫瓧娈?- 鑻ユ湁鍋忓樊锛屽亸宸瓧娈靛拰瑙ｉ噴
+- 鏄惁寤鸿鎶?`areg` 鏍囪涓?`done`
 
-回报必须至少包含：
+## 楠屾敹鏍囧噯
 
-- 使用了哪一个真实数据集
-- 数据预处理与样本筛选说明
-- Stata 命令
-- Python 调用
-- 成功对齐的字段
-- 若有偏差，偏差字段和解释
-- 是否建议把 `areg` 标记为 `done`
-
-## 验收标准
-
-- `p3_areg_real_panel` 通过
-- `pytest tests -v` 全绿
-- `docs/testing/test-case-catalog.md` 中 `p3_areg_real_panel` 更新为 `done`
-- `docs/backlog.md` 中 `areg` 更新为 `done`
-- 本轮未引入 `reghdfe` 或双向 FE 的实现
+- `p3_areg_real_panel` 閫氳繃
+- `pytest tests -v` 鍏ㄧ豢
+- `docs/testing/test-case-catalog.md` 涓?`p3_areg_real_panel` 鏇存柊涓?`done`
+- `docs/backlog.md` 涓?`areg` 鏇存柊涓?`done`
+- 鏈疆鏈紩鍏?`reghdfe` 鎴栧弻鍚?FE 鐨勫疄鐜?

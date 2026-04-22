@@ -17,8 +17,8 @@ from tests.golden.test_utils import (
     PROJECT_STATA_OUTPUT,
     tolerance_close,
 )
-from statapy import AbsorbingOLS
-from statapy.stata_runner import StataRunner
+from stataflow import AbsorbingOLS
+from stataflow.stata_runner import StataRunner
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 WAGEPAN_CSV = PROJECT_ROOT / "research" / "data" / "public" / "panel" / "wooldridge" / "wagepan.csv"

@@ -7,7 +7,7 @@ Poisson regression (MLE), aligned with Stata 17 `poisson`.
 ## Python Entry
 
 ```python
-from statapy.compat.stata import poisson
+from stataflow.compat.stata import poisson
 
 result = poisson(data, y="depvar", x=["x1", "x2"], vce="robust")
 ```
@@ -43,7 +43,7 @@ Unsupported factor syntax (`ib.` without level, `o.` without level, `b.` without
 
 ## Postestimation (Core Estimator Layer Only)
 
-The `compat.stata` wrapper returns a `ResultSchema` object. To use `predict()` or `margins()`, call the core estimator (`statapy.estimators.Poisson`) directly.
+The `compat.stata` wrapper returns a `ResultSchema` object. To use `predict()` or `margins()`, call the core estimator (`stataflow.estimators.Poisson`) directly.
 
 - `predict(type="xb")`
 - `predict(type="mu")`
@@ -63,6 +63,7 @@ The `compat.stata` wrapper returns a `ResultSchema` object. To use `predict()` o
 
 ## Alignment Evidence
 
+
 - Synthetic cases: `tests/golden/test_w3_poisson_basic.py`
 - Real-data cases: `tests/golden/test_w3_poisson_real.py`
 - Margins cases: `tests/golden/test_w5_margins_real_crime1.py`
@@ -70,4 +71,4 @@ The `compat.stata` wrapper returns a `ResultSchema` object. To use `predict()` o
 
 ## Core Implementation
 
-`src/statapy/estimators/glm.py` (`Poisson`)
+`src/stataflow/estimators/glm.py` (`Poisson`)

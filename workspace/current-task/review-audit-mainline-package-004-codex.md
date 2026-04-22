@@ -1,12 +1,9 @@
-# Codex Review: 审计主线任务包 004（`ivreghdfe` Phase B）
+# Codex Review: 瀹¤涓荤嚎浠诲姟鍖?004锛坄ivreghdfe` Phase B锛?
+## 缁撹
 
-## 结论
-
-本轮 **打回**。
-
-阻塞原因不是 `ivreghdfe` 的算法或测试失败，而是 **source-backed 核心证据文档 `docs/research/ivreghdfe-source-map.md` 仍保留多处 Phase A 旧结论，与当前代码、支持矩阵和测试状态不一致**。在主线审计模式下，这种 source map 不一致不能放行到下一条命令主线。
-
-## 我实际复核的内容
+鏈疆 **鎵撳洖**銆?
+闃诲鍘熷洜涓嶆槸 `ivreghdfe` 鐨勭畻娉曟垨娴嬭瘯澶辫触锛岃€屾槸 **source-backed 鏍稿績璇佹嵁鏂囨。 `docs/research/ivreghdfe-source-map.md` 浠嶄繚鐣欏澶?Phase A 鏃х粨璁猴紝涓庡綋鍓嶄唬鐮併€佹敮鎸佺煩闃靛拰娴嬭瘯鐘舵€佷笉涓€鑷?*銆傚湪涓荤嚎瀹¤妯″紡涓嬶紝杩欑 source map 涓嶄竴鑷翠笉鑳芥斁琛屽埌涓嬩竴鏉″懡浠や富绾裤€?
+## 鎴戝疄闄呭鏍哥殑鍐呭
 
 ### Fresh verification
 
@@ -15,51 +12,42 @@ python -m pytest tests/test_compat_stata_iv.py tests/test_hdfe_synthetic.py test
 python -m pytest tests -v
 ```
 
-结果：
-
-- `ivreghdfe` 相关专项 → `75 passed`
-- 全量 → `676 passed`
+缁撴灉锛?
+- `ivreghdfe` 鐩稿叧涓撻」 鈫?`75 passed`
+- 鍏ㄩ噺 鈫?`676 passed`
 
 ### Spot check
 
-我额外检查了：
-
-- `src/statapy/estimators/iv.py`
-- `src/statapy/compat/stata/iv.py`
+鎴戦澶栨鏌ヤ簡锛?
+- `src/stataflow/estimators/iv.py`
+- `src/stataflow/compat/stata/iv.py`
 - `docs/research/ivreghdfe-source-map.md`
 - `docs/command-support-matrix/ivreghdfe.md`
 - `workspace/current-task/REPORT.md`
 
-当前真实实现已经支持并通过测试：
-
+褰撳墠鐪熷疄瀹炵幇宸茬粡鏀寔骞堕€氳繃娴嬭瘯锛?
 - wrapper: `noconstant`, `keepsingletons`
 - estimator `predict(type="xb"|"xbd"|"residuals"|"d"|"dresiduals")`
 - `vce="ols"|"robust"|"cluster"`
 
-所以这轮阻塞点不是实现主线，而是 source map 仍未同步。
+鎵€浠ヨ繖杞樆濉炵偣涓嶆槸瀹炵幇涓荤嚎锛岃€屾槸 source map 浠嶆湭鍚屾銆?
+## 闃诲闂
 
-## 阻塞问题
+### 1. syntax mapping 浠嶆妸 `noconstant` 璇存垚鍐呴儴濮嬬粓鍔犲父鏁?
+`docs/research/ivreghdfe-source-map.md` 绗?3.1 鑺傝繕鍐欑潃锛?
+- Python 绛変环瀹炵幇 `sets add_constant=True`
 
-### 1. syntax mapping 仍把 `noconstant` 说成内部始终加常数
-
-`docs/research/ivreghdfe-source-map.md` 第 3.1 节还写着：
-
-- Python 等价实现 `sets add_constant=True`
-
-但当前 wrapper 已经公开支持：
-
+浣嗗綋鍓?wrapper 宸茬粡鍏紑鏀寔锛?
 - `noconstant`
-- 并且传入 `IVAbsorbingOLS(add_constant=not noconstant)`
+- 骞朵笖浼犲叆 `IVAbsorbingOLS(add_constant=not noconstant)`
 
-这会直接误导后续 source-backed 审计。
+杩欎細鐩存帴璇鍚庣画 source-backed 瀹¤銆?
+### 2. 鈥淜nown Phase A Simplifications鈥?浠嶅啓鐫€ `No predict beyond xb`
 
-### 2. “Known Phase A Simplifications” 仍写着 `No predict beyond xb`
-
-同一文件第 6 节还保留：
-
+鍚屼竴鏂囦欢绗?6 鑺傝繕淇濈暀锛?
 - `No predict beyond xb`
 
-但当前代码、测试和支持矩阵都已经支持：
+浣嗗綋鍓嶄唬鐮併€佹祴璇曞拰鏀寔鐭╅樀閮藉凡缁忔敮鎸侊細
 
 - `xb`
 - `xbd`
@@ -67,36 +55,30 @@ python -m pytest tests -v
 - `d`
 - `dresiduals`
 
-这属于明显过期结论。
+杩欏睘浜庢槑鏄捐繃鏈熺粨璁恒€?
+### 3. `_cons` 鏄犲皠娈典粛淇濈暀鏃ч€昏緫
 
-### 3. `_cons` 映射段仍保留旧逻辑
+绗?3.8 鑺備粛鍐欙細
 
-第 3.8 节仍写：
+- Python 浼氶€氳繃 `T` 鐭╅樀鎭㈠ `_cons`
 
-- Python 会通过 `T` 矩阵恢复 `_cons`
+浣嗗綋鍓嶄唬鐮侀噷锛?
+- `IVAbsorbingOLS.fit()` 鏄庣‘娉ㄩ噴 `ivreghdfe never reports _cons`
+- `_coef_names` 鍙寘鍚?`x_endog + x_exog`
 
-但当前代码里：
+涔熷氨鏄锛岃繖閲屼繚鐣欑殑鏄棫瀹炵幇鐥曡抗锛屼笉鍐嶇鍚堝綋鍓嶅叕鍏辫涔夈€?
+## 杩斿伐瑕佹眰
 
-- `IVAbsorbingOLS.fit()` 明确注释 `ivreghdfe never reports _cons`
-- `_coef_names` 只包含 `x_endog + x_exog`
-
-也就是说，这里保留的是旧实现痕迹，不再符合当前公共语义。
-
-## 返工要求
-
-本次返工 **不要求新增任何 `ivreghdfe` 算法实现**。只要求把以下文档收口到与当前真实实现一致：
+鏈杩斿伐 **涓嶈姹傛柊澧炰换浣?`ivreghdfe` 绠楁硶瀹炵幇**銆傚彧瑕佹眰鎶婁互涓嬫枃妗ｆ敹鍙ｅ埌涓庡綋鍓嶇湡瀹炲疄鐜颁竴鑷达細
 
 - `docs/research/ivreghdfe-source-map.md`
-- 如有必要，微调 `workspace/current-task/REPORT.md` 中对 source map 完整度的表述
+- 濡傛湁蹇呰锛屽井璋?`workspace/current-task/REPORT.md` 涓 source map 瀹屾暣搴︾殑琛ㄨ堪
 
-## 返工通过标准
+## 杩斿伐閫氳繃鏍囧噯
 
-只有同时满足以下条件，才允许进入下一步主线任务：
+鍙湁鍚屾椂婊¤冻浠ヤ笅鏉′欢锛屾墠鍏佽杩涘叆涓嬩竴姝ヤ富绾夸换鍔★細
 
-1. `ivreghdfe-source-map.md` 不再保留 `add_constant=True` 的旧结论，而是明确说明 `noconstant` 的当前公共语义。
-2. `ivreghdfe-source-map.md` 的 “Known Phase A Simplifications” 不再把 `predict` 说成仅支持 `xb`。
-3. `ivreghdfe-source-map.md` 的 `_cons` 映射描述与当前代码和支持矩阵一致。
-4. 重新跑：
+1. `ivreghdfe-source-map.md` 涓嶅啀淇濈暀 `add_constant=True` 鐨勬棫缁撹锛岃€屾槸鏄庣‘璇存槑 `noconstant` 鐨勫綋鍓嶅叕鍏辫涔夈€?2. `ivreghdfe-source-map.md` 鐨?鈥淜nown Phase A Simplifications鈥?涓嶅啀鎶?`predict` 璇存垚浠呮敮鎸?`xb`銆?3. `ivreghdfe-source-map.md` 鐨?`_cons` 鏄犲皠鎻忚堪涓庡綋鍓嶄唬鐮佸拰鏀寔鐭╅樀涓€鑷淬€?4. 閲嶆柊璺戯細
    - `python -m pytest tests/test_compat_stata_iv.py tests/test_hdfe_synthetic.py tests/golden/test_w2_ivreghdfe_basic.py tests/golden/test_w2_ivreghdfe_cluster.py tests/golden/test_w2_ivreghdfe_real_panel.py -v`
    - `python -m pytest tests -v`
-   全部通过。
+   鍏ㄩ儴閫氳繃銆?

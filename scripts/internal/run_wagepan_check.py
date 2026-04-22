@@ -1,11 +1,11 @@
-from statapy.stata_runner import StataRunner
+from stataflow.stata_runner import StataRunner
 import os
 
 runner = StataRunner()
 do = '''
 clear all
 set more off
-import delimited "D:/OneDrive - SAIF/PhD3/Stata2Python/research/data/public/panel/wooldridge/wagepan.csv", clear
+import delimited "D:/OneDrive - SAIF/PhD3/StataFlow/research/data/public/panel/wooldridge/wagepan.csv", clear
 areg lwage educ exper expersq union, absorb(nr)
 
 display "E_N=" e(N)

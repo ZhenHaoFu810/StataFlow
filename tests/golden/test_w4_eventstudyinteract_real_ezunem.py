@@ -5,7 +5,7 @@ import pytest
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from statapy.estimators.eventstudyinteract import EventStudyInteract
+from stataflow.estimators.eventstudyinteract import EventStudyInteract
 from tests.golden.test_utils import tolerance_close
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent

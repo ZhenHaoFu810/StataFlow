@@ -2,7 +2,7 @@
 
 ## Completeness Status
 
-**Partial / Phase B Subset** — the core 1–2 categorical FE path is implemented, tested, and dual-run verified. Phase B added `keepsingletons`, `noconstant`, and expanded `predict` support (`xb`, `xbd`, `d`, `residuals`, `dresiduals`). This is still **not** a full reproduction of `reghdfe`: mobility-group DoF, slopes, individual/team FEs, multi-way clustering, and the `estat` ecosystem remain missing.
+**Partial / Phase B Subset** — the core 1–2  categorical FE path is implemented, tested, and dual-run verified. Phase B added `keepsingletons`, `noconstant`, and expanded `predict` support (`xb`, `xbd`, `d`, `residuals`, `dresiduals`). This is still **not** a full reproduction of `reghdfe`: mobility-group DoF, slopes, individual/team FEs, multi-way clustering, and the `estat` ecosystem remain missing.
 
 ## Command Target
 
@@ -11,7 +11,7 @@ High-dimensional fixed-effects regression, aligned with Stata community command 
 ## Python Entry
 
 ```python
-from statapy.compat.stata import reghdfe
+from stataflow.compat.stata import reghdfe
 
 result = reghdfe(
     data, y="depvar", x=["x1", "x2"],
@@ -78,6 +78,7 @@ Unsupported factor syntax (`ib.` without level, `o.` without level, `b.` without
 
 ## Alignment Evidence
 
+
 - Synthetic cases: `tests/golden/test_p3_reghdfe_basic.py`, `tests/golden/test_p3_reghdfe_cluster.py`, `tests/golden/test_p3_reghdfe_two_fe.py`, `tests/golden/test_p3_reghdfe_keepsingletons.py`
 - Real-data cases: `tests/golden/test_p3_reghdfe_real_panel.py`
 - Factor-syntax cases: `tests/golden/test_a2_factor_reghdfe_basic.py` — `reghdfe y i.g##c.x1, absorb(firm year)`; `tests/golden/test_a2_factor_reghdfe_mixed.py` — `reghdfe y c.x1##i.g, absorb(firm year)`; `tests/golden/test_a2_factor_reghdfe_bare.py` — `reghdfe y x1##x2, absorb(firm year)` mapped to Stata `c.x1##c.x2`; `tests/golden/test_a2_factor_reghdfe_base.py` — `reghdfe y ib2.g##c.x1, absorb(firm year)`
@@ -86,4 +87,4 @@ Unsupported factor syntax (`ib.` without level, `o.` without level, `b.` without
 
 ## Core Implementation
 
-`src/statapy/estimators/absorbing_ols.py`
+`src/stataflow/estimators/absorbing_ols.py`

@@ -11,7 +11,7 @@ Borusyak, Jaravel \& Spiess (2021) DID imputation estimator, aligned with Stata 
 ## Python Entry
 
 ```python
-from statapy.compat.stata import did_imputation
+from stataflow.compat.stata import did_imputation
 
 result = did_imputation(
     data, y="y", id="unit_id", time="year",
@@ -53,6 +53,7 @@ Event-study horizon coefficients (`tau0`, `tau1`, ...), standard errors, z-stati
 
 ## Alignment Evidence
 
+
 - Synthetic cases: `tests/golden/test_w4_did_imputation_basic.py`
 - Real-data cases: `tests/golden/test_w4_did_imputation_real_ezunem.py`
 - Local source mirror: `research/vendor/stata_community/did_imputation/`
@@ -60,4 +61,4 @@ Event-study horizon coefficients (`tau0`, `tau1`, ...), standard errors, z-stati
 
 ## Core Implementation
 
-`src/statapy/estimators/did_imputation.py`
+`src/stataflow/estimators/did_imputation.py`

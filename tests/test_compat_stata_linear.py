@@ -4,8 +4,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from statapy.compat.stata import regress, xtreg_fe, areg
-from statapy.estimators import OLS, FixedEffectsOLS, AbsorbingOLS
+from stataflow.compat.stata import regress, xtreg_fe, areg
+from stataflow.estimators import OLS, FixedEffectsOLS, AbsorbingOLS
 
 
 def _make_ols_data(n=100, seed=42):

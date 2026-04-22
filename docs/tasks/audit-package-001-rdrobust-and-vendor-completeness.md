@@ -1,61 +1,43 @@
-# 审计后任务包 001：`rdrobust` 最小可验证实现 + Vendor 命令完整度收口
+# 瀹¤鍚庝换鍔″寘 001锛歚rdrobust` 鏈€灏忓彲楠岃瘉瀹炵幇 + Vendor 鍛戒护瀹屾暣搴︽敹鍙?
+## 1. 浠诲姟瀹氫綅
 
-## 1. 任务定位
+杩欐槸瀹¤鍚庣殑绗竴寮犳柊浠诲姟鍗°€?
+鐩爣涓嶆槸缁х画闆舵暎琛ュ姛鑳斤紝鑰屾槸鍚屾椂瀹屾垚涓や欢浜嬶細
 
-这是审计后的第一张新任务卡。
+1. 鎶?`rdrobust` 浠庘€滀粎鏈夋湰鍦版簮鐮侀暅鍍忋€佹棤 Python 瀹炵幇鈥濈殑鐘舵€侊紝鎺ㄨ繘鍒?*鏈€灏忓彲楠岃瘉瀹炵幇**銆?2. 鎶?`research/vendor/stata_community/` 涓?6 涓紑婧愬懡浠ょ殑**瀹屾暣搴︾姸鎬併€佹敮鎸佺煩闃点€乻ource map銆佹祴璇曡瘉鎹?*鍏ㄩ儴鏀跺彛鍒板彲渚?Codex 涓ユ牸瀹℃煡鐨勭姸鎬併€?
+鏈疆鏄竴涓?*澶т换鍔″寘**銆傚厑璁告敼瀹炵幇銆佹祴璇曘€佹枃妗ｅ拰绀轰緥锛屼絾涓嶅厑璁告ā绯婅竟鐣屻€?
+## 2. 鏈疆蹇呴』瀹屾垚鐨勫唴瀹?
+### A. `rdrobust` 杩涘叆鐪熷疄瀹炵幇灞?
+鑷冲皯瀹屾垚浠ヤ笅鍐呭锛?
+- 鍦?`src/stataflow/estimators/` 涓柊澧?`rdrobust` 鐨勬牳蹇?estimator
+- 鍦?`src/stataflow/compat/stata/` 涓柊澧?`rdrobust()` wrapper
+- 鍦?`src/stataflow/__init__.py` 涓?`src/stataflow/compat/stata/__init__.py` 涓纭鍑?- 鍦?`docs/command-support-matrix/` 涓柊澧?`rdrobust.md`
+- 鍦?`docs/research/` 涓柊澧炴垨琛ュ叏 `rdrobust-source-map.md`
+- 鍦?`tests/` 涓柊澧?synthetic 娴嬭瘯涓庤嚦灏?1 涓?real-data / official-example 椋庢牸娴嬭瘯
 
-目标不是继续零散补功能，而是同时完成两件事：
+### B. `rdrobust` 鐨勬渶灏忔敮鎸佽竟鐣屽繀椤绘槑纭?
+鏈疆涓嶈姹傚畬鏁磋鐩?`rdrobust` 鐨勫叏閮ㄥ巻鍙查€夐」锛屼絾鏈€灏忓疄鐜板繀椤绘湁娓呮鐨勬暟瀛︿笌鍛戒护璇箟杈圭晫銆?
+鏈€浣庤姹傦細
 
-1. 把 `rdrobust` 从“仅有本地源码镜像、无 Python 实现”的状态，推进到**最小可验证实现**。
-2. 把 `research/vendor/stata_community/` 下 6 个开源命令的**完整度状态、支持矩阵、source map、测试证据**全部收口到可供 Codex 严格审查的状态。
+- sharp RD 涓昏矾寰?- 鏈湴澶氶」寮忓洖褰掓牳蹇冧及璁?- 鑷冲皯涓€绉?kernel
+- 鑷冲皯涓€绉?bandwidth 閫夋嫨璺緞锛屾垨鏄庣‘瑕佹眰鐢ㄦ埛鏄惧紡浼犲甫瀹?- 涓?Stata 鍛戒护/婧愮爜涓€鑷寸殑鐐逛及璁″拰鍏抽敭鎺ㄦ柇瀵硅薄
+- 缁撴灉瀵硅薄涓牳蹇冨瓧娈电殑绋冲畾璇箟
 
-本轮是一个**大任务包**。允许改实现、测试、文档和示例，但不允许模糊边界。
-
-## 2. 本轮必须完成的内容
-
-### A. `rdrobust` 进入真实实现层
-
-至少完成以下内容：
-
-- 在 `src/statapy/estimators/` 中新增 `rdrobust` 的核心 estimator
-- 在 `src/statapy/compat/stata/` 中新增 `rdrobust()` wrapper
-- 在 `src/statapy/__init__.py` 与 `src/statapy/compat/stata/__init__.py` 中正确导出
-- 在 `docs/command-support-matrix/` 中新增 `rdrobust.md`
-- 在 `docs/research/` 中新增或补全 `rdrobust-source-map.md`
-- 在 `tests/` 中新增 synthetic 测试与至少 1 个 real-data / official-example 风格测试
-
-### B. `rdrobust` 的最小支持边界必须明确
-
-本轮不要求完整覆盖 `rdrobust` 的全部历史选项，但最小实现必须有清楚的数学与命令语义边界。
-
-最低要求：
-
-- sharp RD 主路径
-- 本地多项式回归核心估计
-- 至少一种 kernel
-- 至少一种 bandwidth 选择路径，或明确要求用户显式传带宽
-- 与 Stata 命令/源码一致的点估计和关键推断对象
-- 结果对象中核心字段的稳定语义
-
-如果某些关键复杂功能本轮不做，例如：
+濡傛灉鏌愪簺鍏抽敭澶嶆潅鍔熻兘鏈疆涓嶅仛锛屼緥濡傦細
 
 - fuzzy RD
 - covariate-adjusted RD
 - cluster VCE
-- 完整 bandwidth selector 家族
-- rdplot / rdbwselect 全命令面
+- 瀹屾暣 bandwidth selector 瀹舵棌
+- rdplot / rdbwselect 鍏ㄥ懡浠ら潰
 
-必须：
+蹇呴』锛?
+- 鏄惧紡 hard-reject
+- 鍐欏叆 support matrix
+- 鍐欏叆 source map 鐨勨€滄湭瀹炵幇鈥濋儴鍒?- 鍦ㄦ姤鍛婇噷瑙ｉ噴涓轰粈涔堟病鍋?
+### C. Vendor 鍏懡浠ゅ畬鏁村害鐭╅樀缁熶竴鏀跺彛
 
-- 显式 hard-reject
-- 写入 support matrix
-- 写入 source map 的“未实现”部分
-- 在报告里解释为什么没做
-
-### C. Vendor 六命令完整度矩阵统一收口
-
-必须重新核对并更新以下命令的 support matrix 和 source map：
-
+蹇呴』閲嶆柊鏍稿骞舵洿鏂颁互涓嬪懡浠ょ殑 support matrix 鍜?source map锛?
 - `reghdfe`
 - `ivreghdfe`
 - `ppmlhdfe`
@@ -63,147 +45,108 @@
 - `eventstudyinteract`
 - `rdrobust`
 
-每个命令都必须明确分成三类：
+姣忎釜鍛戒护閮藉繀椤绘槑纭垎鎴愪笁绫伙細
 
-- 已实现并验证
-- 已实现但只是子集 / Phase A
-- 未实现或显式拒绝
+- 宸插疄鐜板苟楠岃瘉
+- 宸插疄鐜颁絾鍙槸瀛愰泦 / Phase A
+- 鏈疄鐜版垨鏄惧紡鎷掔粷
 
-不得继续出现“命令存在”但“完整度不清楚”的写法。
+涓嶅緱缁х画鍑虹幇鈥滃懡浠ゅ瓨鍦ㄢ€濅絾鈥滃畬鏁村害涓嶆竻妤氣€濈殑鍐欐硶銆?
+### D. 娴嬭瘯涓庤瘉鎹摼鍗囩骇
 
-### D. 测试与证据链升级
-
-本轮新增的测试不能只是“为了让数字过”。
-
-必须同时包含：
-
+鏈疆鏂板鐨勬祴璇曚笉鑳藉彧鏄€滀负浜嗚鏁板瓧杩団€濄€?
+蹇呴』鍚屾椂鍖呭惈锛?
 - synthetic / controlled case
-- real-data 或官方示例 case
-- 至少一个直接针对数学过程的检查
+- real-data 鎴栧畼鏂圭ず渚?case
+- 鑷冲皯涓€涓洿鎺ラ拡瀵规暟瀛﹁繃绋嬬殑妫€鏌?
+`rdrobust` 鑷冲皯闇€瑕侊細
 
-`rdrobust` 至少需要：
+- 1 涓?synthetic case锛氭鏌?cutoff 涓や晶灞€閮ㄥ椤瑰紡浼拌涓庢姤鍛婂瓧娈?- 1 涓?real-data / official-example case锛氫紭鍏堜娇鐢ㄦ湰鍦?`research/vendor/stata_community/rdrobust/` 涓彲澶嶇幇鏁版嵁鎴栫ず渚?
+鍙﹀锛岄渶瑕佽嚦灏戣ˉ 1 涓€滃弽鍑戞暟鍊尖€濇祴璇曪紝渚嬪锛?
+- 閿欒鍙傛暟蹇呴』鏄惧紡鎶ラ敊
+- 鍏抽敭瀛楁涓嶈兘琚烦杩?- bandwidth / kernel / cutoff 鍙樺寲浼氬紩璧峰彲瑙ｉ噴鐨勭粨鏋滃彉鍖?
+## 3. 鏁板涓庢簮鐮佸榻愯姹?
+### A. 绂佹浜嬮」
 
-- 1 个 synthetic case：检查 cutoff 两侧局部多项式估计与报告字段
-- 1 个 real-data / official-example case：优先使用本地 `research/vendor/stata_community/rdrobust/` 中可复现数据或示例
+浠ヤ笅浠讳竴鍋氭硶閮借涓烘湰杞け璐ワ細
 
-另外，需要至少补 1 个“反凑数值”测试，例如：
+- 閫氳繃璋冨瀹瑰樊璁?`rdrobust` 杩囨祴璇?- 鍙鍗曚竴鏍蜂緥鍙嶆帹鏁板€?- 鏃犳硶璇存槑浼拌閲忋€佸亸宸慨姝ｃ€佹爣鍑嗚鏉ヨ嚜婧愮爜鎴栨墜鍐屼綍澶?- wrapper 鏆撮湶浜嗗弬鏁帮紝浣嗗弬鏁板疄闄呬笂鏈敓鏁?
+### B. 蹇呴』鍙В閲婄殑闂
 
-- 错误参数必须显式报错
-- 关键字段不能被跳过
-- bandwidth / kernel / cutoff 变化会引起可解释的结果变化
+浣犲湪瀹炵幇 `rdrobust` 鍚庯紝蹇呴』鑳藉湪鎶ュ憡涓槑纭洖绛旓細
 
-## 3. 数学与源码对齐要求
-
-### A. 禁止事项
-
-以下任一做法都视为本轮失败：
-
-- 通过调宽容差让 `rdrobust` 过测试
-- 只对单一样例反推数值
-- 无法说明估计量、偏差修正、标准误来自源码或手册何处
-- wrapper 暴露了参数，但参数实际上未生效
-
-### B. 必须可解释的问题
-
-你在实现 `rdrobust` 后，必须能在报告中明确回答：
-
-- Python 实现的估计对象是什么
-- Stata 源码主入口是哪个 `.ado` / `.do` / `.mata` / 其他文件
-- 带宽、kernel、局部多项式是如何对应到 Python 实现的
-- 推断对象是什么，标准误如何构造
-- 本轮做的是完整 `rdrobust`，还是最小子集；如果是子集，缺的具体是什么
-
-### C. 若无法完整解释
-
-如果在本轮中发现 `rdrobust` 某部分没法在源码/手册上说清楚，则：
-
-- 可以保留最小实现
-- 但必须把未解释部分列为未完成
-- 不能因为测试过了就宣称“完整实现”
-
-## 4. 允许修改的范围
-
-本轮允许修改：
-
-- `src/statapy/estimators/`
-- `src/statapy/compat/stata/`
-- `src/statapy/__init__.py`
-- `src/statapy/compat/stata/__init__.py`
+- Python 瀹炵幇鐨勪及璁″璞℃槸浠€涔?- Stata 婧愮爜涓诲叆鍙ｆ槸鍝釜 `.ado` / `.do` / `.mata` / 鍏朵粬鏂囦欢
+- 甯﹀銆乲ernel銆佸眬閮ㄥ椤瑰紡鏄浣曞搴斿埌 Python 瀹炵幇鐨?- 鎺ㄦ柇瀵硅薄鏄粈涔堬紝鏍囧噯璇浣曟瀯閫?- 鏈疆鍋氱殑鏄畬鏁?`rdrobust`锛岃繕鏄渶灏忓瓙闆嗭紱濡傛灉鏄瓙闆嗭紝缂虹殑鍏蜂綋鏄粈涔?
+### C. 鑻ユ棤娉曞畬鏁磋В閲?
+濡傛灉鍦ㄦ湰杞腑鍙戠幇 `rdrobust` 鏌愰儴鍒嗘病娉曞湪婧愮爜/鎵嬪唽涓婅娓呮锛屽垯锛?
+- 鍙互淇濈暀鏈€灏忓疄鐜?- 浣嗗繀椤绘妸鏈В閲婇儴鍒嗗垪涓烘湭瀹屾垚
+- 涓嶈兘鍥犱负娴嬭瘯杩囦簡灏卞绉扳€滃畬鏁村疄鐜扳€?
+## 4. 鍏佽淇敼鐨勮寖鍥?
+鏈疆鍏佽淇敼锛?
+- `src/stataflow/estimators/`
+- `src/stataflow/compat/stata/`
+- `src/stataflow/__init__.py`
+- `src/stataflow/compat/stata/__init__.py`
 - `tests/`
 - `docs/command-support-matrix/`
 - `docs/research/`
 - `docs/testing/test-case-catalog.md`
 - `docs/backlog.md`
-- `README.md`（如需新增 `rdrobust` 命令说明）
-- `workspace/current-task/REPORT.md`
+- `README.md`锛堝闇€鏂板 `rdrobust` 鍛戒护璇存槑锛?- `workspace/current-task/REPORT.md`
 
-## 5. 不允许修改的范围
+## 5. 涓嶅厑璁镐慨鏀圭殑鑼冨洿
 
-本轮不要擅自修改：
-
+鏈疆涓嶈鎿呰嚜淇敼锛?
 - `docs/project-charter.md`
-- `docs/architecture/public-api.md` 的顶层原则
-- `docs/operations/codex-review-protocol.md`
+- `docs/architecture/public-api.md` 鐨勯《灞傚師鍒?- `docs/operations/codex-review-protocol.md`
 
-除非你发现这些文档与本轮实现直接矛盾，并在报告中明确说明原因。
+闄ら潪浣犲彂鐜拌繖浜涙枃妗ｄ笌鏈疆瀹炵幇鐩存帴鐭涚浘锛屽苟鍦ㄦ姤鍛婁腑鏄庣‘璇存槑鍘熷洜銆?
+## 6. 楠岃瘉瑕佹眰
 
-## 6. 验证要求
+鏈疆鑷冲皯鎵ц骞跺洖鎶ヤ互涓嬮獙璇侊細
 
-本轮至少执行并回报以下验证：
-
-### 全量基线
+### 鍏ㄩ噺鍩虹嚎
 
 ```powershell
 python -m pytest tests -v
 ```
 
-### `rdrobust` 专项
+### `rdrobust` 涓撻」
 
-你新增的 `rdrobust` 测试文件必须单独 fresh run。
+浣犳柊澧炵殑 `rdrobust` 娴嬭瘯鏂囦欢蹇呴』鍗曠嫭 fresh run銆?
+### Vendor 鐩稿叧涓撻」
 
-### Vendor 相关专项
-
-至少重新跑一组与 vendor 命令相关的专项测试，确保本轮改动没有破坏已有命令：
-
+鑷冲皯閲嶆柊璺戜竴缁勪笌 vendor 鍛戒护鐩稿叧鐨勪笓椤规祴璇曪紝纭繚鏈疆鏀瑰姩娌℃湁鐮村潖宸叉湁鍛戒护锛?
 - `tests/test_hdfe_synthetic.py`
 - `tests/test_compat_stata_did.py`
-- 至少一组 `reghdfe` / `ppmlhdfe` / `did_imputation` golden tests
+- 鑷冲皯涓€缁?`reghdfe` / `ppmlhdfe` / `did_imputation` golden tests
 
-### 运行时抽查
+### 杩愯鏃舵娊鏌?
+鑷冲皯瀹為檯璋冪敤涓€娆★細
 
-至少实际调用一次：
+- `stataflow.compat.stata.rdrobust(...)`
+- 涓€涓凡鏈?vendor wrapper锛屼緥濡?`reghdfe(...)` 鎴?`ppmlhdfe(...)`
 
-- `statapy.compat.stata.rdrobust(...)`
-- 一个已有 vendor wrapper，例如 `reghdfe(...)` 或 `ppmlhdfe(...)`
+纭繚 wrapper 璇箟銆佽繑鍥炲璞″拰鏂囨。涓€鑷淬€?
+## 7. 瀹屾垚鏍囧噯
 
-确保 wrapper 语义、返回对象和文档一致。
+鏈疆瑕佽瑙嗕负閫氳繃锛岃嚦灏戦渶瑕佹弧瓒筹細
 
-## 7. 完成标准
+1. `rdrobust` 宸茬粡涓嶅啀鏄?鈥渕issing鈥?2. `rdrobust` 鏈夌湡瀹?Python 瀹炵幇銆亀rapper銆乻upport matrix銆乻ource map銆佹祴璇?3. 鍏釜 vendor 鍛戒护鐨勫畬鏁村害鐘舵€佸叏閮ㄦ竻妤?4. support matrix / source map / tests / report 涓嶄簰鐩告墦鏋?5. 娌℃湁鍙戠幇鈥滀负浜嗚繃娴嬭瘯鑰屽噾鏁板€尖€濈殑璇佹嵁
 
-本轮要被视为通过，至少需要满足：
+## 8. 鎶ュ憡鏍煎紡瑕佹眰
 
-1. `rdrobust` 已经不再是 “missing”
-2. `rdrobust` 有真实 Python 实现、wrapper、support matrix、source map、测试
-3. 六个 vendor 命令的完整度状态全部清楚
-4. support matrix / source map / tests / report 不互相打架
-5. 没有发现“为了过测试而凑数值”的证据
+鍦?[workspace/current-task/REPORT.md](</D:/OneDrive - SAIF/PhD3/StataFlow/workspace/current-task/REPORT.md>) 涓寜浠ヤ笅缁撴瀯鍥炴姤锛?
+### 1. 鏈疆鏀瑰姩姒傝
 
-## 8. 报告格式要求
+### 2. `rdrobust` 瀹炵幇璇存槑
 
-在 [workspace/current-task/REPORT.md](</D:/OneDrive - SAIF/PhD3/Stata2Python/workspace/current-task/REPORT.md>) 中按以下结构回报：
-
-### 1. 本轮改动概览
-
-### 2. `rdrobust` 实现说明
-
-- 估计对象
-- 源码入口
-- 本轮支持参数
-- 本轮明确不支持参数
-
-### 3. Vendor 六命令完整度更新表
-
-必须逐个写：
+- 浼拌瀵硅薄
+- 婧愮爜鍏ュ彛
+- 鏈疆鏀寔鍙傛暟
+- 鏈疆鏄庣‘涓嶆敮鎸佸弬鏁?
+### 3. Vendor 鍏懡浠ゅ畬鏁村害鏇存柊琛?
+蹇呴』閫愪釜鍐欙細
 
 - `reghdfe`
 - `ivreghdfe`
@@ -212,15 +155,13 @@ python -m pytest tests -v
 - `eventstudyinteract`
 - `rdrobust`
 
-### 4. 验证结果
+### 4. 楠岃瘉缁撴灉
 
-- 全量测试
-- `rdrobust` 专项
-- 其他专项
+- 鍏ㄩ噺娴嬭瘯
+- `rdrobust` 涓撻」
+- 鍏朵粬涓撻」
 
-### 5. 已知剩余问题
+### 5. 宸茬煡鍓╀綑闂
 
-### 6. 请求 Codex 重点审查的问题
-
-如果你不确定某处是否达到了“数学过程对齐”的标准，必须点名让我重点审。
-
+### 6. 璇锋眰 Codex 閲嶇偣瀹℃煡鐨勯棶棰?
+濡傛灉浣犱笉纭畾鏌愬鏄惁杈惧埌浜嗏€滄暟瀛﹁繃绋嬪榻愨€濈殑鏍囧噯锛屽繀椤荤偣鍚嶈鎴戦噸鐐瑰銆?

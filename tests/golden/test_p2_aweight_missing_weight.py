@@ -15,10 +15,10 @@ from tests.golden.test_utils import (
     run_stata_ols,
     tolerance_close,
 )
-from statapy import OLS
+from stataflow import OLS
 
 # Use temp directory to avoid OneDrive file locking
-TEMP_DIR = Path(tempfile.mkdtemp(prefix="statapy_aweight_missing_"))
+TEMP_DIR = Path(tempfile.mkdtemp(prefix="stataflow_aweight_missing_"))
 
 
 def _generate_test_data() -> pd.DataFrame:

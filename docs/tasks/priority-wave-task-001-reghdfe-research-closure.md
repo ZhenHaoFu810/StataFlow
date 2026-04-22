@@ -1,35 +1,25 @@
-# Priority Wave Task 001：`reghdfe` 研究收束与实现边界确认
+# Priority Wave Task 001锛歚reghdfe` 鐮旂┒鏀舵潫涓庡疄鐜拌竟鐣岀‘璁?
+## 鍩烘湰淇℃伅
 
-## 基本信息
+- 浠诲姟鍚嶇О锛歚reghdfe` 鐮旂┒鏀舵潫涓庡疄鐜拌竟鐣岀‘璁?- 鎵€灞炲懡浠ゆ棌锛歚Panel / FE / HDFE`
+- 瀵瑰簲 backlog 鏉＄洰锛歚reghdfe`
+- 浼樺厛绾э細P1
+- 鎵ц浜猴細Claude Code
+- 瀹℃煡浜猴細Codex
 
-- 任务名称：`reghdfe` 研究收束与实现边界确认
-- 所属命令族：`Panel / FE / HDFE`
-- 对应 backlog 条目：`reghdfe`
-- 优先级：P1
-- 执行人：Claude Code
-- 审查人：Codex
+## 浠诲姟鐩爣
 
-## 任务目标
+鏈疆鏄?`Priority Wave: reghdfe` 鐨?Round 1锛屽彧鍋氱爺绌舵敹鏉燂紝涓嶅仛瀹炵幇銆?
+闇€瑕佷氦浠橈細
 
-本轮是 `Priority Wave: reghdfe` 的 Round 1，只做研究收束，不做实现。
-
-需要交付：
-
-1. 将现有 `reghdfe` 研究档案收束为可直接进入最小实现的规格说明。
-2. 基于本地源码镜像，明确：
-   - 最小实现的 `ado` / `mata` 入口
-   - 需要优先模仿的算法路径
-   - 暂不支持的选项面
-3. 将 `reghdfe Phase A` 的最小兼容子集写清楚：
-   - `absorb()` 支持 1-2 组 FE
+1. 灏嗙幇鏈?`reghdfe` 鐮旂┒妗ｆ鏀舵潫涓哄彲鐩存帴杩涘叆鏈€灏忓疄鐜扮殑瑙勬牸璇存槑銆?2. 鍩轰簬鏈湴婧愮爜闀滃儚锛屾槑纭細
+   - 鏈€灏忓疄鐜扮殑 `ado` / `mata` 鍏ュ彛
+   - 闇€瑕佷紭鍏堟ā浠跨殑绠楁硶璺緞
+   - 鏆備笉鏀寔鐨勯€夐」闈?3. 灏?`reghdfe Phase A` 鐨勬渶灏忓吋瀹瑰瓙闆嗗啓娓呮锛?   - `absorb()` 鏀寔 1-2 缁?FE
    - `vce(ols)`
-   - 单 `cluster`
-   - singleton 默认 drop 的口径
-   - `df_a`、`df_r`、`F` 的重点对齐字段
-4. 检查并补齐 `synthetic` 与 `real_data` 样例设计，使其足以支撑下一轮最小实现。
-5. 形成一份结构化研究回报，明确是否可以开放 `reghdfe` 最小实现。
-
-## 必读文档
+   - 鍗?`cluster`
+   - singleton 榛樿 drop 鐨勫彛寰?   - `df_a`銆乣df_r`銆乣F` 鐨勯噸鐐瑰榻愬瓧娈?4. 妫€鏌ュ苟琛ラ綈 `synthetic` 涓?`real_data` 鏍蜂緥璁捐锛屼娇鍏惰冻浠ユ敮鎾戜笅涓€杞渶灏忓疄鐜般€?5. 褰㈡垚涓€浠界粨鏋勫寲鐮旂┒鍥炴姤锛屾槑纭槸鍚﹀彲浠ュ紑鏀?`reghdfe` 鏈€灏忓疄鐜般€?
+## 蹇呰鏂囨。
 
 1. `docs/operations/executor-playbook.md`
 2. `docs/project-charter.md`
@@ -38,79 +28,55 @@
 5. `docs/research/reghdfe.md`
 6. `docs/research/stata-source-inventory.md`
 7. `docs/research/public-datasets.md`
-8. 本任务卡
+8. 鏈换鍔″崱
 
-## 本轮允许修改的文件
-
+## 鏈疆鍏佽淇敼鐨勬枃浠?
 - `docs/research/reghdfe.md`
 - `docs/research/stata-source-inventory.md`
 - `docs/testing/test-case-catalog.md`
 - `workspace/current-task/REPORT.md`
 
-如确有必要，可新增：
+濡傜‘鏈夊繀瑕侊紝鍙柊澧烇細
 
 - `docs/research/reghdfe-phase-a-notes.md`
 
-## 本轮禁止事项
+## 鏈疆绂佹浜嬮」
 
-- 不得修改 `src/statapy/` 下任何实现代码
-- 不得新增 `reghdfe` 的 Python API 实现
-- 不得顺势扩展到 `ivreghdfe`、`ppmlhdfe` 或多向 cluster
-- 不得把研究结论直接写成“已完成实现”
-- 不得把未验证的统计差异提前认定为“可接受”
+- 涓嶅緱淇敼 `src/stataflow/` 涓嬩换浣曞疄鐜颁唬鐮?- 涓嶅緱鏂板 `reghdfe` 鐨?Python API 瀹炵幇
+- 涓嶅緱椤哄娍鎵╁睍鍒?`ivreghdfe`銆乣ppmlhdfe` 鎴栧鍚?cluster
+- 涓嶅緱鎶婄爺绌剁粨璁虹洿鎺ュ啓鎴愨€滃凡瀹屾垚瀹炵幇鈥?- 涓嶅緱鎶婃湭楠岃瘉鐨勭粺璁″樊寮傛彁鍓嶈瀹氫负鈥滃彲鎺ュ彈鈥?
+## 闇€瑕佸畬鎴愮殑鐮旂┒鍐呭
 
-## 需要完成的研究内容
+### A. 鏈湴婧愮爜鍏ュ彛鏀舵潫
 
-### A. 本地源码入口收束
+鑷冲皯鏄庣‘锛?
+- `reghdfe.ado` 鐨勪富鍛戒护鍏ュ彛
+- 鍏抽敭 `mata` 鏂囦欢涓庤亴璐ｅ垝鍒?- 鍝潯绠楁硶璺緞鏈€閫傚悎浣滀负 Python `Phase A` 鐨勬渶灏忓弬鑰冨疄鐜?- 鏄惁渚濊禆 `ftools` 鐨勭壒瀹氳涓猴紝鑻ヤ緷璧栵紝濡備綍鍦?Python 涓娊璞℃浛浠?
+### B. `Phase A` 鏈€灏忓疄鐜拌竟鐣?
+鑷冲皯鍐欐竻锛?
+- 鏀寔鍝簺 `absorb()` 褰㈡€?- 鍗?`cluster` 鐨勬渶灏忚涔?- singleton 澶勭悊鍙ｅ緞
+- `df_a`銆乣df_r`銆乣N_clust`銆乣F` 鐨勯獙鏀跺瓧娈?- `_cons`銆佺郴鏁板懡鍚嶃€佺粨鏋滃璞″厓鏁版嵁濡備綍琛ㄨ揪
 
-至少明确：
+### C. 娴嬭瘯璁捐鏀舵潫
 
-- `reghdfe.ado` 的主命令入口
-- 关键 `mata` 文件与职责划分
-- 哪条算法路径最适合作为 Python `Phase A` 的最小参考实现
-- 是否依赖 `ftools` 的特定行为，若依赖，如何在 Python 中抽象替代
-
-### B. `Phase A` 最小实现边界
-
-至少写清：
-
-- 支持哪些 `absorb()` 形态
-- 单 `cluster` 的最小语义
-- singleton 处理口径
-- `df_a`、`df_r`、`N_clust`、`F` 的验收字段
-- `_cons`、系数命名、结果对象元数据如何表达
-
-### C. 测试设计收束
-
-至少确认或补齐：
+鑷冲皯纭鎴栬ˉ榻愶細
 
 - `p3_reghdfe_basic`
 - `p3_reghdfe_cluster`
 - `p3_reghdfe_real_panel`
 
-每个样例都要写明：
+姣忎釜鏍蜂緥閮借鍐欐槑锛?
+- 浣跨敤鍝粍鏁版嵁
+- Stata 鍛戒护
+- 棰勬湡 Python API
+- 涓昏椋庨櫓鐐?- 鏈疆涔嬪悗鏄?`ready` 杩樻槸浠嶅簲 `planned`
 
-- 使用哪组数据
-- Stata 命令
-- 预期 Python API
-- 主要风险点
-- 本轮之后是 `ready` 还是仍应 `planned`
+## 鍥炴姤瑕佹眰
 
-## 回报要求
+鍥炴姤蹇呴』鑷冲皯鍖呭惈锛?
+- 淇敼鏂囦欢娓呭崟
+- `reghdfe Phase A` 鐨勬槑纭姛鑳借竟鐣?- 鏈湴婧愮爜鍏ュ彛涓庝紭鍏堝弬鑰冭矾寰?- 寤鸿鐨勬渶灏忔祴璇曠煩闃?- 灏氭湭瑙ｅ喅鐨勭粺璁￠闄?- 鏄惁寤鸿寮€鏀?`Priority Wave Task 002 - reghdfe 鏈€灏忓疄鐜癭
 
-回报必须至少包含：
+## 楠屾敹鏍囧噯
 
-- 修改文件清单
-- `reghdfe Phase A` 的明确功能边界
-- 本地源码入口与优先参考路径
-- 建议的最小测试矩阵
-- 尚未解决的统计风险
-- 是否建议开放 `Priority Wave Task 002 - reghdfe 最小实现`
-
-## 验收标准
-
-- `docs/research/reghdfe.md` 已能直接支撑实现轮
-- 本地源码入口、依赖和算法优先路径已明确
-- `docs/testing/test-case-catalog.md` 中 `reghdfe` 样例登记完整且状态合理
-- 本轮未触碰任何实现代码
-- 回报中无“研究代替实现完成”的表述
+- `docs/research/reghdfe.md` 宸茶兘鐩存帴鏀拺瀹炵幇杞?- 鏈湴婧愮爜鍏ュ彛銆佷緷璧栧拰绠楁硶浼樺厛璺緞宸叉槑纭?- `docs/testing/test-case-catalog.md` 涓?`reghdfe` 鏍蜂緥鐧昏瀹屾暣涓旂姸鎬佸悎鐞?- 鏈疆鏈Е纰颁换浣曞疄鐜颁唬鐮?- 鍥炴姤涓棤鈥滅爺绌朵唬鏇垮疄鐜板畬鎴愨€濈殑琛ㄨ堪

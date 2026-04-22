@@ -1,10 +1,10 @@
 clear all
 set more off
-use "D:/OneDrive - SAIF/PhD3/Stata2Python/research/data/public/did/ezunem_prepared.dta", clear
-csdid uclms, ivar(city) time(year) gvar(first_treat) method(reg) saverif("D:/OneDrive - SAIF/PhD3/Stata2Python/stata/output/csdid_rif_ezunem", replace)
+use "D:/OneDrive - SAIF/PhD3/StataFlow/research/data/public/did/ezunem_prepared.dta", clear
+csdid uclms, ivar(city) time(year) gvar(first_treat) method(reg) saverif("D:/OneDrive - SAIF/PhD3/StataFlow/stata/output/csdid_rif_ezunem", replace)
 
 * Load the RIF file
-use "D:/OneDrive - SAIF/PhD3/Stata2Python/stata/output/csdid_rif_ezunem", clear
+use "D:/OneDrive - SAIF/PhD3/StataFlow/stata/output/csdid_rif_ezunem", clear
 
 mata:
 rifgt = st_data(., "_g1984_1980_1981 _g1984_1981_1982 _g1984_1982_1983 _g1984_1983_1984 _g1984_1983_1985 _g1984_1983_1986 _g1984_1983_1987 _g1984_1983_1988 _g1985_1980_1981 _g1985_1981_1982 _g1985_1982_1983 _g1985_1983_1984 _g1985_1984_1985 _g1985_1984_1986 _g1985_1984_1987 _g1985_1984_1988")

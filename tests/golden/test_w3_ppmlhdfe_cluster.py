@@ -14,8 +14,8 @@ import pytest
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from statapy import PPMLHDFE
-from statapy.stata_runner import StataRunner
+from stataflow import PPMLHDFE
+from stataflow.stata_runner import StataRunner
 from tests.golden.test_utils import (
     PROJECT_STATA_OUTPUT,
     PROJECT_STATA_CASES,

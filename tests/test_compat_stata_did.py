@@ -4,8 +4,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from statapy.compat.stata import did_imputation, eventstudyinteract, csdid
-from statapy.estimators import DIDImputation, EventStudyInteract, CSDID
+from stataflow.compat.stata import did_imputation, eventstudyinteract, csdid
+from stataflow.estimators import DIDImputation, EventStudyInteract, CSDID
 
 
 def _make_did_data(n_units=50, n_periods=5, seed=42):

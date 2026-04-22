@@ -6,7 +6,7 @@ set more off
 
 // Use temp directory to avoid OneDrive sync issues
 local tempdir = c("tmpdir")
-local workdir "`tempdir'\statapy_p0"
+local workdir "`tempdir'\stataflow_p0"
 cap mkdir "`workdir'"
 
 // Create minimal dataset

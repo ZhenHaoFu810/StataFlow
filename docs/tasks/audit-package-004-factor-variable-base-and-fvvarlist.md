@@ -1,8 +1,8 @@
-# 审计后任务包 004：因子变量 Phase C 与 base-level / omitted-level 语义
+# 瀹¤鍚庝换鍔″寘 004锛氬洜瀛愬彉閲?Phase C 涓?base-level / omitted-level 璇箟
 
-## 1. 任务背景
+## 1. 浠诲姟鑳屾櫙
 
-任务包 002 与 003 已经把以下高频 factor 语义接入 wrapper 层：
+浠诲姟鍖?002 涓?003 宸茬粡鎶婁互涓嬮珮棰?factor 璇箟鎺ュ叆 wrapper 灞傦細
 
 - `c.x1#c.x2`
 - `c.x1##c.x2`
@@ -14,109 +14,84 @@
 - `x1##x2`
 - `x1##i.g`
 
-这已经足以覆盖大量常见实证回归写法，但当前 factor grammar 仍有一个很明显的下一阶段缺口：
+杩欏凡缁忚冻浠ヨ鐩栧ぇ閲忓父瑙佸疄璇佸洖褰掑啓娉曪紝浣嗗綋鍓?factor grammar 浠嶆湁涓€涓緢鏄庢樉鐨勪笅涓€闃舵缂哄彛锛?
+- `ib#.` / `b.` / `o.` 鐨?base-level / omitted-level 璇箟浠嶆湭瀹炵幇
 
-- `ib#.` / `b.` / `o.` 的 base-level / omitted-level 语义仍未实现
+杩欐剰鍛崇潃鐢ㄦ埛杩樹笉鑳芥洿绮剧‘鍦版帶鍒讹細
 
-这意味着用户还不能更精确地控制：
+- 鍝釜鍒嗙被姘村钩浣滀负鍩哄噯缁?- 鍝簺姘村钩琚樉寮忕渷鐣?- 鏌愪簺 Stata `fvvarlist` 缁撴灉鍒楀悕涓庡鐓ч€昏緫
 
-- 哪个分类水平作为基准组
-- 哪些水平被显式省略
-- 某些 Stata `fvvarlist` 结果列名与对照逻辑
+濡傛灉椤圭洰瑕佺户缁€艰繎鈥淪tata 甯哥敤鍛戒护鐪熷疄杩佺Щ浣撻獙鈥濓紝杩欎竴灞備笉鑳介暱鏈熺己澶便€?
+## 2. 鎬荤洰鏍?
+鏈疆鎶?factor grammar 浠庡綋鍓?Phase B 鍐嶆帹杩涗竴姝ワ紝閲嶇偣瀹炵幇锛?
+- `ib#.` / `b.` / `o.` 鐨勬渶灏忓彲鐢ㄨ涔?- 鏇存槑纭殑 base/omitted level 鍒楀懡鍚嶄笌缁撴灉瀵硅薄琛屼负
+- 鍦?`regress`銆乣reghdfe`銆佽嚦灏戜竴涓潪绾挎€у懡浠や腑瀹屾垚 dual-run 璇佹嵁
 
-如果项目要继续逼近“Stata 常用命令真实迁移体验”，这一层不能长期缺失。
+鏈疆浠嶇劧涓嶈拷姹傚畬鏁?`fvvarlist` 缁堟€侊紝浣嗚鎶?**鏈€鏍稿績鐨勫熀鍑嗙粍/鐪佺暐缁勬帶鍒惰涔?* 鍋氬嚭鏉ャ€?
+## 3. 蹇呴』瀹屾垚鐨勫唴瀹?
+### A. parser 鏀寔 base / omitted level 璇硶
 
-## 2. 总目标
-
-本轮把 factor grammar 从当前 Phase B 再推进一步，重点实现：
-
-- `ib#.` / `b.` / `o.` 的最小可用语义
-- 更明确的 base/omitted level 列命名与结果对象行为
-- 在 `regress`、`reghdfe`、至少一个非线性命令中完成 dual-run 证据
-
-本轮仍然不追求完整 `fvvarlist` 终态，但要把 **最核心的基准组/省略组控制语义** 做出来。
-
-## 3. 必须完成的内容
-
-### A. parser 支持 base / omitted level 语法
-
-扩展 `src/statapy/compat/stata/factor_variables.py`，至少支持：
+鎵╁睍 `src/stataflow/compat/stata/factor_variables.py`锛岃嚦灏戞敮鎸侊細
 
 - `ib2.g`
 - `ib3.g`
 - `b2.g`
 - `o2.g`
 
-需要明确：
+闇€瑕佹槑纭細
 
-- `ib2.g` / `b2.g` 如何指定基准组
-- `o2.g` 如何指定额外省略水平
-- 如果指定的 level 不存在，必须报明确错误
+- `ib2.g` / `b2.g` 濡備綍鎸囧畾鍩哄噯缁?- `o2.g` 濡備綍鎸囧畾棰濆鐪佺暐姘村钩
+- 濡傛灉鎸囧畾鐨?level 涓嶅瓨鍦紝蹇呴』鎶ユ槑纭敊璇?
+### B. 涓庣幇鏈?`i.g` 璇箟鏁村悎
 
-### B. 与现有 `i.g` 语义整合
+瑕佹眰锛?
+- `i.g` 浠嶉粯璁ゅ彇绗竴鎺掑簭姘村钩涓哄熀鍑嗙粍
+- `ib#.g` / `b#.g` 浼氳鐩栭粯璁ゅ熀鍑嗙粍
+- `o#.g` 鍦ㄧ敓鎴愰」鏃舵纭渷鐣ュ搴旀按骞?- 缁撴灉鍒楀悕淇濇寔 Stata 椋庢牸
 
-要求：
+### C. 鎺ュ叆楂橀 wrapper 鍛戒护
 
-- `i.g` 仍默认取第一排序水平为基准组
-- `ib#.g` / `b#.g` 会覆盖默认基准组
-- `o#.g` 在生成项时正确省略对应水平
-- 结果列名保持 Stata 风格
-
-### C. 接入高频 wrapper 命令
-
-至少接入：
-
+鑷冲皯鎺ュ叆锛?
 - `regress`
 - `reghdfe`
 - `ivreghdfe`
-- `logit` 或 `poisson`
+- `logit` 鎴?`poisson`
 
-### D. 更新研究与支持矩阵
-
-至少更新：
-
+### D. 鏇存柊鐮旂┒涓庢敮鎸佺煩闃?
+鑷冲皯鏇存柊锛?
 - `docs/research/factor-variable-semantics.md`
 - `docs/command-support-matrix/regress.md`
 - `docs/command-support-matrix/reghdfe.md`
 - `docs/command-support-matrix/ivreghdfe.md`
-- `docs/command-support-matrix/logit.md` 或 `poisson.md`
-- `README.md`（如有必要）
+- `docs/command-support-matrix/logit.md` 鎴?`poisson.md`
+- `README.md`锛堝鏈夊繀瑕侊級
 
-文档必须明确区分：
+鏂囨。蹇呴』鏄庣‘鍖哄垎锛?
+- 宸叉敮鎸侊細`i.`銆乣ib#.`銆乣b#.`銆乣o#.`
+- 浠嶆湭鏀寔锛氭洿澶嶆潅 `fvvarlist` 鍙樹綋銆佹椂闂村簭鍒楃畻瀛愩€佷笁闃朵氦浜?
+## 4. 娴嬭瘯瑕佹眰
 
-- 已支持：`i.`、`ib#.`、`b#.`、`o#.`
-- 仍未支持：更复杂 `fvvarlist` 变体、时间序列算子、三阶交互
+### A. 鍗曞厓娴嬭瘯
 
-## 4. 测试要求
+鏂板鎴栨墿灞?`tests/test_factor_variables.py`锛岃嚦灏戣鐩栵細
 
-### A. 单元测试
+- `i.g` 榛樿鍩哄噯缁勮涓?- `ib2.g` 瑕嗙洊榛樿鍩哄噯缁?- `b2.g` 涓?`ib2.g` 绛変环
+- `o2.g` 姝ｇ‘鐪佺暐姘村钩
+- 涓嶅瓨鍦?level 鏃舵槑纭姤閿?
+### B. 鎵嬪伐灞曞紑绛変环娴嬭瘯
 
-新增或扩展 `tests/test_factor_variables.py`，至少覆盖：
-
-- `i.g` 默认基准组行为
-- `ib2.g` 覆盖默认基准组
-- `b2.g` 与 `ib2.g` 等价
-- `o2.g` 正确省略水平
-- 不存在 level 时明确报错
-
-### B. 手工展开等价测试
-
-至少覆盖：
-
-- `regress(..., x=["ib2.g##c.x1"])` 与手工 dummy/interaction 展开一致
-- `reghdfe(..., x=["ib2.g##c.x1"], absorb=...)` 与手工展开一致
-
+鑷冲皯瑕嗙洊锛?
+- `regress(..., x=["ib2.g##c.x1"])` 涓庢墜宸?dummy/interaction 灞曞紑涓€鑷?- `reghdfe(..., x=["ib2.g##c.x1"], absorb=...)` 涓庢墜宸ュ睍寮€涓€鑷?
 ### C. Stata dual-run
 
-至少新增并通过：
-
+鑷冲皯鏂板骞堕€氳繃锛?
 - `regress y ib2.g##c.x1`
 - `reghdfe y ib2.g##c.x1, absorb(firm year)`
-- 一个非线性命令的 `ib#.` / `b#.` case
+- 涓€涓潪绾挎€у懡浠ょ殑 `ib#.` / `b#.` case
 
-### D. 全量验证
+### D. 鍏ㄩ噺楠岃瘉
 
-完成后至少回报：
+瀹屾垚鍚庤嚦灏戝洖鎶ワ細
 
 ```powershell
 python -m pytest tests/test_factor_variables.py -v
@@ -124,21 +99,16 @@ python -m pytest tests/test_compat_stata_linear.py tests/test_compat_stata_hdfe.
 python -m pytest tests -v
 ```
 
-## 5. 禁止事项
+## 5. 绂佹浜嬮」
 
-本轮不要顺手做：
+鏈疆涓嶈椤烘墜鍋氾細
 
-- 时间序列 factor 语法
-- 三阶及以上交互
-- 全量 `fvvarlist` 终态
-- 与 factor grammar 无关的其他算法扩展
+- 鏃堕棿搴忓垪 factor 璇硶
+- 涓夐樁鍙婁互涓婁氦浜?- 鍏ㄩ噺 `fvvarlist` 缁堟€?- 涓?factor grammar 鏃犲叧鐨勫叾浠栫畻娉曟墿灞?
+## 6. 瀹屾垚鏍囧噯
 
-## 6. 完成标准
+鏈疆閫氳繃鐨勬渶浣庢爣鍑嗭細
 
-本轮通过的最低标准：
-
-- `ib#.` / `b#.` / `o#.` 的最小语义已进入 wrapper 层
-- `regress` / `reghdfe` / 至少一个非线性命令具备 dual-run 证据
-- 文档、支持矩阵、测试、报告同步一致
-
-如果 Claude Code 在报告里把本轮夸大成“完整 factor-variable grammar 已完成”，视为未完成。
+- `ib#.` / `b#.` / `o#.` 鐨勬渶灏忚涔夊凡杩涘叆 wrapper 灞?- `regress` / `reghdfe` / 鑷冲皯涓€涓潪绾挎€у懡浠ゅ叿澶?dual-run 璇佹嵁
+- 鏂囨。銆佹敮鎸佺煩闃点€佹祴璇曘€佹姤鍛婂悓姝ヤ竴鑷?
+濡傛灉 Claude Code 鍦ㄦ姤鍛婇噷鎶婃湰杞じ澶ф垚鈥滃畬鏁?factor-variable grammar 宸插畬鎴愨€濓紝瑙嗕负鏈畬鎴愩€?

@@ -1,5 +1,5 @@
 """
-Pytest configuration and common fixtures for Stata2Python tests.
+Pytest configuration and common fixtures for StataFlow tests.
 """
 
 import os
