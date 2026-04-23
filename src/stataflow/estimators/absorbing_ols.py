@@ -3,7 +3,7 @@ AbsorbingOLS estimator - aligned with Stata's areg and reghdfe commands.
 
 Implements linear regression with absorbed categorical fixed effects
 using the LSDV (Least Squares Dummy Variable) approach.
-Supports single and multiple (1-2) absorption variables.
+Supports single and multiple absorption variables.
 """
 
 from __future__ import annotations
@@ -38,7 +38,7 @@ class AbsorbingOLS:
     x : list[str]
         Independent variable names.
     absorb : str | list[str]
-        Categorical variable(s) to absorb. Supports 1-2 variables for Phase A.
+        Categorical variable(s) to absorb. Multiple variables are supported.
     add_constant : bool, default True
         Whether to include a constant term.
     missing : str, default "drop"
@@ -218,20 +218,27 @@ class AbsorbingOLS:
             matrix_pieces.append(np.ones((n, 1)))
             names.append("_cons")
 
-        for var in self.absorb_vars:
+        for fe_idx, var in enumerate(self.absorb_vars):
             absorb_vals = df[var].values
             unique_levels = np.unique(absorb_vals)
             self._absorb_var_levels.append(unique_levels.tolist())
             G = len(unique_levels)
 
-            D = np.zeros((n, max(G - 1, 0)))
-            for i, level in enumerate(unique_levels[1:], start=1):
-                D[:, i - 1] = (absorb_vals == level).astype(np.float64)
+            if not self.add_constant and fe_idx == 0:
+                # First FE gets all levels when no constant (no reference level)
+                D = np.zeros((n, max(G, 0)))
+                dummy_names = [f"__absorb_{var}_{lvl}" for lvl in unique_levels]
+                for i, level in enumerate(unique_levels):
+                    D[:, i] = (absorb_vals == level).astype(np.float64)
+            else:
+                D = np.zeros((n, max(G - 1, 0)))
+                dummy_names = [f"__absorb_{var}_{lvl}" for lvl in unique_levels[1:]]
+                for i, level in enumerate(unique_levels[1:], start=1):
+                    D[:, i - 1] = (absorb_vals == level).astype(np.float64)
 
             if D.shape[1] > 0:
                 start = sum(p.shape[1] for p in matrix_pieces)
                 matrix_pieces.append(D)
-                dummy_names = [f"__absorb_{var}_{lvl}" for lvl in unique_levels[1:]]
                 names.extend(dummy_names)
                 dummy_info.append({
                     'start': start,
@@ -255,7 +262,7 @@ class AbsorbingOLS:
 
         # Detect collinearity
         X_full, dropped, kept_indices = self._detect_collinearity(X_full, names)
-        self._colinear_dropped = [d for d in dropped if not d.startswith("__absorb_")]
+        self._collinear_dropped = [d for d in dropped if not d.startswith("__absorb_")]
 
         # Build mapping from original index to reduced index
         orig_to_reduced = {orig: new for new, orig in enumerate(kept_indices)}
@@ -300,8 +307,9 @@ class AbsorbingOLS:
             if n_fes > 1:
                 self._df_a -= (n_fes - 1)
         else:
-            # areg convention: excludes constant from df_a
-            self._df_a -= 1
+            # areg convention: excludes constant from df_a, but only if constant exists
+            if self.add_constant:
+                self._df_a -= 1
 
         # Store dummy_info for T matrix construction
         self._dummy_info = dummy_info
@@ -548,8 +556,8 @@ class AbsorbingOLS:
             values=cov_reported.tolist(),
         )
         warnings = []
-        if self._colinear_dropped:
-            warnings.append(f"Collinear variables dropped: {', '.join(self._colinear_dropped)}")
+        if self._collinear_dropped:
+            warnings.append(f"Collinear variables dropped: {', '.join(self._collinear_dropped)}")
         if getattr(self, '_num_singletons', 0) > 0:
             warnings.append(f"Singleton observations dropped: {self._num_singletons}")
         result.diagnostics = DiagnosticsInfo(

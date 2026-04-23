@@ -94,6 +94,33 @@ def collect_source_paths(root: Path, manifest: dict) -> set[Path]:
     return paths
 
 
+def validate_target_path(source: Path, target: Path) -> None:
+    """Ensure target does not overlap dangerously with source."""
+    source = source.resolve()
+    target = target.resolve()
+
+    if target == source:
+        raise ValueError(f"Target path cannot be the source repository itself: {target}")
+
+    try:
+        target.relative_to(source)
+        target_inside = True
+    except ValueError:
+        target_inside = False
+
+    if target_inside:
+        raise ValueError(f"Target path cannot be inside the source repository: {target}")
+
+    try:
+        source.relative_to(target)
+        source_inside = True
+    except ValueError:
+        source_inside = False
+
+    if source_inside:
+        raise ValueError(f"Target path cannot be a parent of the source repository: {target}")
+
+
 def sha256_file(path: Path) -> str:
     h = hashlib.sha256()
     with open(path, "rb") as f:
@@ -117,6 +144,8 @@ def main() -> int:  # noqa: D401
         target = Path(args.target_root).resolve()
     else:
         target = root.parent / "StataFlow_open_source"
+
+    validate_target_path(root, target)
 
     print(f"Source : {root}")
     print(f"Target : {target}")
@@ -151,7 +180,8 @@ def main() -> int:  # noqa: D401
         dst = target / rel
         target_files_set.add(dst.resolve())
 
-        dst.parent.mkdir(parents=True, exist_ok=True)
+        if not args.dry_run:
+            dst.parent.mkdir(parents=True, exist_ok=True)
 
         needs_copy = True
         if dst.exists():
@@ -177,7 +207,7 @@ def main() -> int:  # noqa: D401
             resolved = item.resolve()
             if resolved not in target_files_set:
                 rel = str(resolved.relative_to(target)).replace("\\", "/")
-                if rel.startswith(".git/") or rel == ".git" or rel.startswith("dist/"):
+                if rel.startswith(".git/") or rel == ".git":
                     continue
                 if args.dry_run:
                     print(f"[DRY-RUN] Would remove orphaned: {rel}")

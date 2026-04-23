@@ -1,92 +1,178 @@
 # StataFlow
 
-StataFlow 是一个面向计量经济学工作流的 Python 库，目标是在一组清晰限定的命令子集上，以 Stata 风格命令接口和源码支撑验证结果来复现 Stata 的使用体验。
+StataFlow（`stataflow`）是一个 Python 计量经济学工具包，目标是在已公开声明的命令子集上，以高精度复现 **Stata 17** 的估计结果。它同时提供：
 
-本项目提供 Stata 风格的 Python 计量经济学命令接口，并对已实现子集提供基于 Stata 17 的字段级双跑验证。
+- 面向 Stata 用户的 **Stata 风格命令层**
+- 面向高级用户的 **Python 原生 estimator 层**
 
-## 当前包含的内容
+## 当前可以做什么
 
-- 核心代码：[src/stataflow](/src/stataflow)
-- 示例：[examples](/examples)
-- 命令支持矩阵：[docs/command-support-matrix](/docs/command-support-matrix)
-- 验证结果产物：[research/results/validation](/research/results/validation)
-- 英文使用手册：[docs/USER_GUIDE.md](/docs/USER_GUIDE.md)
-- 中文使用手册：[docs/USER_GUIDE.zh-CN.md](/docs/USER_GUIDE.zh-CN.md)
+- 在 Python 里直接使用 Stata 风格命令：`regress`、`reghdfe`、`ivregress 2sls`、`logit`、`ppmlhdfe`、`did_imputation`、`csdid`、`rdrobust` 等。
+- 获得与 Stata 17 做过字段级比对的系数、标准误、t/z 统计量、p 值和置信区间。
+- 使用 HDFE、IV/2SLS、二元/计数模型、DID / event-study 估计量。
+- 在 wrapper 命令中直接使用 Stata 风格的 factor-variable 语法，例如 `i.group##c.post`、`c.x1#c.x2`、`x1##x2`。`#` / `##` 里的裸变量默认按连续变量处理。
+
+## 当前尚不支持的内容
+
+- **多维聚类标准误**：`regress` 支持 two-way clustering（Cameron-Gelbach-Miller 2011）；其他命令当前仍只支持单聚类稳健推断。
+- **wrapper 层直接做 post-estimation**：`compat.stata` wrapper 返回 `ResultSchema`，不直接暴露 `.predict()` / `.margins()`；这些接口目前只在核心 estimator 层可用。
+- **community commands 的完整命令面**：`reghdfe`、`ivreghdfe`、`ppmlhdfe`、`did_imputation`、`eventstudyinteract`、`csdid`、`rdrobust` 当前都是**已验证的高频子集**，不是完整 Stata 命令复刻。不支持的参数会显式报错，而不是静默忽略。
+
+### 完整度图例
+
+- **Stable**：synthetic + real-data dual-run 均已验证，核心 API 短期内不太可能发生破坏性变化。
+- **Alpha**：高频路径已实现并验证，但命令面仍是社区命令的子集。
+- **Alpha — Partial**：已有可验证实现，但仍缺失较大功能块。
+
+各命令的细化边界见 [命令支持矩阵](./docs/command-support-matrix/README.md)。
+
+---
 
 ## 安装
 
+推荐普通用户直接安装发布版本：
+
 ```bash
+pip install StataFlow
+```
+
+环境要求：Python 3.10+、NumPy、pandas、SciPy。
+
+如果你是开发者，需要从源码 editable install：
+
+```bash
+git clone https://github.com/ZhenHaoFu810/StataFlow.git
+cd StataFlow
 pip install -e .
 ```
 
-Python 版本要求以 [pyproject.toml](/pyproject.toml) 为准。
+---
 
 ## 快速开始
 
+### Stata 风格命令层（推荐）
+
+所有 `compat.stata` wrapper 都返回 `ResultSchema` 对象，包含系数、标准误和拟合统计量；它们**不直接暴露** `.predict()` 或 `.margins()`，如需 post-estimation，请用下方的核心 estimator 层。
+
 ```python
-import numpy as np
 import pandas as pd
-from stataflow.compat.stata import regress, reghdfe
+from stataflow.compat.stata import regress, reghdfe, ivregress_2sls, logit
 
-rng = np.random.default_rng(42)
-n = 200
-df = pd.DataFrame({
-    "y": rng.normal(0, 1, n),
-    "x1": rng.normal(0, 1, n),
-    "x2": rng.normal(0, 1, n),
-    "cluster_id": rng.integers(1, 21, size=n),
-})
+# OLS + robust SE
+result = regress(df, y="wage", x=["edu", "exper"], vce="robust")
 
-ols_res = regress(df, y="y", x=["x1", "x2"], vce="robust")
-hdfe_res = reghdfe(
-    df, y="y", x=["x1", "x2"],
-    absorb="cluster_id", vce="cluster", cluster="cluster_id"
+# HDFE
+result = reghdfe(
+    df, y="wage", x=["edu", "exper"],
+    absorb="firm_id year_id", vce="cluster", cluster="industry"
 )
+
+# HDFE + factor-variable
+result = reghdfe(
+    df, y="wage", x=["i.industry##c.post"], absorb="firm_id year_id"
+)
+
+# 2SLS
+result = ivregress_2sls(
+    df, y="lwage", x_exog=["edu"], x_endog=["exper"],
+    instruments=["age", "kidslt6"], vce="robust"
+)
+
+# Logit
+result = logit(df, y="inlf", x=["nwifeinc", "educ", "exper"])
 ```
 
-`compat.stata` 这一层返回稳定的命令风格结果对象；底层 estimator 仍然可直接调用，适合更编程化的工作流。
+可直接运行的示例见：
 
-## 当前重点支持的命令族
+- [examples/demo_regress.py](./examples/demo_regress.py)
+- [examples/demo_reghdfe.py](./examples/demo_reghdfe.py)
+- [examples/demo_ppmlhdfe.py](./examples/demo_ppmlhdfe.py)
+- [examples/demo_ivregress_2sls.py](./examples/demo_ivregress_2sls.py)
 
-当前版本重点覆盖以下命令的“已验证子集”：
+### Python 原生 estimator 层（高级）
 
-- `regress`
-- `xtreg, fe`
-- `areg`
-- `reghdfe`
-- `ivregress 2sls`
-- `ivreghdfe`
-- `logit`
-- `probit`
-- `poisson`
-- `ppmlhdfe`
-- `did_imputation`
-- `eventstudyinteract`
-- `csdid`
-- `rdrobust`
+```python
+from stataflow import OLS, FixedEffectsOLS, AbsorbingOLS, Logit, IV2SLS
 
-命令名存在并不代表已经完整等同于 Stata 全命令。请以支持矩阵为准：
+model = OLS(data=df, y="wage", x=["edu", "exper"])
+result = model.fit(vce="robust")
+```
 
-- [docs/command-support-matrix/README.md](/docs/command-support-matrix/README.md)
+---
 
-## Validation 证据
+## 当前支持的命令
 
-对外最重要的验证入口：
+| 命令 | Python 入口 | 当前核心能力 |
+|------|-------------|--------------|
+| `regress` | `stataflow.compat.stata.regress` | OLS、robust、cluster、aweight |
+| `xtreg, fe` | `stataflow.compat.stata.xtreg_fe` | within FE、cluster |
+| `areg` | `stataflow.compat.stata.areg` | 单吸收变量 FE |
+| `reghdfe` | `stataflow.compat.stata.reghdfe` | 1+ 组 HDFE、cluster、singleton drop |
+| `ivregress 2sls` | `stataflow.compat.stata.ivregress_2sls` | 2SLS、robust、cluster |
+| `ivreghdfe` | `stataflow.compat.stata.ivreghdfe` | IV + 1+ 组 HDFE、cluster |
+| `logit` | `stataflow.compat.stata.logit` | MLE、robust、cluster |
+| `probit` | `stataflow.compat.stata.probit` | MLE、robust、cluster |
+| `poisson` | `stataflow.compat.stata.poisson` | MLE、robust、cluster |
+| `ppmlhdfe` | `stataflow.compat.stata.ppmlhdfe` | PPML + 1+ 组 HDFE |
+| `did_imputation` | `stataflow.compat.stata.did_imputation` | BJS DID imputation |
+| `eventstudyinteract` | `stataflow.compat.stata.eventstudyinteract` | Sun & Abraham IW estimator |
+| `csdid` | `stataflow.compat.stata.csdid` | Callaway-Sant'Anna DID（仅 `method="reg"`） |
+| `rdrobust` | `stataflow.compat.stata.rdrobust` | Sharp RD local polynomial（`bwselect="mserd"`、`covs`） |
 
-- [Out-of-sample 结果汇总](/research/results/validation/oos/oos_master_summary.md)
+完整说明见 [docs/command-support-matrix/README.md](./docs/command-support-matrix/README.md)。
 
-当前 validation 的原则是：对已实现子集，优先做基于 Stata 17 的真实公开数据字段级双跑对比，而不是只给出开发期测试通过结论。
+---
 
-## 目录结构
+## 验证原则
 
-- [src](/src)：包源码
-- [examples](/examples)：可运行示例
-- [docs](/docs)：面向外部用户的说明文档
-- [scripts/validation](/scripts/validation)：验证脚本
-- [research/results/validation](/research/results/validation)：验证结果产物
+每个对外命令都要求两条证据线：
 
-## 当前限制
+1. **Synthetic / controlled cases**：锁定公式、自由度、样本筛选和边界行为。
+2. **真实公开数据**：与 Stata 17 做字段级对比。
 
-- 若干 community commands 目前仍是“已验证子集”，不是完整迁移。
-- 当前对外证据最强的是文档明确列出的功能范围与示例代码。
-- 开发期内部任务卡、审查记录和 AI 协作文档没有被带入开源版本。
+只有两条证据线都通过，且 source-to-Python mapping 已记录，命令才算“完成”。项目不接受没有明确数学或源码依据的“统计意义上差不多”。
+
+公开证据与结果见 `research/results/validation/`。
+
+### 如何运行测试
+
+```bash
+# 单元与集成测试（快）
+pytest tests/ -v --ignore=tests/golden/
+
+# Golden dual-run tests（需要本地 Stata 17）
+pytest tests/golden/ -v
+```
+
+---
+
+## 项目结构
+
+- **`src/stataflow/estimators/`**：核心 estimator（`OLS`、`AbsorbingOLS`、`Logit`、`PPMLHDFE`、`DIDImputation` 等）
+- **`src/stataflow/compat/stata/`**：Stata 命令 wrapper（`regress()`、`reghdfe()`、`ivregress_2sls()` 等）
+- **`docs/command-support-matrix/`**：逐命令支持矩阵
+- **`examples/`**：可运行示例
+- **`tests/`**：单元与集成测试
+
+---
+
+## 默认对齐版本
+
+**Stata 17**
+
+---
+
+## 文档入口
+
+- [用户手册](./docs/USER_GUIDE.md)
+- [中文用户手册](./docs/USER_GUIDE.zh-CN.md)
+- [Cookbook](./docs/cookbook.md)
+- [中文 Cookbook](./docs/cookbook.zh-CN.md)
+- [命令支持矩阵](./docs/command-support-matrix/README.md)
+
+---
+
+## 治理方式
+
+- **Codex**：项目目标、架构、review gate、统计争议裁决
+- **Claude Code**：实现、测试与证据回填

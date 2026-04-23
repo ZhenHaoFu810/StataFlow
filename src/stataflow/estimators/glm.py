@@ -68,7 +68,7 @@ class GLMBase:
         self._dep_var: Optional[np.ndarray] = None
         self._sample_mask: Optional[list[bool]] = None
         self._coef_names: list[str] = []
-        self._colinear_dropped: list[str] = []
+        self._collinear_dropped: list[str] = []
         self._n_input_rows: int = 0
 
         # Fitted state
@@ -137,7 +137,7 @@ class GLMBase:
 
         X = np.column_stack(X_cols)
         X, dropped = self._detect_collinearity(X, self._coef_names)
-        self._colinear_dropped = dropped
+        self._collinear_dropped = dropped
 
         self._design_matrix = X
         self._dep_var = y
@@ -382,8 +382,8 @@ class GLMBase:
             values=cov_beta.tolist(),
         )
         warnings = []
-        if self._colinear_dropped:
-            warnings.append(f"Collinear variables dropped: {', '.join(self._colinear_dropped)}")
+        if self._collinear_dropped:
+            warnings.append(f"Collinear variables dropped: {', '.join(self._collinear_dropped)}")
         if not converged:
             warnings.append("IRLS did not converge")
         result.diagnostics = DiagnosticsInfo(

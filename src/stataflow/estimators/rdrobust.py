@@ -10,16 +10,18 @@ This is a clean re-implementation of the core algorithm
 using only NumPy/SciPy, adapted to the stataflow ResultSchema.
 
 Supported:
-- Sharp RD (deriv=0) only in this minimal subset
+- Sharp RD (deriv=0)
 - p (polynomial order for point est.), q (for bias correction)
 - Explicit bandwidth h, optional bias bandwidth b
+- Automatic bandwidth selector: bwselect="mserd"
+- Covariate adjustment via covs
 - Kernels: triangular, epanechnikov, uniform
 - VCE: nn (nearest-neighbor), hc0
 
 Explicitly unsupported (hard-rejected by wrapper):
-- fuzzy RD, covariates, weights, clustering
+- fuzzy RD, weights, clustering
 - deriv > 0 (kink designs)
-- Automatic bandwidth selectors (mserd, msetwo, etc.)
+- Automatic bandwidth selectors other than "mserd"
 """
 
 from __future__ import annotations

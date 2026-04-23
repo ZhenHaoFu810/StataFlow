@@ -10,7 +10,7 @@
 meta:
   source_repo: "StataFlow"
   target_repo: "StataFlow_open_source"
-  manifest_version: "1.1.0"
+  manifest_version: "1.2.0"
 
 # ---------------------------------------------------------------------------
 # Whitelist: every path that enters the open-source repo must be matched here.
@@ -28,30 +28,39 @@ whitelist:
   directories:
     - "src/stataflow/"
     - "examples/"
+    - "docs/adr/"
+    - "docs/architecture/"
     - "docs/command-support-matrix/"
+    - "docs/release/"
+    - "docs/validation/"
     - "scripts/validation/"
 
   # Specific files inside mixed or partially-closed directories
   specific_files:
     - "docs/cookbook.md"
     - "docs/cookbook.zh-CN.md"
+    - "docs/project-charter.md"
     - "docs/USER_GUIDE.md"
     - "docs/USER_GUIDE.zh-CN.md"
+    - "docs/operations/open-source-scope-audit.md"
+    - "docs/operations/open-source-export.md"
     - "scripts/__init__.py"
     - "scripts/release/export_open_source.ps1"
+    - "scripts/release/export_open_source.py"
     - "scripts/release/open_source_manifest.yml"
     - ".github/workflows/ci.yml"
 
-  # Data / research artifacts required by open tests
+  # Data / research artifacts required by open tests or examples
   data_directories:
+    - "research/data/public/"
     - "research/results/validation/"
+    - "tests/data/"
 
   # Test files (non-golden only)
   test_files:
     - "tests/__init__.py"
     - "tests/conftest.py"
     - "tests/test_*.py"
-    - "tests/data/**"
 
 # ---------------------------------------------------------------------------
 # Blacklist: applied AFTER whitelist copying. Catches generated artifacts,

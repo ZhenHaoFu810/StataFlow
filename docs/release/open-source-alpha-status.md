@@ -1,7 +1,7 @@
 # Open-Source Alpha Status
 
-**Version:** Alpha
-**Last updated:** 2026-04-18
+**Version:** 0.1.5 (Alpha)
+**Last updated:** 2026-04-23
 
 ---
 
@@ -38,9 +38,9 @@ Specifically:
 | Binary | `logit` | Stable | MLE, robust, cluster |
 | Binary | `probit` | Stable | MLE, robust, cluster |
 | Count | `poisson` | Stable | MLE, robust, cluster |
-| HDFE | `reghdfe` | Alpha | 1–2  categorical FEs, singleton drop, robust/cluster |
-| IV / HDFE | `ivreghdfe` | Alpha | IV + 1–2  FEs, robust/cluster |
-| Count / HDFE | `ppmlhdfe` | Alpha | PPML + 1–2  FEs, offset/exposure, robust/cluster |
+| HDFE | `reghdfe` | Alpha | 1+ categorical FEs, singleton drop, robust/cluster |
+| IV / HDFE | `ivreghdfe` | Alpha | IV + 1+ FEs, robust/cluster |
+| Count / HDFE | `ppmlhdfe` | Alpha | PPML + 1+ FEs, offset/exposure, robust/cluster |
 | DID | `did_imputation` | Alpha | BJS imputation, allhorizons, autosample, cluster |
 | DID | `eventstudyinteract` | Alpha | Sun-Abraham IW estimator, auto dummy generation, cluster |
 | DID | `csdid` | Alpha | Callaway-Sant'Anna `method="reg"` only, `estat_event` |
@@ -55,7 +55,7 @@ Specifically:
 
 ## Common limitations across all commands
 
-- **Single-cluster robust inference only.** Multi-way clustering is not yet supported.
+- **`regress` supports two-way clustering** (Cameron-Gelbach-Miller 2011). All other commands currently use single-cluster robust inference only.
 - **`aweight` only.** `fweight`, `pweight`, `iweight` are not yet supported.
 - **Post-estimation on wrappers.** `predict` and `margins` are available on core estimator classes only. The `compat.stata` wrapper layer returns `ResultSchema` objects and does not expose `.predict()` / `.margins()` directly.
 - **CI/CD pipeline** is configured via GitHub Actions (`.github/workflows/ci.yml`) and runs on Python 3.10, 3.11, and 3.12.
@@ -69,7 +69,7 @@ Every public command is validated with two lines of evidence:
 1. **Synthetic / controlled cases** — formula, degrees of freedom, sample screening, edge cases.
 2. **Real public datasets** — field-level comparison against Stata 17 on openly available data.
 
-Current test status: **681 passed, 0 failed** (as of 2026-04-18).
+Current non-golden test status: **194 passed, 0 failed** (as of 2026-04-23).
 
 Out-of-sample validation status (Validation Package 001): **16 passed, 1 blocked** (as of 2026-04-20).
 

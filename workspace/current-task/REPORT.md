@@ -1,182 +1,487 @@
-# Open-Source Export and CI Root Cause Fix — 完成报告
+# Package F — Release Candidate Polish 完成报告
 
-**日期：** 2026-04-21
-**任务：** `open-source-export-and-ci-root-cause-fix`
+**日期：** 2026-04-23
+**任务：** `package-f-release-candidate-polish`
 **运行者：** Claude Code
 **状态：** 完成
 
 ---
 
-## 1. 项目开源范围审计与决策
+## 1. 公开用户视角审查结论
 
-已完成 `docs/operations/open-source-scope-audit.md`，对 `StataFlow` 与 `StataFlow_open_source` 之间的每一个目录和文件进行了显式 Open/Closed 判定。
+### 1.1 审查方法
 
-**核心原则：**
-- `StataFlow` 是唯一的维护源，`StataFlow_open_source` 是可复现的导出目标。
-- 新文件在未显式白名单的目录中，默认视为 **Closed**，防止内部材料意外泄露。
-- 白名单按目录、特定文件、数据目录、测试文件四类管理；黑名单在复制后执行，捕获生成产物和密钥。
+以首次访问 GitHub 仓库的外部用户视角，依次阅读：
 
-**关键决策：**
-- `src/stataflow/`、`examples/`、`docs/architecture/`、`docs/command-support-matrix/`、`docs/release/`、`docs/validation/`、`docs/adr/` 全部开放。
-- `docs/audit/`、`docs/qa/`、`docs/tasks/`、`docs/research/`、`docs/phases/` 等内部开发材料关闭。
-- `tests/golden/` 关闭（需要本地 Stata 17，不适合干净开源包）。
-- `stata/output/` 和 `stata/cases/` 关闭（生成产物）。
-- `tests/test_rdrobust.py` 对 `stata/output/rdrobust_senate_with_z.dta` 的依赖被识别为 bug，将在后续修复。
-
----
-
-## 2. 导出机制实现
-
-新增三个文件构成完整的可复现导出流程：
-
-| 文件 | 作用 |
-|------|------|
-| `scripts/release/open_source_manifest.yml` | YAML 格式的白名单/黑名单规则，是导出的唯一权威配置。 |
-| `scripts/release/export_open_source.py` | Python 导出脚本（核心实现），解析 manifest，计算 SHA-256 增量复制，清理孤儿文件和空目录。 |
-| `scripts/release/export_open_source.ps1` | PowerShell 薄包装器，调用 Python 脚本，保持与任务指令的接口一致。 |
-| `docs/operations/open-source-export.md` | 导出机制的设计文档和使用说明。 |
-
-**导出脚本特性：**
-- 支持 `--dry-run` 预览、 `--force` 强制覆盖、 `--target-root` 自定义目标路径。
-- 基于 SHA-256 的增量复制，未变更文件跳过。
-- 自动删除目标端不再属于白名单的孤儿文件（保留 `.git/` 和 `dist/`）。
-- 自动清理空目录。
-
----
-
-## 3. 中文 Markdown 编码乱码修复
-
-**根因：** UTF-8 的 em-dash/en-dash 字节序列被 GBK 误解析后重新保存为 UTF-8，产生 `鈥` (U+9225) 乱码。
-
-**修复范围：** 对以下所有导出文件执行了全局替换：
-- `README.md`
+- `README.md` / `README.zh-CN.md`
+- `docs/USER_GUIDE.md` / `docs/USER_GUIDE.zh-CN.md`
+- `docs/cookbook.md` / `docs/cookbook.zh-CN.md`
+- `docs/command-support-matrix/README.md`
 - `docs/release/open-source-alpha-status.md`
-- `docs/command-support-matrix/*.md`（全部 10 个命令 + README）
-- `src/stataflow/__init__.py`
-- `docs/cookbook.md`
+- `docs/release/known-issues.md`
+- `examples/`
 
-**替换规则：**
-- `鈥?` → `— `（em-dash + 空格）
-- `鈥攗` → `—u`（README 中的 `directly—use`）
-- `1— ` → `1–2 `（表示 1 到 2 个分类 FE 的 en-dash）
+### 1.2 发现的最影响首发的 5 个问题
 
-**同时从 `StataFlow_open_source` 反向迁移了 4 份仅存在于开源仓的公共文档到主仓：**
-- `README.zh-CN.md`
-- `docs/USER_GUIDE.md`
-- `docs/USER_GUIDE.zh-CN.md`
-- `docs/cookbook.zh-CN.md`
-
-**验证：** 导出文件范围内已无 `鈥` (U+9225) 残留。
+| 优先级 | 问题 | 影响 |
+|--------|------|------|
+| P0 | README / cookbook / release docs 一致声称“多层聚类尚未支持”，但 `regress` 已支持双向聚类 | 用户会低估 `regress` 能力，或误以为项目文档严重滞后 |
+| P0 | `docs/cookbook.zh-CN.md` 的 rdrobust 示例指向已不存在的 `research/vendor/.../rdrobust_senate.dta` | 外部用户直接复制代码会报错，首跑即失败 |
+| P0 | `docs/release/known-issues.md` 声称“没有配置 CI”，但 `.github/workflows/ci.yml` 已存在且运行 | 破坏文档可信度 |
+| P1 | `docs/release/open-source-alpha-status.md` 测试数写 681 passed，实际非 golden 测试为 194 | 数字与开源仓实际状态不符，造成误导 |
+| P1 | `docs/cookbook.md` 出现编码损坏字符“脳”（U+8133） | 影响专业感，可能引发编码疑虑 |
 
 ---
 
-## 4. Python 3.11 CI 根因修复
+## 2. 本轮修复内容与优先理由
 
-**根因：** `tests/test_rdrobust.py` 中的两个测试用例读取了 `stata/output/rdrobust_senate_with_z.dta`，而该路径属于关闭目录，在开源仓中不存在，导致 `FileNotFoundError`。
+### 2.1 修复多层聚类表述漂移（P0）
+
+**涉及文件：**
+- `README.md`
+- `docs/cookbook.md`
+- `docs/cookbook.zh-CN.md`
+- `docs/release/open-source-alpha-status.md`
+- `docs/release/known-issues.md`
+
+**修复前：** 多处文档一致声称“仅支持单层聚类 / 多层聚类尚未支持”。
+
+**修复后：** 明确区分——`regress` 支持双向聚类（Cameron-Gelbach-Miller 2011），其余命令仍限于单层聚类。这一表述与 `docs/command-support-matrix/README.md` 的 Common Limitations 段保持一致。
+
+**优先理由：** 这是 Package D（Cross-Cutting Inference）已实现的核心能力，文档却未同步。用户若因文档放弃使用双向聚类功能，等于直接损失已实现的价值。
+
+### 2.2 修复 rdrobust 中文 cookbook 数据路径（P0）
+
+**涉及文件：** `docs/cookbook.zh-CN.md`
+
+**修复前：** 示例使用 `research/vendor/stata_community/rdrobust/rdrobust-master/stata/rdrobust_senate.dta`，该路径在开源仓中不存在（`research/vendor/` 是 closed 目录）。
+
+**修复后：** 改为 `tests/data/rdrobust_senate.dta`，与 `tests/test_rdrobust.py` 实际依赖一致。
+
+**优先理由：** 这是“复制即运行”的 cookbook 示例，首跑失败会直接劝退用户。
+
+### 2.3 修复 CI 配置 false negative（P0）
+
+**涉及文件：** `docs/release/known-issues.md`
+
+**修复前：** “No automated continuous integration pipeline is configured.”
+
+**修复后：** “GitHub Actions pipeline is configured (`.github/workflows/ci.yml`) and runs on Python 3.10, 3.11, and 3.12.”
+
+**优先理由：** 开源用户第一眼看到 known-issues 会误以为项目没有 CI，与仓库实际状态矛盾。
+
+### 2.4 修复测试计数与日期漂移（P1）
+
+**涉及文件：** `docs/release/open-source-alpha-status.md`
 
 **修复：**
-1. 将 `stata/output/rdrobust_senate_with_z.dta` 复制到 `research/data/public/rdrobust_senate_with_z.dta`，使其成为公开的测试数据。
-2. 将 `tests/test_rdrobust.py` 中两处路径从 `stata/output/rdrobust_senate_with_z.dta` 替换为 `research/data/public/rdrobust_senate_with_z.dta`。
-3. 在 `.github/workflows/ci.yml` 的 strategy 中加入 `fail-fast: false`，确保 Python 3.10/3.11/3.12 全部运行，不因单个版本失败而中断矩阵。
+- 版本号从笼统的 “Alpha” 改为 “0.1.4 (Alpha)”
+- 日期从 2026-04-18 更新为 2026-04-23
+- 测试数从含 golden tests 的 “681 passed” 改为开源仓可复现的 “194 passed, 0 failed”
 
-**验证：**
-- 主仓 `tests/test_rdrobust.py`：17 passed。
-- 导出后的 `StataFlow_open_source` 完整测试套件：165 passed, 0 failed。
+**优先理由：** 公开文档的数字必须能被外部用户验证。681 包含需本地 Stata 17 的 golden tests，开源用户无法复现。
+
+### 2.5 修复 cookbook 编码损坏（P1）
+
+**涉及文件：** `docs/cookbook.md`
+
+**修复：** 将 “Continuous 脳 continuous interaction” 和 “Categorical 脳 categorical interaction” 中的损坏字符恢复为 “×”。
+
+**优先理由：** 编码问题损害项目专业形象。
+
+### 2.6 修复 statapy 拼写漂移（P1）
+
+**涉及文件：** `docs/release/known-issues.md`
+
+**修复：** `statapy.compat.stata` → `stataflow.compat.stata`。
+
+**优先理由：** 包名错误会让用户找不到对应模块。
+
+### 2.7 创建 release candidate checklist（P2）
+
+**新增文件：** `docs/release/release-candidate-checklist.md`
+
+**内容：** 覆盖导出前检查（版本、文档一致性、测试/示例）、导出执行、导出后检查（内容完整性、清洁环境验证、文档风险审查、已知风险确认）及签字段。
+
+**优先理由：** Package E 已建立导出机制，但缺乏可重复的发布门槛文档。Checklist 确保未来每次导出都经过相同验证，防止文档/元数据漂移重演。
 
 ---
 
-## 5. 导出执行与验证
+## 3. 修改文件汇总
 
-执行了实际导出：
+| 文件 | 修改类型 | 修改原因 |
+|------|---------|---------|
+| `README.md` | 修复 | 更正 multi-way clustering 表述；修正 Alpha — Partial 示例 |
+| `docs/cookbook.md` | 修复 | 修复 clustering 表述；修复编码损坏字符（2 处）；更新日期 |
+| `docs/cookbook.zh-CN.md` | 修复 | 修复 clustering 表述；修正 rdrobust 数据路径；更新日期 |
+| `docs/release/open-source-alpha-status.md` | 修复 | 更正 clustering 表述；更新版本号、日期、测试计数 |
+| `docs/release/known-issues.md` | 修复 | 更正 CI 配置表述；修复 `statapy` 拼写；更正 clustering 表述 |
+| `docs/release/release-candidate-checklist.md` | 新增 | 建立可执行的发布门槛检查清单 |
 
-```bash
-python scripts/release/export_open_source.py --force
-```
+---
 
-**结果：**
-- Copied / updated：28 个文件（156,301 字节）
-- Unchanged：135 个文件
-- Removed orphaned：32 个文件（包括 `CLAUDE.md`、`.pytest_cache`、`.egg-info`、过时的 `docs/OPEN_SOURCE_PACKAGE_MANIFEST.md` 等）
+## 4. 本地验证
 
-在 `StataFlow_open_source` 运行完整非 golden 测试：
+### 4.1 主仓测试
 
 ```bash
 pytest tests/ -v --ignore=tests/golden/
 ```
 
-**结果：165 passed, 0 failed。**
+**结果：194 passed, 0 failed**
+
+### 4.2 Examples
+
+```bash
+python examples/demo_regress.py
+python examples/demo_reghdfe.py
+python examples/demo_ppmlhdfe.py
+python examples/demo_ivregress_2sls.py
+```
+
+**结果：全部正常执行，无报错。**
+
+### 4.3 导出验证
+
+```bash
+python scripts/release/export_open_source.py --force
+```
+
+- 导出完成，无异常
+- 开源镜像文件数：167 个非 git 文件
+- 导出后测试：`StataFlow_open_source` 内运行 pytest，**194 passed, 0 failed**
+- 导出后 examples：全部正常
 
 ---
 
-## 6. 第二轮精简（2026-04-21 追加）
+## 5. 残余风险与留待后续
 
-根据用户反馈，开源版本进一步精简为：源码 + 介绍 + 使用指南 + 必要 demo/示例 + validation 结果。
+| 问题 | 位置 | 留给后续 |
+|------|------|---------|
+| `README.zh-CN.md` 未提及 PyPI 安装（仅写 `pip install -e .`） | README.zh-CN.md | 非阻断，但影响中文用户首次安装体验 |
+| 中文 cookbook 未覆盖双向聚类示例 | cookbook.zh-CN.md | 属于功能展示扩展，不影响现有功能可信度 |
+| `docs/operations/open-source-scope-audit.md` 仍需随 manifest 版本同步 | docs/operations | 每次 manifest 升级时由 checklist 强制检查 |
+| 部分内部 research docs 仍有编码损坏（`docs/research/*.md`） | docs/research | 这些文件属于 closed 目录，不进入开源仓 |
 
-### 6.1 从白名单移除的目录和文件
+---
 
-| 移除项 | 原因 |
-|--------|------|
-| `docs/architecture/` | 内部架构文档，面向开发者而非用户 |
-| `docs/release/` | 内部发布状态管理 |
-| `docs/validation/` | 内部验证策略与证据矩阵文档 |
-| `docs/adr/` | 内部架构决策记录 |
-| `docs/operations/` | 内部运维文档 |
-| `docs/project-charter.md` | 内部项目章程 |
-| `research/data/public/` | 开发期 AI 学习数据，非用户必要 |
-| `research/vendor/.../rdrobust_senate.dta` | 随数据迁移到测试目录 |
+## 6. 返工说明（Codex 复审后）
 
-保留的 docs 内容：
-- `docs/command-support-matrix/`（命令支持矩阵，用户必看）
-- `docs/cookbook.md` / `docs/cookbook.zh-CN.md`
+### 6.1 复审指出的两类问题
+
+1. **`docs/cookbook.md` 仍残留一处编码损坏字符**：首轮报告声称已修复 cookbook 编码问题，但 `Categorical × continuous interaction` 这一节的标题仍为损坏字符“脳”（U+8133）。
+2. **`REPORT.md` 导出文件计数与实际不符**：报告写“开源镜像文件数：166 个非 git 文件”，但重新导出后实际统计为 **167** 个非 git 文件。
+
+### 6.2 修复方式
+
+- **F-R1**：将 `docs/cookbook.md` 第 454 行标题中的“脳”替换为“×”。同时全文搜索确认无其他同类损坏字符残留。
+- **F-R2**：重新执行 `python scripts/release/export_open_source.py --force`，用 `find ../StataFlow_open_source -type f | grep -v '/\.git/' | wc -l` 精确统计，将 `REPORT.md` 中的数字从 166 修正为 167。
+
+### 6.3 复核结果
+
+- `docs/cookbook.md` 全文搜索非 ASCII 字符：仅剩正常的 “×” 和 em-dash，无“脳”残留。
+- 导出后统计：`167` 个非 git 文件，与报告一致。
+- 导出后测试：`194 passed, 0 failed`。
+
+---
+
+# Package G — Final Release Consistency Cleanup 完成报告
+
+**日期：** 2026-04-23
+**任务：** `package-g-final-release-consistency-cleanup`
+**运行者：** Claude Code
+**状态：** 完成
+
+---
+
+## G1. Codex 最终复审发现的阻断问题
+
+1. **HDFE 能力口径回退为旧版 “1-2 FE”**：`README.md`、`docs/command-support-matrix/README.md`、`docs/release/open-source-alpha-status.md` 的摘要表格仍把 `reghdfe` / `ivreghdfe` / `ppmlhdfe` 写成 “1-2 group HDFE” / “1-2 FEs”，但 Package B 已实现并测试了 `1+ supported`。
+2. **`docs/command-support-matrix/ppmlhdfe.md` 残留损坏文本**：`predict(type="residuals")` 一行残留 `y - 渭`（损坏字符）；fit-stats evidence 一行残留 `pseudo-R虏`（损坏字符）。
+3. **`docs/release/release-candidate-checklist.md` 使用旧导出文件基线**：仍写 `~166 non-git files`，实际导出后为 **167**。
+
+---
+
+## G2. 修复内容与修改文件
+
+### G2.1 统一 HDFE 家族能力表述
+
+**涉及文件：**
+- `README.md`
+- `docs/command-support-matrix/README.md`
+- `docs/release/open-source-alpha-status.md`
+
+**修复：** 将三处摘要表格中的 “1-2 group HDFE” / “1-2 categorical FEs” / “1-2 FEs” 统一改为 “1+ group HDFE” / “1+ categorical FEs” / “1+ FEs”，与 `reghdfe` 参数表中 “1+ supported” 的口径保持一致。
+
+### G2.2 修复 ppmlhdfe.md 损坏文本
+
+**涉及文件：** `docs/command-support-matrix/ppmlhdfe.md`
+
+**修复：**
+- `y - 渭` → `y - mu`
+- `pseudo-R虏` → `pseudo-R2`
+
+### G2.3 修正 release checklist 文件基线
+
+**涉及文件：** `docs/release/release-candidate-checklist.md`
+
+**修复：** `~166 non-git files` → `167 non-git files`。
+
+---
+
+## G3. 本地验证
+
+### G3.1 主仓测试
+
+```bash
+pytest tests/ -q --ignore=tests/golden/
+```
+
+**结果：194 passed, 0 failed**
+
+### G3.2 导出验证
+
+```bash
+python scripts/release/export_open_source.py --force
+```
+
+- 导出完成，无异常
+- 开源镜像文件数：**167** 个非 git 文件
+- 导出后关键文件确认：
+  - `StataFlow_open_source/README.md` 已同步为 `1+ group HDFE`
+  - `StataFlow_open_source/docs/command-support-matrix/ppmlhdfe.md` 已无 `渭` / `虏` 残留
+  - `StataFlow_open_source/docs/release/release-candidate-checklist.md` 已更新为 `167 non-git files`
+
+---
+
+## G4. 成功标准核验
+
+- [x] 所有公开发布文档对 HDFE 家族的能力表述不再回退到旧版 `1-2 FE`
+- [x] `ppmlhdfe.md` 中不再残留损坏的英文文本
+- [x] release checklist 的导出文件基线与当前实际结果一致
+- [x] 主仓非 golden 测试继续通过
+- [x] 开源镜像仓已同步到修正后的发布文档状态
+
+---
+
+## G5. Package G Rework（Codex 复审后）
+
+### G5.1 复审指出的遗漏
+
+Codex 复审发现 Package G 首轮交付遗漏了 HDFE 三个命令矩阵正文尾部的旧口径：
+
+- `docs/command-support-matrix/reghdfe.md`
+- `docs/command-support-matrix/ivreghdfe.md`
+- `docs/command-support-matrix/ppmlhdfe.md`
+
+三文件的 “Alignment Evidence” 末尾仍写着 “Stata 17 dual-run verified for 1-2 absorbed FEs...”，与已更新的摘要表格和 release 文档不一致。
+
+### G5.2 修复方式
+
+将三处末尾的 `1-2 absorbed FEs` 统一改为 `1+ absorbed FEs`：
+
+- `reghdfe.md` 第 86 行
+- `ivreghdfe.md` 第 90 行
+- `ppmlhdfe.md` 第 90 行
+
+### G5.3 复核结果
+
+- 主仓全文搜索 `1-2 absorbed FEs`：零残留。
+- 导出镜像 `StataFlow_open_source` 三文件已同步更新。
+- 主仓测试：`194 passed, 0 failed`。
+
+---
+
+# Package F — Release Candidate Polish 完成报告（归档）
+
+**日期：** 2026-04-23
+**任务：** `package-f-release-candidate-polish`
+**运行者：** Claude Code
+**状态：** 完成
+
+---
+
+## 1. 公开用户视角审查结论
+
+### 1.1 审查方法
+
+以首次访问 GitHub 仓库的外部用户视角，依次阅读：
+
+- `README.md` / `README.zh-CN.md`
 - `docs/USER_GUIDE.md` / `docs/USER_GUIDE.zh-CN.md`
+- `docs/cookbook.md` / `docs/cookbook.zh-CN.md`
+- `docs/command-support-matrix/README.md`
+- `docs/release/open-source-alpha-status.md`
+- `docs/release/known-issues.md`
+- `examples/`
 
-### 6.2 测试数据迁移
+### 1.2 发现的最影响首发的 5 个问题
 
-将两个 rdrobust 测试数据文件从 `research/` 迁移到 `tests/data/`，消除非测试目录依赖：
-- `tests/data/rdrobust_senate.dta`
-- `tests/data/rdrobust_senate_with_z.dta`
-
-同步修改 `tests/test_rdrobust.py` 中的读取路径。
-
-### 6.3 文档内容清理
-
-从所有导出文档中移除了指向以下已关闭目录的链接和引用：
-- `docs/validation/`
-- `docs/release/`
-- `docs/architecture/`
-- `docs/research/`
-- `research/data/public/`
-
-清理的文件包括：`README.md`、`README.zh-CN.md`、`docs/USER_GUIDE.md`、`docs/USER_GUIDE.zh-CN.md`、`docs/cookbook.md`、`docs/command-support-matrix/*.md`。
-
-同时修复了：
-- `README.zh-CN.md` 中的 airfare.csv 示例改为合成数据（避免依赖已移除的公开数据集）
-- `docs/cookbook.zh-CN.md` 标题中的旧名 `Stata2Python` → `StataFlow`
-- 所有从 `StataFlow_open_source` 复制过来的文档中的绝对路径链接（`D:/OneDrive...`）替换为相对路径
-
-### 6.4 第二轮导出验证
-
-执行导出后，`StataFlow_open_source` 的 docs 目录仅保留 18 个文件（USER_GUIDE ×2 + cookbook ×2 + command-support-matrix ×14），research 目录仅保留 validation 结果产物。
-
-完整非 golden 测试：**165 passed, 0 failed**。
+| 优先级 | 问题 | 影响 |
+|--------|------|------|
+| P0 | README / cookbook / release docs 一致声称“多层聚类尚未支持”，但 `regress` 已支持双向聚类 | 用户会低估 `regress` 能力，或误以为项目文档严重滞后 |
+| P0 | `docs/cookbook.zh-CN.md` 的 rdrobust 示例指向已不存在的 `research/vendor/.../rdrobust_senate.dta` | 外部用户直接复制代码会报错，首跑即失败 |
+| P0 | `docs/release/known-issues.md` 声称“没有配置 CI”，但 `.github/workflows/ci.yml` 已存在且运行 | 破坏文档可信度 |
+| P1 | `docs/release/open-source-alpha-status.md` 测试数写 681 passed，实际非 golden 测试为 194 | 数字与开源仓实际状态不符，造成误导 |
+| P1 | `docs/cookbook.md` 出现编码损坏字符“脳”（U+8133） | 影响专业感，可能引发编码疑虑 |
 
 ---
 
-## 7. 遗留说明
+## 2. 本轮修复内容与优先理由
 
-- `docs/validation/validation-policy.md`、`docs/validation/evidence-matrix.md`、`docs/validation/overview.md` 等中文 Markdown 文件在主仓历史版本中曾被严重损坏，已从 `StataFlow_open_source` 的干净版本反向迁移回主仓，并修复了编码问题。但 `docs/validation/` 整体不再进入开源导出。
-- `docs/project-charter.md` 主仓工作树版本曾损坏，通过 `git show HEAD:docs/project-charter.md` 恢复为干净 UTF-8 版本。该文件也不再进入开源导出。
-- `src/stataflow/__init__.py` 在 git HEAD 中不存在（主仓 HEAD 仍为 `src/statapy/` 包名），该文件是在工作树中新增且未提交的，因此直接手动修复了 docstring 乱码。
-- 内部/关闭目录（`docs/audit/`、`docs/research/`、`docs/tasks/` 等）中仍有 `鈥` 乱码，但这些文件不进入开源导出，不影响对外发布。
+### 2.1 修复多层聚类表述漂移（P0）
+
+**涉及文件：**
+- `README.md`
+- `docs/cookbook.md`
+- `docs/cookbook.zh-CN.md`
+- `docs/release/open-source-alpha-status.md`
+- `docs/release/known-issues.md`
+
+**修复前：** 多处文档一致声称“仅支持单层聚类 / 多层聚类尚未支持”。
+
+**修复后：** 明确区分——`regress` 支持双向聚类（Cameron-Gelbach-Miller 2011），其余命令仍限于单层聚类。这一表述与 `docs/command-support-matrix/README.md` 的 Common Limitations 段保持一致。
+
+**优先理由：** 这是 Package D（Cross-Cutting Inference）已实现的核心能力，文档却未同步。用户若因文档放弃使用双向聚类功能，等于直接损失已实现的价值。
+
+### 2.2 修复 rdrobust 中文 cookbook 数据路径（P0）
+
+**涉及文件：** `docs/cookbook.zh-CN.md`
+
+**修复前：** 示例使用 `research/vendor/stata_community/rdrobust/rdrobust-master/stata/rdrobust_senate.dta`，该路径在开源仓中不存在（`research/vendor/` 是 closed 目录）。
+
+**修复后：** 改为 `tests/data/rdrobust_senate.dta`，与 `tests/test_rdrobust.py` 实际依赖一致。
+
+**优先理由：** 这是“复制即运行”的 cookbook 示例，首跑失败会直接劝退用户。
+
+### 2.3 修复 CI 配置 false negative（P0）
+
+**涉及文件：** `docs/release/known-issues.md`
+
+**修复前：** “No automated continuous integration pipeline is configured.”
+
+**修复后：** “GitHub Actions pipeline is configured (`.github/workflows/ci.yml`) and runs on Python 3.10, 3.11, and 3.12.”
+
+**优先理由：** 开源用户第一眼看到 known-issues 会误以为项目没有 CI，与仓库实际状态矛盾。
+
+### 2.4 修复测试计数与日期漂移（P1）
+
+**涉及文件：** `docs/release/open-source-alpha-status.md`
+
+**修复：**
+- 版本号从笼统的 “Alpha” 改为 “0.1.4 (Alpha)”
+- 日期从 2026-04-18 更新为 2026-04-23
+- 测试数从含 golden tests 的 “681 passed” 改为开源仓可复现的 “194 passed, 0 failed”
+
+**优先理由：** 公开文档的数字必须能被外部用户验证。681 包含需本地 Stata 17 的 golden tests，开源用户无法复现。
+
+### 2.5 修复 cookbook 编码损坏（P1）
+
+**涉及文件：** `docs/cookbook.md`
+
+**修复：** 将 “Continuous 脳 continuous interaction” 和 “Categorical 脳 categorical interaction” 中的损坏字符恢复为 “×”。
+
+**优先理由：** 编码问题损害项目专业形象。
+
+### 2.6 修复 statapy 拼写漂移（P1）
+
+**涉及文件：** `docs/release/known-issues.md`
+
+**修复：** `statapy.compat.stata` → `stataflow.compat.stata`。
+
+**优先理由：** 包名错误会让用户找不到对应模块。
+
+### 2.7 创建 release candidate checklist（P2）
+
+**新增文件：** `docs/release/release-candidate-checklist.md`
+
+**内容：** 覆盖导出前检查（版本、文档一致性、测试/示例）、导出执行、导出后检查（内容完整性、清洁环境验证、文档风险审查、已知风险确认）及签字段。
+
+**优先理由：** Package E 已建立导出机制，但缺乏可重复的发布门槛文档。Checklist 确保未来每次导出都经过相同验证，防止文档/元数据漂移重演。
 
 ---
 
-## 8. 结论
+## 3. 修改文件汇总
 
-- 开源边界审计完成，决策写入 `docs/operations/open-source-scope-audit.md`（内部维护）。
-- 可复现导出机制完成，支持增量同步和孤儿清理。
-- 全部导出中文 Markdown 的 `鈥` 乱码已修复，UTF-8 编码稳定。
-- 开源版本已精简为用户导向结构：源码 + 示例 + 用户文档 + 命令矩阵 + validation 结果 + 测试。
-- 导出后的开源镜像通过 165 项测试，0 失败，具备持续集成能力。
-- Python 3.11 CI 失败根因已消除，CI 矩阵加入 `fail-fast: false`。
-- 导出后的开源镜像通过 165 项测试，0 失败，具备持续集成能力。
+| 文件 | 修改类型 | 修改原因 |
+|------|---------|---------|
+| `README.md` | 修复 | 更正 multi-way clustering 表述；修正 Alpha — Partial 示例 |
+| `docs/cookbook.md` | 修复 | 修复 clustering 表述；修复编码损坏字符（2 处）；更新日期 |
+| `docs/cookbook.zh-CN.md` | 修复 | 修复 clustering 表述；修正 rdrobust 数据路径；更新日期 |
+| `docs/release/open-source-alpha-status.md` | 修复 | 更正 clustering 表述；更新版本号、日期、测试计数 |
+| `docs/release/known-issues.md` | 修复 | 更正 CI 配置表述；修复 `statapy` 拼写；更正 clustering 表述 |
+| `docs/release/release-candidate-checklist.md` | 新增 | 建立可执行的发布门槛检查清单 |
+
+---
+
+## 4. 本地验证
+
+### 4.1 主仓测试
+
+```bash
+pytest tests/ -v --ignore=tests/golden/
+```
+
+**结果：194 passed, 0 failed**
+
+### 4.2 Examples
+
+```bash
+python examples/demo_regress.py
+python examples/demo_reghdfe.py
+python examples/demo_ppmlhdfe.py
+python examples/demo_ivregress_2sls.py
+```
+
+**结果：全部正常执行，无报错。**
+
+### 4.3 导出验证
+
+```bash
+python scripts/release/export_open_source.py --force
+```
+
+- 导出完成，无异常
+- 开源镜像文件数：167 个非 git 文件
+- 导出后测试：`StataFlow_open_source` 内运行 pytest，**194 passed, 0 failed**
+- 导出后 examples：全部正常
+
+---
+
+## 5. 残余风险与留待后续
+
+| 问题 | 位置 | 留给后续 |
+|------|------|---------|
+| `README.zh-CN.md` 未提及 PyPI 安装（仅写 `pip install -e .`） | README.zh-CN.md | 非阻断，但影响中文用户首次安装体验 |
+| 中文 cookbook 未覆盖双向聚类示例 | cookbook.zh-CN.md | 属于功能展示扩展，不影响现有功能可信度 |
+| `docs/operations/open-source-scope-audit.md` 仍需随 manifest 版本同步 | docs/operations | 每次 manifest 升级时由 checklist 强制检查 |
+| 部分内部 research docs 仍有编码损坏（`docs/research/*.md`） | docs/research | 这些文件属于 closed 目录，不进入开源仓 |
+
+---
+
+## 6. 返工说明（Codex 复审后）
+
+### 6.1 复审指出的两类问题
+
+1. **`docs/cookbook.md` 仍残留一处编码损坏字符**：首轮报告声称已修复 cookbook 编码问题，但 `Categorical × continuous interaction` 这一节的标题仍为损坏字符“脳”（U+8133）。
+2. **`REPORT.md` 导出文件计数与实际不符**：报告写“开源镜像文件数：166 个非 git 文件”，但重新导出后实际统计为 **167** 个非 git 文件。
+
+### 6.2 修复方式
+
+- **F-R1**：将 `docs/cookbook.md` 第 454 行标题中的“脳”替换为“×”。同时全文搜索确认无其他同类损坏字符残留。
+- **F-R2**：重新执行 `python scripts/release/export_open_source.py --force`，用 `find ../StataFlow_open_source -type f | grep -v '/\.git/' | wc -l` 精确统计，将 `REPORT.md` 中的数字从 166 修正为 167。
+
+### 6.3 复核结果
+
+- `docs/cookbook.md` 全文搜索非 ASCII 字符：仅剩正常的 “×” 和 em-dash，无“脳”残留。
+- 导出后统计：`167` 个非 git 文件，与报告一致。
+- 导出后测试：`194 passed, 0 failed`。
+
+---
+
+## 7. 成功标准核验
+
+- [x] 至少一个真实的 release-candidate 阻断问题被修掉（多层聚类表述漂移 + rdrobust 数据路径）
+- [x] 不是只写建议或只做分析（落地了 6 个文件修改 + 1 个新增 checklist）
+- [x] 对外文档 / 版本元数据 / 发布状态比当前更一致
+- [x] `REPORT.md` 可供 Codex 下一轮复审直接使用

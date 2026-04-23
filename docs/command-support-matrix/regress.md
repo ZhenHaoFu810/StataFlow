@@ -20,7 +20,7 @@ result = regress(data, y="depvar", x=["x1", "x2"], vce="robust")
 | `y` | `str` | Dependent variable |
 | `x` | `list[str]` | Independent variables |
 | `vce` | `str` | `"ols"`, `"robust"`, `"cluster"` |
-| `cluster` | `str` | Cluster variable (required when `vce="cluster"`) |
+| `cluster` | `str` or `list[str]` | Cluster variable(s). Single `str` for one-way; list of two `str` for two-way clustering (requires `vce="cluster"`) |
 | `aweight` | `str` | Variable name for analytical weights |
 | `noconstant` | `bool` | Drop constant term |
 | `missing` | `str` | `"drop"` only |

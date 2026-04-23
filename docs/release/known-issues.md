@@ -24,7 +24,7 @@ This document registers issues that are acknowledged but not treated as release-
 
 ## 2. Vendor command completeness — all are partial subsets
 
-All community commands in `statapy.compat.stata` are implemented as **high-frequency-path subsets**, not full Stata command reproductions. This is by design for the Alpha phase, but users may misinterpret wrapper availability as full support.
+All community commands in `stataflow.compat.stata` are implemented as **high-frequency-path subsets**, not full Stata command reproductions. This is by design for the Alpha phase, but users may misinterpret wrapper availability as full support.
 
 | Command | Status | Largest remaining gap |
 |---------|--------|----------------------|
@@ -42,10 +42,10 @@ See individual support matrices in `docs/command-support-matrix/` for the exact 
 
 ## 3. Infrastructure limitations
 
-- **Multi-way clustering:** Not supported across any command. Only single-cluster robust inference is available.
+- **Multi-way clustering:** `regress` supports two-way clustering (Cameron-Gelbach-Miller 2011). All other commands use single-cluster robust inference only.
 - **Weights beyond `aweight`:** `fweight`, `pweight`, `iweight` are not yet supported.
 - **Post-estimation on wrappers:** `predict` and `margins` are available on core estimator classes only; the `compat.stata` wrapper layer returns `ResultSchema` and does not expose `.predict()` / `.margins()` directly.
-- **CI/CD:** No automated continuous integration pipeline is configured.
+- **CI/CD:** GitHub Actions pipeline is configured (`.github/workflows/ci.yml`) and runs on Python 3.10, 3.11, and 3.12.
 
 ---
 

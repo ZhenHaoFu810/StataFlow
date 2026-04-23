@@ -1,82 +1,49 @@
 # 当前任务
 
-你现在进入的是一个新的实现任务，不再是上一轮 `Validation Package 001`。
+`Package G` 首轮交付未通过 Codex 最终复审。`workspace/current-task` 的唯一执行任务现已切换为：
 
-当前唯一活动任务是：
+- [package-g-rework-codex-review.md](</D:/OneDrive - SAIF/PhD3/StataFlow/workspace/current-task/package-g-rework-codex-review.md>)
 
-- [open-source-export-and-ci-root-cause-fix.md](</D:/OneDrive - SAIF/PhD3/StataFlow/workspace/current-task/open-source-export-and-ci-root-cause-fix.md>)
+在本轮返工修完并再次通过 Codex 复审之前，不得继续宣称可以发布，也不要执行新的功能性工作。
 
-## 任务目标
+## 你必须先读
 
-把 `D:\OneDrive - SAIF\PhD3\StataFlow` 变成唯一维护源，并把
-`D:\OneDrive - SAIF\PhD3\StataFlow_open_source` 改造成可重复生成的开源发布镜像。
-
-同时：
-
-- 全面审计项目目录边界，明确哪些文件和目录适合开源，哪些不适合
-- 修复开源仓 GitHub Actions 中 Python `3.11` 的真实失败根因
-- 检查并修正当前仓库中中文 Markdown 文档的乱码/编码问题
-
-## 必须先读
-
-1. [workspace/current-task/open-source-export-and-ci-root-cause-fix.md](</D:/OneDrive - SAIF/PhD3/StataFlow/workspace/current-task/open-source-export-and-ci-root-cause-fix.md>)
-2. [README.md](</D:/OneDrive - SAIF/PhD3/StataFlow/README.md>)
+1. [workspace/current-task/package-g-rework-codex-review.md](</D:/OneDrive - SAIF/PhD3/StataFlow/workspace/current-task/package-g-rework-codex-review.md>)
+2. [workspace/current-task/REPORT.md](</D:/OneDrive - SAIF/PhD3/StataFlow/workspace/current-task/REPORT.md>)
 3. [workspace/current-task/REPORT_TEMPLATE.md](</D:/OneDrive - SAIF/PhD3/StataFlow/workspace/current-task/REPORT_TEMPLATE.md>)
-4. [D:/OneDrive - SAIF/PhD3/StataFlow_open_source/.github/workflows/ci.yml](</D:/OneDrive - SAIF/PhD3/StataFlow_open_source/.github/workflows/ci.yml>)
 
 ## 执行边界
 
-- 只在 `StataFlow` 中实现开源导出机制，`StataFlow_open_source` 作为导出目标与验证对象
-- 不做与本任务无关的重构
-- 不扩大功能范围
-- 不再假设 `docs`、`research`、`scripts`、`stata`、`tests` 可以整体开源，必须做显式范围审计
-- 不删除 Python `3.11`
-- 不通过跳过测试、`xfail`、放宽断言、条件分支绕过等方式掩盖 `3.11` 问题
-- `fail-fast: false` 只能作为增强可观测性的辅助修改，不能替代根因修复
-- 中文 Markdown 的修复必须以“文件实际可读、编码稳定、后续导出不再乱码”为目标，而不是只在当前终端显示正常
+- 只修本轮 Codex 复审明确指出的文档一致性遗漏
+- 不扩新功能
+- 不改统计实现
+- 不改 manifest 范围
+- 若需验证，只做与本轮返工点直接相关的最小验证
+- 修完后必须重新导出到 `StataFlow_open_source`
 
-## 预期执行顺序
+## 执行顺序
 
-1. 对项目所有主要目录做开源范围审计，形成明确的 include/exclude 决策
-2. 在 `StataFlow` 中实现 `manifest + export_open_source.ps1`
-3. 把 `.github/workflows/ci.yml` 和其他最终允许公开的文件纳入导出体系
-4. 修复公开文档中的已知错误
-5. 定位并修复 Python `3.11` 的真实失败根因
-6. 扫描并修复中文 Markdown 文档的乱码/编码问题
-7. 运行导出脚本同步到 `StataFlow_open_source`
-8. 检查导出结果和 CI 相关结果
-9. 在 `REPORT.md` 中完成任务汇报
+1. 修 `reghdfe.md`、`ivreghdfe.md`、`ppmlhdfe.md` 中仍残留的 `1-2 absorbed FEs` 旧口径
+2. 运行最小必要验证
+3. 重新执行导出
+4. 更新 [REPORT.md](</D:/OneDrive - SAIF/PhD3/StataFlow/workspace/current-task/REPORT.md>)
 
 ## 交付要求
 
-完成后在 [workspace/current-task/REPORT.md](</D:/OneDrive - SAIF/PhD3/StataFlow/workspace/current-task/REPORT.md>) 中明确说明：
+完成后必须在 `REPORT.md` 中新增“Package G Rework”说明，明确写出：
 
-- 项目各主要目录中哪些内容允许开源，哪些不允许，以及判断理由
-- 新增了哪些导出机制文件
-- manifest 如何组织公开/排除规则
-- 导出脚本如何运行，`DryRun` 与正式执行结果如何
-- 导出后 `StataFlow_open_source` 的关键检查结果
-- 修复了哪些公开文档问题
-- Python `3.11` 失败发生在哪一步
-- 根因是什么
-- 做了什么修复
-- 为什么该修复不是掩盖问题
-- 哪些中文 Markdown 文件存在乱码/编码问题
-- 做了什么修复
-- 修复后如何验证这些文件不再乱码
-- 本地验证结果与 CI 预期结果
+- Codex 复审指出的遗漏
+- 修改了哪些文件
+- 如何修正
+- 做了哪些验证
+- 导出后开源镜像是否同步
 
 ## 完成判定
 
-只有当以下条件全部满足时，任务才算完成：
+只有当以下条件全部满足时，本轮返工才算完成：
 
-- `StataFlow` 成为唯一维护源
-- 开源范围已经被显式审计，不再依赖粗放白名单
-- `StataFlow_open_source` 可以由脚本稳定导出
-- 开源仓不再依赖手工搬运
-- 开源仓 CI 保留 `3.10` / `3.11` / `3.12`
-- `fail-fast: false` 已设置
-- Python `3.11` 真实失败根因已定位并修复
-- 没有通过跳过、删版本或弱化测试来规避问题
-- 已知公开文档错误已修正
-- 中文 Markdown 乱码问题已完成排查与修复
+- `docs/command-support-matrix/reghdfe.md` 不再保留 `1-2 absorbed FEs`
+- `docs/command-support-matrix/ivreghdfe.md` 不再保留 `1-2 absorbed FEs`
+- `docs/command-support-matrix/ppmlhdfe.md` 不再保留 `1-2 absorbed FEs`
+- 主仓 `pytest tests/ -q --ignore=tests/golden/` 继续通过
+- 重新导出后，`StataFlow_open_source` 与修正后的 HDFE 文档口径一致

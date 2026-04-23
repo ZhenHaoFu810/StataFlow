@@ -2,7 +2,7 @@
 
 ## Completeness Status
 
-**Partial / Phase B Subset** — 2SLS + 1–2  FE + robust/cluster VCE + `noconstant` + `keepsingletons` + predict (`xb`/`xbd`/`residuals`/`d`/`dresiduals`) is implemented and verified. First-stage diagnostics, weak-instrument tests, LIML/GMM, multi-way clustering, and broader command options are missing.
+**Partial / Phase B Subset** — 2SLS + multiple FE (1–2 FE path dual-run verified, 3+ FE covered in synthetic tests) + robust/cluster VCE + `noconstant` + `keepsingletons` + predict (`xb`/`xbd`/`residuals`/`d`/`dresiduals`) is implemented and verified. First-stage diagnostics, weak-instrument tests, LIML/GMM, multi-way clustering, and broader command options are missing.
 
 ## Command Target
 
@@ -29,7 +29,7 @@ result = ivreghdfe(
 | `x_exog` | `list[str]` | Exogenous regressors |
 | `x_endog` | `list[str]` | Endogenous regressors |
 | `instruments` | `list[str]` | Excluded instruments |
-| `absorb` | `str \| list[str]` | 1-2 categorical variables to absorb |
+| `absorb` | `str \| list[str]` | Categorical variables to absorb (1+ supported) |
 | `vce` | `str` | `"ols"`, `"robust"`, `"cluster"` |
 | `cluster` | `str` | Cluster variable (required when `vce="cluster"`) |
 | `noconstant` | `bool` | Omit constant term |
@@ -87,7 +87,7 @@ The `compat.stata` wrapper returns a `ResultSchema` object. To use `predict()`, 
 - Factor-syntax case: `tests/golden/test_a2_factor_ivreghdfe_basic.py` — `ivreghdfe y c.x1##i.g (x_endog = z1 z2), absorb(firm year)`
 - Phase B synthetic behavior: `tests/test_hdfe_synthetic.py` (noconstant, keepsingletons, predict consistency)
 - Local source mirror: `research/vendor/stata_community/ivreghdfe/`
-- Stata 17 dual-run verified for 2SLS with 1-2 absorbed FEs and cluster VCE
+- Stata 17 dual-run verified for 2SLS with 1+ absorbed FEs and cluster VCE
 
 ## Core Implementation
 

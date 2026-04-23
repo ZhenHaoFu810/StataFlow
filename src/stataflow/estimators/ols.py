@@ -72,7 +72,7 @@ class OLS:
         self._dep_var: Optional[np.ndarray] = None
         self._sample_mask: Optional[np.ndarray] = None
         self._coef_names: list[str] = []
-        self._colinear_dropped: list[str] = []
+        self._collinear_dropped: list[str] = []
         self._weights: Optional[np.ndarray] = None
 
         # Fitted state
@@ -81,7 +81,9 @@ class OLS:
         self._cov_beta: Optional[np.ndarray] = None
         self._result: Optional[ResultSchema] = None
 
-    def _prepare_data(self, cluster_var: Optional[str] = None) -> tuple[np.ndarray, np.ndarray, list[bool], Optional[np.ndarray]]:
+    def _prepare_data(
+        self, cluster_var: Optional[str | list[str]] = None
+    ) -> tuple[np.ndarray, np.ndarray, list[bool], Optional[np.ndarray | list[np.ndarray]]]:
         """
         Prepare design matrix and dependent variable.
 
@@ -93,13 +95,20 @@ class OLS:
             Dependent variable (n,).
         sample_mask : list[bool]
             Boolean mask of retained observations.
-        cluster : np.ndarray or None
-            Cluster variable values (if provided).
+        cluster : np.ndarray, list[np.ndarray], or None
+            Cluster variable values (if provided). For multi-way clustering,
+            returns a list of cluster arrays.
         """
         # Select columns
         all_vars = [self.y] + self.x
-        if cluster_var is not None and cluster_var not in all_vars:
-            all_vars.append(cluster_var)
+        if cluster_var is not None:
+            if isinstance(cluster_var, str):
+                if cluster_var not in all_vars:
+                    all_vars.append(cluster_var)
+            else:
+                for cv in cluster_var:
+                    if cv not in all_vars:
+                        all_vars.append(cv)
 
         df = self.data[all_vars].copy()
 
@@ -148,10 +157,13 @@ class OLS:
             weight_arr = weight_arr * n_after_drop / np.sum(weight_arr)
             self._weights = weight_arr
 
-        # Extract cluster variable if provided
+        # Extract cluster variable(s) if provided
         cluster_arr = None
         if cluster_var is not None:
-            cluster_arr = df[cluster_var].values
+            if isinstance(cluster_var, str):
+                cluster_arr = df[cluster_var].values
+            else:
+                cluster_arr = [df[cv].values for cv in cluster_var]
 
         # Build design matrix
         X_cols = []
@@ -171,7 +183,7 @@ class OLS:
 
         # Detect collinearity
         X, dropped = self._detect_collinearity(X, self._coef_names)
-        self._colinear_dropped = dropped
+        self._collinear_dropped = dropped
 
         self._design_matrix = X
         self._dep_var = y
@@ -223,7 +235,7 @@ class OLS:
     def fit(
         self,
         vce: str = "ols",
-        cluster: Optional[str] = None,
+        cluster: Optional[str | list[str]] = None,
         alpha: float = 0.05,
     ) -> ResultSchema:
         """
@@ -236,8 +248,9 @@ class OLS:
             - "ols": conventional homoskedastic (default)
             - "robust": HC1 heteroskedasticity-robust (Stata default)
             - "cluster": cluster-robust (requires cluster parameter)
-        cluster : str, optional
-            Cluster variable name (required when vce="cluster").
+        cluster : str or list[str], optional
+            Cluster variable name(s). Single str for one-way clustering;
+            list of two str for two-way clustering (required when vce="cluster").
         alpha : float
             Significance level for confidence intervals.
 
@@ -253,6 +266,8 @@ class OLS:
             raise ValueError("cluster variable required when vce='cluster'. Pass cluster='...'.")
         if vce != "cluster" and cluster is not None:
             raise ValueError("cluster only used when vce='cluster'.")
+        if isinstance(cluster, list) and len(cluster) != 2:
+            raise ValueError("Multi-way clustering currently supports exactly 2 cluster variables.")
 
         # Prepare data
         X, y, sample_mask, cluster_arr = self._prepare_data(cluster_var=cluster)
@@ -357,36 +372,68 @@ class OLS:
             # where Omega_cluster = sum_g (X_g' * e_g) * (X_g' * e_g)'
             XtX_inv = np.linalg.inv(XtX)
 
-            # Get unique clusters
-            unique_clusters = np.unique(cluster_arr)
-            cluster_count = len(unique_clusters)
-
-            # Compute clustered meat: sum over groups of (X'e)_g * (X'e)_g'
-            meat = np.zeros((k, k))
-            for g in unique_clusters:
-                # Get observations in this cluster
-                mask_g = cluster_arr == g
-                if w is not None:
-                    X_g = X_w[mask_g]
-                else:
-                    X_g = X[mask_g]
-                e_g = residuals[mask_g]
-
-                # (X'e)_g = X_g' * e_g (k x 1 vector)
-                Xe_g = X_g.T @ e_g
-
-                # Add to meat: (X'e)_g * (X'e)_g'
-                meat += np.outer(Xe_g, Xe_g)
-
-            # Small sample corrections: (N-1)/(N-k) * G/(G-1)
-            # Stata uses: (N-1)/(N-k) * G/(G-1)
             n_adj = (n - 1) / (n - k) if n > k else 1.0
-            g_adj = cluster_count / (cluster_count - 1) if cluster_count > 1 else 1.0
 
-            cov_beta = n_adj * g_adj * XtX_inv @ meat @ XtX_inv
+            if isinstance(cluster_arr, list):
+                # Multi-way clustering (Cameron-Gelbach-Miller 2011)
+                # V = V_1 + V_2 - V_12
+                cluster_counts = []
+                V_parts = []
+                for c_arr in cluster_arr:
+                    unique_clusters = np.unique(c_arr)
+                    G = len(unique_clusters)
+                    cluster_counts.append(G)
+                    meat = np.zeros((k, k))
+                    for g in unique_clusters:
+                        mask_g = c_arr == g
+                        X_g = X_w[mask_g] if w is not None else X[mask_g]
+                        e_g = residuals[mask_g]
+                        Xe_g = X_g.T @ e_g
+                        meat += np.outer(Xe_g, Xe_g)
+                    g_adj = G / (G - 1) if G > 1 else 1.0
+                    V_i = n_adj * g_adj * XtX_inv @ meat @ XtX_inv
+                    V_parts.append(V_i)
 
-            # For cluster VCE, df_resid should be based on number of clusters
-            # Stata uses df_resid = G - 1 for F-test denominator
+                # Intersection clustering V_12
+                c1, c2 = cluster_arr[0], cluster_arr[1]
+                # Use tuple-based manual factorization to avoid any separator collision
+                combo_to_id = {}
+                combo_ids = np.empty(len(c1), dtype=int)
+                for i, pair in enumerate(zip(c1, c2)):
+                    if pair not in combo_to_id:
+                        combo_to_id[pair] = len(combo_to_id)
+                    combo_ids[i] = combo_to_id[pair]
+                unique_combos = np.unique(combo_ids)
+                G_12 = len(unique_combos)
+                meat_12 = np.zeros((k, k))
+                for combo in unique_combos:
+                    mask = combo_ids == combo
+                    X_g = X_w[mask] if w is not None else X[mask]
+                    e_g = residuals[mask]
+                    Xe_g = X_g.T @ e_g
+                    meat_12 += np.outer(Xe_g, Xe_g)
+                g_adj_12 = G_12 / (G_12 - 1) if G_12 > 1 else 1.0
+                V_12 = n_adj * g_adj_12 * XtX_inv @ meat_12 @ XtX_inv
+
+                cov_beta = V_parts[0] + V_parts[1] - V_12
+                cluster_count = min(cluster_counts)  # for df_resid
+            else:
+                # One-way clustering
+                unique_clusters = np.unique(cluster_arr)
+                cluster_count = len(unique_clusters)
+
+                meat = np.zeros((k, k))
+                for g in unique_clusters:
+                    mask_g = cluster_arr == g
+                    X_g = X_w[mask_g] if w is not None else X[mask_g]
+                    e_g = residuals[mask_g]
+                    Xe_g = X_g.T @ e_g
+                    meat += np.outer(Xe_g, Xe_g)
+
+                g_adj = cluster_count / (cluster_count - 1) if cluster_count > 1 else 1.0
+                cov_beta = n_adj * g_adj * XtX_inv @ meat @ XtX_inv
+
+            # For cluster VCE, df_resid based on number of clusters
             df_resid = float(cluster_count - 1)
         else:
             raise ValueError(f"vce='{vce}' not implemented")
@@ -516,8 +563,8 @@ class OLS:
             residual_df_correction=None,
             cluster_count=cluster_count,
             warnings=[
-                f"Collinear variables dropped: {', '.join(self._colinear_dropped)}"
-            ] if self._colinear_dropped else [],
+                f"Collinear variables dropped: {', '.join(self._collinear_dropped)}"
+            ] if self._collinear_dropped else [],
         )
         result.provenance = ProvenanceInfo(
             source="python",

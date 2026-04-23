@@ -38,7 +38,7 @@ class PPMLHDFE:
     x : list[str]
         Independent variable names.
     absorb : str | list[str]
-        Categorical variable(s) to absorb. Supports 1-2 variables.
+        Categorical variable(s) to absorb. Multiple variables are supported.
     add_constant : bool, default True
         Whether to include a constant term.
     missing : str, default "drop"
@@ -439,8 +439,8 @@ class PPMLHDFE:
             values=cov_reported.tolist(),
         )
         warnings = []
-        if self._abs_ols._colinear_dropped:
-            warnings.append(f"Collinear variables dropped: {', '.join(self._abs_ols._colinear_dropped)}")
+        if self._abs_ols._collinear_dropped:
+            warnings.append(f"Collinear variables dropped: {', '.join(self._abs_ols._collinear_dropped)}")
         if getattr(self._abs_ols, '_num_singletons', 0) > 0:
             warnings.append(f"Singleton observations dropped: {self._abs_ols._num_singletons}")
         if not converged:

@@ -86,8 +86,7 @@ This document records the explicit open-source boundary decisions for the StataF
 |------|----------|--------|
 | `research/data/public/` | **Open** | Public datasets used by examples and validation. Includes CSV, DTA, and data preparation scripts. |
 | `research/results/validation/` | **Open** | Validation evidence summaries (JSON and Markdown). These are the public artifacts of the dual-run verification process. |
-| `research/vendor/stata_community/rdrobust/rdrobust-master/stata/rdrobust_senate.dta` | **Open** | The `rdrobust_senate.dta` public dataset is required by `tests/test_rdrobust.py` (non-golden tests). |
-| All other `research/vendor/` contents | **Closed** | Internal research archives of third-party Stata community commands (`.ado`, `.mo`, `.pdf`, `.sthlp`, `.do`, source maps). Not required for package functionality or CI. |
+| `research/vendor/` | **Closed** | Internal research archives of third-party Stata community commands (`.ado`, `.mo`, `.pdf`, `.sthlp`, `.do`, source maps). Not required for package functionality or CI. |
 
 ### `scripts/`
 
@@ -109,7 +108,7 @@ This document records the explicit open-source boundary decisions for the StataF
 | Path | Decision | Reason |
 |------|----------|--------|
 | `stata/cases/` | **Closed** | Stata `.do` files and test data generated during development. These are development artifacts, not part of the public package. The open-source repo currently holds an empty directory here; the export will omit it entirely. |
-| `stata/output/` | **Closed** | Stata execution outputs (`.log`, `.txt`, `.dta`). These are generated artifacts. The open-source repo must not depend on them. The two `test_rdrobust.py` tests that currently reference `stata/output/rdrobust_senate_with_z.dta` are a bug and will be fixed to remove this dependency. |
+| `stata/output/` | **Closed** | Stata execution outputs (`.log`, `.txt`, `.dta`). These are generated artifacts. The open-source repo must not depend on them. |
 
 ### `tests/`
 
@@ -161,7 +160,7 @@ Whitelist categories:
 - Root-level standard files (`README.md`, `LICENSE`, `pyproject.toml`, `.gitignore`)
 - Entire open subdirectories (`src/`, `examples/`, `docs/architecture/`, etc.)
 - Specific files within mixed directories (`docs/operations/open-source-scope-audit.md`, `docs/operations/open-source-export.md`)
-- Specific data files required by tests (`research/vendor/.../rdrobust_senate.dta`)
+- Specific data files required by tests (`tests/data/rdrobust_senate.dta`)
 
 ### Blacklist (Explicit Exclusion)
 
@@ -188,7 +187,7 @@ The following table maps non-golden tests to their external data dependencies, c
 
 | Test File | Data Dependency | In Open Source? |
 |-----------|----------------|-----------------|
-| `tests/test_rdrobust.py` | `research/vendor/stata_community/rdrobust/rdrobust-master/stata/rdrobust_senate.dta` | Yes |
+| `tests/test_rdrobust.py` | `tests/data/rdrobust_senate.dta`, `tests/data/rdrobust_senate_with_z.dta` | Yes |
 | (all other non-golden tests) | `research/data/public/` datasets | Yes |
 
 No non-golden test depends on `stata/output/`, `stata/cases/`, `tests/golden/`, or internal docs.

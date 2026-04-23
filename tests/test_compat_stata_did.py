@@ -47,7 +47,7 @@ def test_did_imputation_delegation():
 def test_did_imputation_unsupported_kwargs():
     df = _make_did_data()
     with pytest.raises(ValueError, match="Unsupported arguments"):
-        did_imputation(df, y="y", id="id", time="time", first_treat="first_treat", minn=5)
+        did_imputation(df, y="y", id="id", time="time", first_treat="first_treat", pretrends=True)
 
 
 def test_eventstudyinteract_delegation():
@@ -251,3 +251,147 @@ def test_csdid_single_cohort():
     assert len(res.coefficients) > 0
     names = [c.name for c in res.coefficients]
     assert any("Tp" in n or "Post" in n for n in names)
+
+
+def test_did_imputation_allhorizons_false():
+    """Default allhorizons=False should only report non-negative horizons."""
+    df = _make_did_data(n_units=50, n_periods=5)
+    res = did_imputation(
+        df, y="y", id="id", time="time", first_treat="first_treat",
+        allhorizons=False,
+    )
+    names = [c.name for c in res.coefficients]
+    # All reported horizons should be >= 0 (tau0, tau1, ...)
+    for name in names:
+        horizon = int(name.replace("tau", ""))
+        assert horizon >= 0, f"Expected non-negative horizon, got {name}"
+
+
+def test_did_imputation_allhorizons_true():
+    """allhorizons=True should include negative pretrend horizons."""
+    df = _make_did_data(n_units=50, n_periods=5)
+    res = did_imputation(
+        df, y="y", id="id", time="time", first_treat="first_treat",
+        allhorizons=True,
+    )
+    names = [c.name for c in res.coefficients]
+    # With n_periods=5 and first_treat in [0,2,3], there should be
+    # pretreatment horizons (-2, -1) for cohorts treated at t>=2.
+    negative_names = [n for n in names if int(n.replace("tau", "")) < 0]
+    assert len(negative_names) > 0, (
+        "allhorizons=True should produce negative horizons, got: " + str(names)
+    )
+
+
+def test_did_imputation_allhorizons_more_horizons_than_default():
+    """allhorizons=True should produce strictly more coefficients than False."""
+    df = _make_did_data(n_units=50, n_periods=5)
+    res_default = did_imputation(
+        df, y="y", id="id", time="time", first_treat="first_treat",
+        allhorizons=False,
+    )
+    res_all = did_imputation(
+        df, y="y", id="id", time="time", first_treat="first_treat",
+        allhorizons=True,
+    )
+    assert len(res_all.coefficients) > len(res_default.coefficients), (
+        "allhorizons=True should yield more horizons than allhorizons=False"
+    )
+
+
+def test_did_imputation_provenance_no_unconditional_options():
+    """Default call must not claim allhorizons or autosample in stata_command."""
+    df = _make_did_data(n_units=50, n_periods=5)
+    res = did_imputation(df, y="y", id="id", time="time", first_treat="first_treat")
+    cmd = res.provenance.stata_command
+    assert "allhorizons" not in cmd, f"stata_command should not claim allhorizons by default: {cmd}"
+    assert "autosample" not in cmd, f"stata_command should not claim autosample by default: {cmd}"
+    assert "cluster(id)" in cmd, f"stata_command should include default cluster: {cmd}"
+
+
+def test_did_imputation_provenance_with_explicit_options():
+    """Explicit options must be reflected in stata_command."""
+    df = _make_did_data(n_units=50, n_periods=5)
+    res = did_imputation(
+        df, y="y", id="id", time="time", first_treat="first_treat",
+        allhorizons=True, autosample=True,
+    )
+    cmd = res.provenance.stata_command
+    assert "allhorizons" in cmd, f"stata_command should include allhorizons when enabled: {cmd}"
+    assert "autosample" in cmd, f"stata_command should include autosample when enabled: {cmd}"
+    assert "cluster(id)" in cmd, f"stata_command should include cluster: {cmd}"
+
+
+# ---------------------------------------------------------------------------
+# window / minn support (Package C)
+# ---------------------------------------------------------------------------
+
+def test_did_imputation_window_restricts_horizons():
+    """window=[0, 2] should only report horizons 0, 1, 2."""
+    df = _make_did_data(n_units=50, n_periods=5)
+    res = did_imputation(
+        df, y="y", id="id", time="time", first_treat="first_treat",
+        allhorizons=True, window=[0, 2],
+    )
+    names = [c.name for c in res.coefficients]
+    for name in names:
+        h = int(name.replace("tau", ""))
+        assert 0 <= h <= 2, f"Expected horizon in [0, 2], got {name}"
+    assert "tau0" in names
+    assert "tau2" in names
+    # tau3 should be excluded
+    assert "tau3" not in names
+
+
+def test_did_imputation_window_with_allhorizons():
+    """window with allhorizons=True should include negative horizons within range."""
+    df = _make_did_data(n_units=50, n_periods=5)
+    res = did_imputation(
+        df, y="y", id="id", time="time", first_treat="first_treat",
+        allhorizons=True, window=[-2, 1],
+    )
+    names = [c.name for c in res.coefficients]
+    negative = [n for n in names if int(n.replace("tau", "")) < 0]
+    assert len(negative) > 0, "window [-2, 1] with allhorizons should include negative horizons"
+    for name in names:
+        h = int(name.replace("tau", ""))
+        assert -2 <= h <= 1, f"Expected horizon in [-2, 1], got {name}"
+
+
+def test_did_imputation_minn_skips_small_horizons():
+    """minn should skip horizons with fewer imputable observations than threshold."""
+    df = _make_did_data(n_units=50, n_periods=5)
+    # Default call (no minn) should produce more horizons than minn=50
+    res_default = did_imputation(
+        df, y="y", id="id", time="time", first_treat="first_treat",
+        allhorizons=True,
+    )
+    res_minn = did_imputation(
+        df, y="y", id="id", time="time", first_treat="first_treat",
+        allhorizons=True, minn=50,
+    )
+    assert len(res_minn.coefficients) <= len(res_default.coefficients), (
+        "minn should reduce or equal the number of reported horizons"
+    )
+
+
+def test_did_imputation_window_invalid_length():
+    """window must be a two-element list."""
+    df = _make_did_data(n_units=50, n_periods=5)
+    with pytest.raises(ValueError, match="window must be a two-element"):
+        did_imputation(
+            df, y="y", id="id", time="time", first_treat="first_treat",
+            window=[0],
+        )
+
+
+def test_did_imputation_provenance_with_window_minn():
+    """window and minn must appear in stata_command when explicitly set."""
+    df = _make_did_data(n_units=50, n_periods=5)
+    res = did_imputation(
+        df, y="y", id="id", time="time", first_treat="first_treat",
+        window=[0, 2], minn=5,
+    )
+    cmd = res.provenance.stata_command
+    assert "window(0 2)" in cmd, f"stata_command should include window: {cmd}"
+    assert "minn(5)" in cmd, f"stata_command should include minn: {cmd}"

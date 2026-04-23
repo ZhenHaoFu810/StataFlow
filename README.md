@@ -11,7 +11,7 @@ StataFlow (`stataflow`) is a Python econometrics toolkit that reproduces Stata 1
 
 ## What is not yet supported
 
-- **Multi-way clustering** — only single-cluster robust inference is available.
+- **Multi-way clustering** — `regress` supports two-way clustering (Cameron-Gelbach-Miller 2011); all other commands currently use single-cluster robust inference only.
 - **Direct post-estimation on wrapper returns** — the `compat.stata` wrappers return `ResultSchema` result objects. `predict` and `margins` are available on the core estimator layer only.
 - **Full command surfaces for community commands** — `reghdfe`, `ivreghdfe`, `ppmlhdfe`, `did_imputation`, `eventstudyinteract`, `csdid`, and `rdrobust` are implemented as **verified high-frequency subsets**, not complete Stata command reproductions. Unsupported options are explicitly rejected rather than silently ignored.
 
@@ -19,7 +19,7 @@ StataFlow (`stataflow`) is a Python econometrics toolkit that reproduces Stata 1
 
 - **Stable** — synthetic + real-data dual-run verified; core API is unlikely to change.
 - **Alpha** — high-frequency paths are implemented and verified, but the command surface is still a subset of the full Stata community command.
-- **Alpha — Partial** — a verifiable implementation exists, but large functional areas are still missing (e.g., fuzzy RD for `rdrobust`, multi-way clustering).
+- **Alpha — Partial** — a verifiable implementation exists, but large functional areas are still missing (e.g., fuzzy RD for `rdrobust`, weights beyond `aweight`).
 
 See the [Command Support Matrix](./docs/command-support-matrix/README.md) for the per-command detailed status.
 
@@ -101,13 +101,13 @@ result = model.fit(vce="robust")
 | `regress` | `stataflow.compat.stata.regress` | OLS, robust, cluster, aweight |
 | `xtreg, fe` | `stataflow.compat.stata.xtreg_fe` | Fixed effects (within), cluster |
 | `areg` | `stataflow.compat.stata.areg` | Single absorb variable FE |
-| `reghdfe` | `stataflow.compat.stata.reghdfe` | 1-2 group HDFE, cluster, singleton drop |
+| `reghdfe` | `stataflow.compat.stata.reghdfe` | 1+ group HDFE, cluster, singleton drop |
 | `ivregress 2sls` | `stataflow.compat.stata.ivregress_2sls` | 2SLS, robust, cluster |
-| `ivreghdfe` | `stataflow.compat.stata.ivreghdfe` | IV + 1-2 group HDFE, cluster |
+| `ivreghdfe` | `stataflow.compat.stata.ivreghdfe` | IV + 1+ group HDFE, cluster |
 | `logit` | `stataflow.compat.stata.logit` | MLE, robust, cluster |
 | `probit` | `stataflow.compat.stata.probit` | MLE, robust, cluster |
 | `poisson` | `stataflow.compat.stata.poisson` | MLE, robust, cluster |
-| `ppmlhdfe` | `stataflow.compat.stata.ppmlhdfe` | PPML + 1-2 group HDFE |
+| `ppmlhdfe` | `stataflow.compat.stata.ppmlhdfe` | PPML + 1+ group HDFE |
 | `did_imputation` | `stataflow.compat.stata.did_imputation` | BJS DID imputation |
 | `eventstudyinteract` | `stataflow.compat.stata.eventstudyinteract` | Sun & Abraham IW estimator |
 | `csdid` | `stataflow.compat.stata.csdid` | Callaway-Sant'Anna DID (`method="reg"` only) |
