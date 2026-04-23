@@ -33,7 +33,13 @@
 
 ## 3. 安装与环境
 
-建议用 editable mode：
+普通用户建议直接安装发布版本：
+
+```bash
+pip install StataFlow
+```
+
+如果你在本地参与开发或需要直接跟踪源码，再使用 editable mode：
 
 ```bash
 pip install -e .

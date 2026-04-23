@@ -17,6 +17,8 @@ def did_imputation(
     cluster: Optional[str] = None,
     allhorizons: bool = False,
     autosample: bool = False,
+    window: Optional[list[int]] = None,
+    minn: Optional[int] = None,
     **kwargs,
 ) -> object:
     """
@@ -34,7 +36,13 @@ def did_imputation(
         time=time,
         first_treat=first_treat,
     )
-    return model.fit(cluster=cluster, allhorizons=allhorizons, autosample=autosample)
+    return model.fit(
+        cluster=cluster,
+        allhorizons=allhorizons,
+        autosample=autosample,
+        window=window,
+        minn=minn,
+    )
 
 
 def eventstudyinteract(

@@ -24,6 +24,14 @@
 
 ## 1. 安装与导入
 
+普通使用：
+
+```bash
+pip install StataFlow
+```
+
+如果你是从源码仓库本地运行示例，也可以：
+
 ```bash
 pip install -e .
 ```
@@ -569,10 +577,8 @@ print(f"右侧有效样本 = {extra['N_h_r']}")
 import pandas as pd
 from stataflow.compat.stata import rdrobust
 
-# 使用 rdrobust 自带的数据
-df = pd.read_stata(
-    "research/vendor/stata_community/rdrobust/rdrobust-master/stata/rdrobust_senate.dta"
-)
+# 使用公开测试数据
+df = pd.read_stata("tests/data/rdrobust_senate.dta")
 
 result = rdrobust(df, y="vote", x="margin", c=0.0, bwselect="mserd")
 print(f"RD 效应 (Robust) = {result.coefficients[2].beta:.4f}")
@@ -736,7 +742,7 @@ print(f"残差自由度:      {result.fit.df_resid:.0f}")
 
 ### Q7: 聚类标准误只能有一层吗？
 
-**A**: 是的，当前版本仅支持 **单层聚类**（`cluster="state"`）。多层聚类（如 `cluster(state year)`）尚未实现。
+**A**: `regress` 支持双向聚类（`cluster=["state", "year"]`，Cameron-Gelbach-Miller 2011）。其余命令目前仅支持单层聚类。
 
 ### Q8: 如何保存结果到文件？
 
@@ -846,4 +852,4 @@ for c in result.coefficients:
 
 ---
 
-*本文档最后更新于 2026-04-18。有关各命令的详细支持参数和已知限制，请参阅 `docs/command-support-matrix/`。*
+*本文档最后更新于 2026-04-23。有关各命令的详细支持参数和已知限制，请参阅 `docs/command-support-matrix/`。*

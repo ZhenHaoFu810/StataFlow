@@ -2,7 +2,7 @@
 
 ## Completeness Status
 
-**Partial / Core Estimator Subset** — the Borusyak-Jaravel-Spiess DID imputation estimator with TWFE-on-controls, imputation, and cluster-robust standard errors is implemented and verified, but `controls`, `window`, `minn`, `pretrends`, and repeated cross-section are missing.
+**Partial / Core Estimator Subset** — the Borusyak-Jaravel-Spiess DID imputation estimator with TWFE-on-controls, imputation, cluster-robust standard errors, `window`, and `minn` is implemented and verified, but `controls`, `pretrends`, and repeated cross-section are missing.
 
 ## Command Target
 
@@ -30,8 +30,10 @@ result = did_imputation(
 | `time` | `str` | Time identifier |
 | `first_treat` | `str` | First treatment period variable |
 | `cluster` | `str` | Cluster variable for cluster-robust SEs (defaults to `id`) |
-| `allhorizons` | `bool` | Compute all post-treatment event-time horizons |
+| `allhorizons` | `bool` | Compute all event-time horizons, including pre-treatment (negative) horizons |
 | `autosample` | `bool` | Automatically drop non-imputable observations |
+| `window` | `list[int]` | Two-element list `[min, max]` restricting relative-time horizons |
+| `minn` | `int` | Minimum imputable observations required per horizon |
 
 ## Supported Result Fields
 
@@ -42,14 +44,13 @@ Event-study horizon coefficients (`tau0`, `tau1`, ...), standard errors, z-stati
 - `controls` (control covariates)
 - `unitcontrols` / `timecontrols` (separate FE controls)
 - `horizons` (explicit horizon subsetting)
-- `minn` (minimum observations per horizon)
 - `pretrends()` (pre-trend test)
 - `wtr` (custom weighting)
 - Repeated cross-section support
 
 ## Explicitly Unsupported Parameters
 
-`horizons`, `minn`, `hbalance`, `project`, `hetby`, `saveestimates`, `saveweights`, `saveresid`, `pretrends`, and all other did_imputation-specific options are hard-rejected via `ValueError`.
+`controls`, `unitcontrols`, `timecontrols`, `horizons`, `hbalance`, `project`, `hetby`, `saveestimates`, `saveweights`, `saveresid`, `pretrends`, and all other did_imputation-specific options are hard-rejected via `ValueError`.
 
 ## Alignment Evidence
 

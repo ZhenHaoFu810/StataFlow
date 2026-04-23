@@ -14,7 +14,7 @@ def regress(
     x: list[str],
     *,
     vce: str = "ols",
-    cluster: Optional[str] = None,
+    cluster: Optional[str | list[str]] = None,
     aweight: Optional[str] = None,
     noconstant: bool = False,
     missing: str = "drop",
@@ -55,7 +55,7 @@ def xtreg_fe(
     *,
     fe: str,
     vce: str = "ols",
-    cluster: Optional[str] = None,
+    cluster: Optional[str | list[str]] = None,
     missing: str = "drop",
     **kwargs,
 ) -> object:
@@ -66,6 +66,11 @@ def xtreg_fe(
     """
     if kwargs:
         raise ValueError(f"Unsupported arguments: {list(kwargs.keys())}")
+    if isinstance(cluster, list):
+        raise ValueError(
+            "Multi-way clustering is only supported for regress. "
+            "xtreg_fe currently supports a single cluster variable (str)."
+        )
 
     data_expanded, x_expanded = expand_factor_terms(data, x)
 
@@ -86,7 +91,7 @@ def areg(
     *,
     absorb: str,
     vce: str = "ols",
-    cluster: Optional[str] = None,
+    cluster: Optional[str | list[str]] = None,
     missing: str = "drop",
     **kwargs,
 ) -> object:
@@ -98,6 +103,11 @@ def areg(
     """
     if kwargs:
         raise ValueError(f"Unsupported arguments: {list(kwargs.keys())}")
+    if isinstance(cluster, list):
+        raise ValueError(
+            "Multi-way clustering is only supported for regress. "
+            "areg currently supports a single cluster variable (str)."
+        )
 
     data_expanded, x_expanded = expand_factor_terms(data, x)
     absorb_parsed = parse_absorb(absorb)

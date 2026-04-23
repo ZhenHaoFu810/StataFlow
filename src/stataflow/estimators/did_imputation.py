@@ -54,6 +54,8 @@ class DIDImputation:
         cluster: Optional[str] = None,
         allhorizons: bool = False,
         autosample: bool = False,
+        window: Optional[list[int]] = None,
+        minn: Optional[int] = None,
         alpha: float = 0.05,
     ) -> ResultSchema:
         """
@@ -68,6 +70,12 @@ class DIDImputation:
             If True, compute all possible event time horizons.
         autosample : bool
             If True, automatically drop observations where FE cannot be imputed.
+        window : list[int], optional
+            Two-element list [min, max] restricting the relative-time horizons
+            to compute. Applied after ``allhorizons`` filtering.
+        minn : int, optional
+            Minimum number of imputable observations required per horizon.
+            Horizons with fewer imputable observations are skipped.
         alpha : float
             Significance level for confidence intervals.
 
@@ -113,27 +121,31 @@ class DIDImputation:
             & df[self.time_var].isin(time_has_control)
         ).astype(int)
 
-        # Compute effect for treated observations
+        # Compute effect for all ever-treated observations (including pretrends)
         df["_effect"] = np.nan
-        treated_mask = df["_D"] == 1
-        df.loc[treated_mask, "_effect"] = (
-            df.loc[treated_mask, self.y_var] - df.loc[treated_mask, "_Y0"]
+        ever_treated_mask = df[self.first_treat_var] > 0
+        df.loc[ever_treated_mask, "_effect"] = (
+            df.loc[ever_treated_mask, self.y_var] - df.loc[ever_treated_mask, "_Y0"]
         )
 
         # Determine horizons to compute
         if allhorizons:
-            horizons = sorted(
-                [h for h in df.loc[treated_mask, "_K"].dropna().unique() if h >= 0]
-            )
+            horizons = sorted(df.loc[ever_treated_mask, "_K"].dropna().unique())
         else:
             horizons = sorted(
-                [h for h in df.loc[treated_mask, "_K"].dropna().unique() if h >= 0]
+                [h for h in df.loc[ever_treated_mask, "_K"].dropna().unique() if h >= 0]
             )
+
+        # Apply window restriction
+        if window is not None:
+            if len(window) != 2:
+                raise ValueError("window must be a two-element list or tuple [min, max]")
+            horizons = [h for h in horizons if window[0] <= h <= window[1]]
 
         # Compute tau for each horizon
         tau_results = []
         for h in horizons:
-            h_mask = treated_mask & (df["_K"] == h)
+            h_mask = ever_treated_mask & (df["_K"] == h)
             if h_mask.sum() == 0:
                 continue
 
@@ -141,6 +153,10 @@ class DIDImputation:
             imputable_mask = h_mask & (df["_can_impute"] == 1)
             n_total = h_mask.sum()
             n_imputable = imputable_mask.sum()
+
+            # minn: skip horizon if too few imputable observations
+            if minn is not None and n_imputable < minn:
+                continue
 
             if n_imputable == 0:
                 if not autosample:
@@ -187,7 +203,7 @@ class DIDImputation:
         # Compute standard errors
         if cluster:
             tau_results = self._compute_se(
-                df, tau_results, cluster, control_mask, treated_mask
+                df, tau_results, cluster, control_mask, ever_treated_mask
             )
 
         # Build coefficient rows
@@ -243,10 +259,19 @@ class DIDImputation:
 
         diagnostics = DiagnosticsInfo()
 
+        options = [f"cluster({cluster})"]
+        if allhorizons:
+            options.append("allhorizons")
+        if autosample:
+            options.append("autosample")
+        if window is not None:
+            options.append(f"window({window[0]} {window[1]})")
+        if minn is not None:
+            options.append(f"minn({minn})")
         provenance = ProvenanceInfo(
             stata_command=(
                 f"did_imputation {self.y_var} {self.id_var} {self.time_var} "
-                f"{self.first_treat_var}, allhorizons cluster({cluster}) autosample"
+                f"{self.first_treat_var}, {' '.join(options)}"
             ),
         )
 

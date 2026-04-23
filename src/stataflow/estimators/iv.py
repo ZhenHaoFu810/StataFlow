@@ -391,7 +391,7 @@ class IVAbsorbingOLS:
     instruments : list[str]
         Excluded instrument names.
     absorb : str | list[str]
-        Categorical variable(s) to absorb. Supports 1-2 variables.
+        Categorical variable(s) to absorb. Multiple variables are supported.
     add_constant : bool, default True
         Whether to include a constant term.
     missing : str, default "drop"

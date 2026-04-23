@@ -22,7 +22,7 @@ class ModelInfo:
     fe_vars: list[str] = field(default_factory=list)
     absorb_var: Optional[str] = None
     absorb_vars: list[str] = field(default_factory=list)
-    cluster_var: Optional[str] = None
+    cluster_var: Optional[str | list[str]] = None
     has_constant: bool = True
 
 

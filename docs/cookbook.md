@@ -424,7 +424,7 @@ result = regress(df, y="y", x=["x1", "o3.group"])
 reg y x1 o3.group
 ```
 
-### Continuous 脳 continuous interaction
+### Continuous × continuous interaction
 
 ```python
 # Interaction only
@@ -440,7 +440,7 @@ reg y x1 x2 c.x1#c.x2
 reg y c.x1##c.x2
 ```
 
-### Categorical 脳 categorical interaction
+### Categorical × categorical interaction
 
 ```python
 result = regress(df, y="y", x=["i.group1##i.group2"])
@@ -451,7 +451,7 @@ result = regress(df, y="y", x=["i.group1##i.group2"])
 reg y i.group1##i.group2
 ```
 
-### Categorical 脳 continuous interaction
+### Categorical × continuous interaction
 
 ```python
 result = regress(df, y="y", x=["i.group##c.x1"])
@@ -566,9 +566,9 @@ result = regress(df, y="y", x=["x1"])
 
 StataFlow raises `ValueError` or `NotImplementedError` for any parameter that is not explicitly supported. It never silently ignores options. Check `docs/command-support-matrix/` for the exact supported subset of each command.
 
-### Single-level clustering only
+### Clustering
 
-Multi-way clustering (e.g., `cluster(state year)`) is not yet supported. Use a single cluster variable.
+`regress` supports two-way clustering (e.g., `cluster=["state", "year"]`). All other commands currently use single-cluster robust inference only.
 
 ### Post-estimation is on the core layer only
 
@@ -576,4 +576,4 @@ The `compat.stata` wrappers return a `ResultSchema`. For programmatic prediction
 
 ---
 
-*Last updated: 2026-04-20. For per-command support matrices, see `docs/command-support-matrix/`.*
+*Last updated: 2026-04-23. For per-command support matrices, see `docs/command-support-matrix/`.*

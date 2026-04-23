@@ -418,3 +418,134 @@ def test_ivreghdfe_rejects_unsupported_vce():
             df, y="y", x_exog=["x1"], x_endog=["x2"], instruments=["z1"],
             absorb="firm_id", vce="driscoll"
         )
+
+
+# ---------------------------------------------------------------------------
+# Multi-FE (3+) support — Package B
+# ---------------------------------------------------------------------------
+
+def _make_three_fe_data(n=200, seed=42):
+    rng = np.random.default_rng(seed)
+    df = pd.DataFrame({
+        "y": rng.normal(size=n),
+        "x1": rng.normal(size=n),
+        "x2": rng.normal(size=n),
+        "firm_id": rng.integers(0, 8, size=n),
+        "year_id": rng.integers(0, 5, size=n),
+        "industry_id": rng.integers(0, 4, size=n),
+    })
+    return df
+
+
+@pytest.mark.parametrize("vce", ["ols", "robust", "cluster"])
+def test_reghdfe_three_absorb(vce):
+    """reghdfe should support 3+ absorbed FE variables."""
+    df = _make_three_fe_data()
+    kwargs = {"vce": vce}
+    if vce == "cluster":
+        kwargs["cluster"] = "firm_id"
+    res = reghdfe(
+        df, y="y", x=["x1", "x2"],
+        absorb=["firm_id", "year_id", "industry_id"], **kwargs
+    )
+    assert res.model.command == "reghdfe"
+    assert len(res.model.absorb_vars) == 3
+    assert all(c.std_err > 0 for c in res.coefficients)
+
+
+def test_reghdfe_three_absorb_noconstant():
+    """3 FE noconstant should produce identical fit to constant version."""
+    df = _make_three_fe_data(n=100, seed=55)
+    res_const = reghdfe(
+        df, y="y", x=["x1"],
+        absorb=["firm_id", "year_id", "industry_id"], vce="ols"
+    )
+    res_nocons = reghdfe(
+        df, y="y", x=["x1"],
+        absorb=["firm_id", "year_id", "industry_id"],
+        vce="ols", noconstant=True
+    )
+    # RSS should be identical (same model span)
+    assert np.isclose(res_const.fit.rss, res_nocons.fit.rss, rtol=1e-10)
+    assert "_cons" in [c.name for c in res_const.coefficients]
+    assert "_cons" not in [c.name for c in res_nocons.coefficients]
+
+
+def test_reghdfe_three_absorb_df_a():
+    """df_a for 3 FEs should equal sum(levels) - (n_fes - 1)."""
+    df = _make_three_fe_data(n=100, seed=66)
+    res = reghdfe(
+        df, y="y", x=["x1"],
+        absorb=["firm_id", "year_id", "industry_id"], vce="ols"
+    )
+    # firm_id: 8 levels, year_id: 5 levels, industry_id: 4 levels
+    expected_df_a = 8 + 5 + 4 - (3 - 1)
+    assert res.fit.df_a == expected_df_a
+
+
+def test_reghdfe_three_absorb_predict_consistency():
+    """predict types should remain mathematically consistent with 3 FEs."""
+    df = _make_three_fe_data(n=100, seed=77)
+    model = AbsorbingOLS(
+        df, y="y", x=["x1", "x2"],
+        absorb=["firm_id", "year_id", "industry_id"]
+    )
+    model.fit(vce="ols")
+
+    y = model._dep_var
+    xb = model.predict(type="xb")
+    xbd = model.predict(type="xbd")
+    d = model.predict(type="d")
+    resid = model.predict(type="residuals")
+    dresid = model.predict(type="dresiduals")
+
+    assert np.allclose(xbd, xb + d, rtol=1e-10)
+    assert np.allclose(resid, y - xbd, rtol=1e-10)
+    assert np.allclose(dresid, y - xb, rtol=1e-10)
+    assert not np.allclose(xb, xbd, rtol=1e-6)
+
+
+def test_ivreghdfe_three_absorb():
+    """ivreghdfe should support 3 absorbed FE variables."""
+    rng = np.random.default_rng(42)
+    n = 200
+    z = rng.normal(size=n)
+    u = rng.normal(size=n)
+    x2 = 0.5 * z + u + rng.normal(size=n)
+    x1 = rng.normal(size=n)
+    y = 1.0 + 2.0 * x1 + 3.0 * x2 + u + rng.normal(size=n)
+    df = pd.DataFrame({
+        "y": y, "x1": x1, "x2": x2, "z1": z,
+        "firm_id": rng.integers(0, 8, size=n),
+        "year_id": rng.integers(0, 5, size=n),
+        "industry_id": rng.integers(0, 4, size=n),
+    })
+    res = ivreghdfe(
+        df, y="y", x_exog=["x1"], x_endog=["x2"], instruments=["z1"],
+        absorb=["firm_id", "year_id", "industry_id"], vce="robust"
+    )
+    assert res.model.command == "ivreghdfe"
+    assert len(res.model.absorb_vars) == 3
+    assert all(c.std_err > 0 for c in res.coefficients)
+
+
+def test_ppmlhdfe_three_absorb():
+    """ppmlhdfe should support 3 absorbed FE variables."""
+    rng = np.random.default_rng(42)
+    n = 200
+    eta = rng.normal(size=n)
+    df = pd.DataFrame({
+        "y": rng.poisson(np.exp(eta)),
+        "x1": rng.normal(size=n),
+        "x2": rng.normal(size=n),
+        "firm_id": rng.integers(0, 8, size=n),
+        "year_id": rng.integers(0, 5, size=n),
+        "industry_id": rng.integers(0, 4, size=n),
+    })
+    res = ppmlhdfe(
+        df, y="y", x=["x1", "x2"],
+        absorb=["firm_id", "year_id", "industry_id"], vce="robust"
+    )
+    assert res.model.command == "ppmlhdfe"
+    assert len(res.model.absorb_vars) == 3
+    assert all(c.std_err > 0 for c in res.coefficients)
