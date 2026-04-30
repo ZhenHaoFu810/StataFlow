@@ -2,7 +2,7 @@
 
 ## Completeness Status
 
-**Partial / Core Estimator Subset** — the Borusyak-Jaravel-Spiess DID imputation estimator with TWFE-on-controls, imputation, cluster-robust standard errors, `window`, and `minn` is implemented and verified, but `controls`, `pretrends`, and repeated cross-section are missing.
+**Beta — Core Estimator** — the Borusyak-Jaravel-Spiess DID imputation estimator with TWFE-on-controls, imputation, cluster-robust standard errors, `window`, `minn`, `controls`, `unitcontrols`, and `timecontrols` is implemented and verified. repeated cross-section is missing.
 
 ## Command Target
 
@@ -34,6 +34,15 @@ result = did_imputation(
 | `autosample` | `bool` | Automatically drop non-imputable observations |
 | `window` | `list[int]` | Two-element list `[min, max]` restricting relative-time horizons |
 | `minn` | `int` | Minimum imputable observations required per horizon |
+| `controls` | `list[str]` | Control covariates (global slopes, applied to Y0) |
+| `unitcontrols` | `list[str]` | Unit-specific control slopes (interacted with unit FE) |
+| `timecontrols` | `list[str]` | Time-specific control slopes (interacted with time FE) |
+| `pretrends` | `int` | Number of pretreatment periods to test for parallel trends |
+| `wtr` | `str` or `list[str]` | Custom weight variable(s) for weighted average treatment effects |
+| `hetby` | `str` | Group variable for heterogeneous effects (splits each `wtr` by group) |
+| `saveestimates` | `str` | Save `effect = Y - Y0` as a pandas Series on the fitted model instance |
+| `saveweights` | `bool` | Save imputation weights as a pandas DataFrame on the fitted model instance |
+| `sum` | `bool` | Compute weighted sums instead of weighted averages (no normalization) |
 
 ## Supported Result Fields
 
@@ -41,24 +50,23 @@ Event-study horizon coefficients (`tau0`, `tau1`, ...), standard errors, z-stati
 
 ## Planned Parameters
 
-- `controls` (control covariates)
-- `unitcontrols` / `timecontrols` (separate FE controls)
 - `horizons` (explicit horizon subsetting)
-- `pretrends()` (pre-trend test)
-- `wtr` (custom weighting)
+- `hbalance` (balanced panel constraint)
+- `project` (projection to covariate space)
+- `saveresid` (save regression residuals)
 - Repeated cross-section support
 
 ## Explicitly Unsupported Parameters
 
-`controls`, `unitcontrols`, `timecontrols`, `horizons`, `hbalance`, `project`, `hetby`, `saveestimates`, `saveweights`, `saveresid`, `pretrends`, and all other did_imputation-specific options are hard-rejected via `ValueError`.
+`horizons`, `hbalance`, `project`, `saveresid`, and all other did_imputation-specific options are hard-rejected via `ValueError`.
 
 ## Alignment Evidence
 
 
-- Synthetic cases: `tests/golden/test_w4_did_imputation_basic.py`
+- Synthetic cases: `tests/golden/test_w4_did_imputation_basic.py` (basic), `tests/golden/test_w9_di_controls_basic.py` (controls), `tests/golden/test_w9_di_pretrends_basic.py` (pretrends), `tests/golden/test_w9_di_controls_pretrends_combo.py` (controls + pretrends)
 - Real-data cases: `tests/golden/test_w4_did_imputation_real_ezunem.py`
 - Local source mirror: `research/vendor/stata_community/did_imputation/`
-- Stata 17 dual-run verified for TWFE-imputation event-study coefficients with cluster-robust SEs
+- Stata 17 dual-run verified for TWFE-imputation event-study coefficients with cluster-robust SEs, controls, and pretrends
 
 ## Core Implementation
 

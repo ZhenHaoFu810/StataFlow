@@ -13,15 +13,15 @@ Supported:
 - Sharp RD (deriv=0)
 - p (polynomial order for point est.), q (for bias correction)
 - Explicit bandwidth h, optional bias bandwidth b
-- Automatic bandwidth selector: bwselect="mserd"
+- Automatic bandwidth selectors: mserd, msesum, msetwo, msecomb1, msecomb2,
+  cerrd, cersum, certwo, cercomb1, cercomb2
 - Covariate adjustment via covs
 - Kernels: triangular, epanechnikov, uniform
 - VCE: nn (nearest-neighbor), hc0
 
 Explicitly unsupported (hard-rejected by wrapper):
-- fuzzy RD, weights, clustering
+- clustering
 - deriv > 0 (kink designs)
-- Automatic bandwidth selectors other than "mserd"
 """
 
 from __future__ import annotations
@@ -145,7 +145,7 @@ def _vce_hc0(inv_gram: np.ndarray, R: np.ndarray, w: np.ndarray, res: np.ndarray
     return inv_gram @ M @ inv_gram
 
 
-def _rdrobust_vce_multi(s: np.ndarray, RX: np.ndarray, res: np.ndarray) -> np.ndarray:
+def _rdrobust_vce_multi(s: np.ndarray, RX: np.ndarray, res: np.ndarray, cluster_ids: np.ndarray | None = None) -> np.ndarray:
     """
     Multi-dimensional sandwich VCE for rdrobust with covariates.
 
@@ -160,22 +160,21 @@ def _rdrobust_vce_multi(s: np.ndarray, RX: np.ndarray, res: np.ndarray) -> np.nd
         Weighted design matrix (already multiplied by kernel weights).
     res : np.ndarray, shape (n, d+1)
         Residual matrix [res_y, res_Z1, ...].
+    cluster_ids : np.ndarray, shape (n,) or None
+        Cluster identifiers. If provided, scores are summed within cluster
+        before the outer product (cluster-robust meat).
     """
-    n, k = RX.shape
-    d = len(s) - 1
-    M = np.zeros((k, k), dtype=float)
-    if d == 0:
-        for i in range(n):
-            ri = RX[i, :] * res[i, 0]
-            M += np.outer(ri, ri)
-    else:
-        for i in range(d + 1):
-            SS = res[:, i:i+1] * res  # (n, d+1)
-            for j in range(d + 1):
-                factor = s[i] * s[j] * SS[:, j]
-                RXf = RX * factor[:, None]
-                M += RXf.T @ RX
-    return M
+    if res.ndim == 1:
+        res = res[:, None]
+    scores = RX * (res @ s)[:, None]  # (n, k)
+    if cluster_ids is None:
+        return scores.T @ scores
+    meat = np.zeros((RX.shape[1], RX.shape[1]), dtype=float)
+    for g in np.unique(cluster_ids):
+        mask = cluster_ids == g
+        score_g = scores[mask].sum(axis=0)
+        meat += np.outer(score_g, score_g)
+    return meat
 
 
 def _rdrobust_bw(Y, X, c, o, nu, o_B, h_V, h_B, scale,
@@ -308,20 +307,15 @@ def _rdrobust_bw(Y, X, c, o, nu, o_B, h_V, h_B, scale,
     return V, B, R_term, rate
 
 
-def _rdbwselect_mserd(Y_l, X_l, Y_r, X_r, c, p, q, deriv, kernel, vce, nnmatch,
-                      covs_l=None, covs_r=None, covs_drop_coll=True,
-                      scaleregul=1, bwrestrict=True):
-    """
-    MSE-optimal common bandwidth selector for sharp RD (mserd).
+def _compute_pilot_bw(X_l, X_r, c, kernel, masspoints="adjust", bwcheck=0, bwrestrict=True):
+    """Compute initial pilot bandwidth c_bw and related bounds.
 
-    Implements the three-step plug-in procedure from CCT (2014a)
-    and the official rdrobust/rdbwselect Python package.
-
-    Returns (h, b) where h is the main bandwidth and b is the bias bandwidth.
-    For mserd, h_l = h_r = h and b_l = b_r = b.
+    Returns (c_bw, bw_max, range_l, range_r, M_l, M_r, masspoints_found, effective_bwcheck).
     """
     X_all = np.concatenate([X_l, X_r])
     N = len(X_all)
+    N_l = len(X_l)
+    N_r = len(X_r)
     x_iq = np.quantile(X_all, 0.75) - np.quantile(X_all, 0.25)
     BWp = min(np.std(X_all, ddof=1), x_iq / 1.349)
 
@@ -333,49 +327,64 @@ def _rdbwselect_mserd(Y_l, X_l, Y_r, X_r, c, p, q, deriv, kernel, vce, nnmatch,
     else:
         C_c = 2.576
 
-    # Mass points handling (simplified: always check and adjust)
     X_uniq_l = np.sort(np.unique(X_l))[::-1]
     X_uniq_r = np.unique(X_r)
     M_l = len(X_uniq_l)
     M_r = len(X_uniq_r)
     M = M_l + M_r
-    mass_l = 1 - M_l / len(X_l)
-    mass_r = 1 - M_r / len(X_r)
-    bwcheck = None
-    if mass_l >= 0.1 or mass_r >= 0.1:
-        bwcheck = 10
 
-    c_bw = C_c * BWp * N ** (-1.0 / 5.0)
-    if M < N:
+    # Mass points detection
+    mass_l = 1.0 - M_l / N_l
+    mass_r = 1.0 - M_r / N_r
+    masspoints_found = (mass_l >= 0.2) or (mass_r >= 0.2)
+
+    # Pilot bandwidth: use M instead of N when masspoints="adjust"
+    if masspoints == "adjust":
         c_bw = C_c * BWp * M ** (-1.0 / 5.0)
+    else:
+        c_bw = C_c * BWp * N ** (-1.0 / 5.0)
 
     x_min = np.min(X_all)
     x_max = np.max(X_all)
+    bw_max = None
     if bwrestrict:
         bw_max = max(abs(c - x_min), abs(c - x_max))
         c_bw = min(c_bw, bw_max)
 
-    if bwcheck is not None:
-        bwcheck_l = min(bwcheck, M_l)
-        bwcheck_r = min(bwcheck, M_r)
-        bw_min_l = np.abs(X_uniq_l - c)[bwcheck_l - 1] + 1e-8
-        bw_min_r = np.abs(X_uniq_r - c)[bwcheck_r - 1] + 1e-8
-        c_bw = max(c_bw, bw_min_l, bw_min_r)
+    # Auto bwcheck when adjusting
+    effective_bwcheck = bwcheck
+    if masspoints == "adjust" and masspoints_found and bwcheck == 0:
+        effective_bwcheck = 10
+
+    # bwcheck enforcement
+    if effective_bwcheck > 0:
+        bwcheck_l = min(effective_bwcheck, M_l)
+        bwcheck_r = min(effective_bwcheck, M_r)
+        if bwcheck_l > 0 and bwcheck_r > 0:
+            bw_min_l = np.abs(X_uniq_l - c)[bwcheck_l - 1] + 1e-8
+            bw_min_r = np.abs(X_uniq_r - c)[bwcheck_r - 1] + 1e-8
+            c_bw = max(c_bw, bw_min_l, bw_min_r)
 
     range_l = np.abs(np.max(X_l) - np.min(X_l))
     range_r = np.abs(np.max(X_r) - np.min(X_r))
 
-    # Step 1: pilot d_bw (for bias bandwidth)
+    return c_bw, bw_max, range_l, range_r, M_l, M_r, masspoints_found, effective_bwcheck
+
+
+def _three_step_bw_rd(Y_l, X_l, Y_r, X_r, c, p, q, deriv, kernel, vce, nnmatch,
+                      covs_l, covs_r, covs_drop_coll, scaleregul, c_bw, bw_max,
+                      range_l, range_r, bwrestrict):
+    """Three-step plug-in for MSE-RD branch (difference criterion). Returns (h, b)."""
+    # Step 1: pilot d_bw
     C_d_l = _rdrobust_bw(Y_l, X_l, c, q + 1, q + 1, q + 2, c_bw, range_l, 0,
                          vce, nnmatch, kernel, covs_l, covs_drop_coll)
     C_d_r = _rdrobust_bw(Y_r, X_r, c, q + 1, q + 1, q + 2, c_bw, range_r, 0,
                          vce, nnmatch, kernel, covs_r, covs_drop_coll)
-
     V_d_l, B_d_l, R_d_l, rate_d = C_d_l
     V_d_r, B_d_r, R_d_r, _ = C_d_r
 
     d_bw = ((V_d_l + V_d_r) / (B_d_r - B_d_l) ** 2) ** rate_d
-    if bwrestrict:
+    if bwrestrict and bw_max is not None:
         d_bw = min(d_bw, bw_max)
 
     # Step 2: b_bw
@@ -383,13 +392,12 @@ def _rdbwselect_mserd(Y_l, X_l, Y_r, X_r, c, p, q, deriv, kernel, vce, nnmatch,
                          vce, nnmatch, kernel, covs_l, covs_drop_coll)
     C_b_r = _rdrobust_bw(Y_r, X_r, c, q, p + 1, q + 1, c_bw, d_bw, scaleregul,
                          vce, nnmatch, kernel, covs_r, covs_drop_coll)
-
     V_b_l, B_b_l, R_b_l, rate_b = C_b_l
     V_b_r, B_b_r, R_b_r, _ = C_b_r
 
     denom_b = (B_b_r - B_b_l) ** 2 + scaleregul * (R_b_r + R_b_l)
     b_bw = ((V_b_l + V_b_r) / denom_b) ** rate_b
-    if bwrestrict:
+    if bwrestrict and bw_max is not None:
         b_bw = min(b_bw, bw_max)
 
     # Step 3: h_bw
@@ -397,16 +405,228 @@ def _rdbwselect_mserd(Y_l, X_l, Y_r, X_r, c, p, q, deriv, kernel, vce, nnmatch,
                          vce, nnmatch, kernel, covs_l, covs_drop_coll)
     C_h_r = _rdrobust_bw(Y_r, X_r, c, p, deriv, q, c_bw, b_bw, scaleregul,
                          vce, nnmatch, kernel, covs_r, covs_drop_coll)
-
     V_h_l, B_h_l, R_h_l, rate_h = C_h_l
     V_h_r, B_h_r, R_h_r, _ = C_h_r
 
     denom_h = (B_h_r - B_h_l) ** 2 + scaleregul * (R_h_r + R_h_l)
     h_bw = ((V_h_l + V_h_r) / denom_h) ** rate_h
-    if bwrestrict:
+    if bwrestrict and bw_max is not None:
         h_bw = min(h_bw, bw_max)
 
     return h_bw, b_bw
+
+
+def _three_step_bw_sum(Y_l, X_l, Y_r, X_r, c, p, q, deriv, kernel, vce, nnmatch,
+                       covs_l, covs_r, covs_drop_coll, scaleregul, c_bw, bw_max,
+                       range_l, range_r, bwrestrict):
+    """Three-step plug-in for MSE-SUM branch (sum criterion). Returns (h, b)."""
+    # Step 1: pilot d_bw
+    C_d_l = _rdrobust_bw(Y_l, X_l, c, q + 1, q + 1, q + 2, c_bw, range_l, 0,
+                         vce, nnmatch, kernel, covs_l, covs_drop_coll)
+    C_d_r = _rdrobust_bw(Y_r, X_r, c, q + 1, q + 1, q + 2, c_bw, range_r, 0,
+                         vce, nnmatch, kernel, covs_r, covs_drop_coll)
+    V_d_l, B_d_l, R_d_l, rate_d = C_d_l
+    V_d_r, B_d_r, R_d_r, _ = C_d_r
+
+    d_bw = ((V_d_l + V_d_r) / (B_d_r + B_d_l) ** 2) ** rate_d
+    if bwrestrict and bw_max is not None:
+        d_bw = min(d_bw, bw_max)
+
+    # Step 2: b_bw
+    C_b_l = _rdrobust_bw(Y_l, X_l, c, q, p + 1, q + 1, c_bw, d_bw, scaleregul,
+                         vce, nnmatch, kernel, covs_l, covs_drop_coll)
+    C_b_r = _rdrobust_bw(Y_r, X_r, c, q, p + 1, q + 1, c_bw, d_bw, scaleregul,
+                         vce, nnmatch, kernel, covs_r, covs_drop_coll)
+    V_b_l, B_b_l, R_b_l, rate_b = C_b_l
+    V_b_r, B_b_r, R_b_r, _ = C_b_r
+
+    denom_b = (B_b_r + B_b_l) ** 2 + scaleregul * (R_b_r + R_b_l)
+    b_bw = ((V_b_l + V_b_r) / denom_b) ** rate_b
+    if bwrestrict and bw_max is not None:
+        b_bw = min(b_bw, bw_max)
+
+    # Step 3: h_bw
+    C_h_l = _rdrobust_bw(Y_l, X_l, c, p, deriv, q, c_bw, b_bw, scaleregul,
+                         vce, nnmatch, kernel, covs_l, covs_drop_coll)
+    C_h_r = _rdrobust_bw(Y_r, X_r, c, p, deriv, q, c_bw, b_bw, scaleregul,
+                         vce, nnmatch, kernel, covs_r, covs_drop_coll)
+    V_h_l, B_h_l, R_h_l, rate_h = C_h_l
+    V_h_r, B_h_r, R_h_r, _ = C_h_r
+
+    denom_h = (B_h_r + B_h_l) ** 2 + scaleregul * (R_h_r + R_h_l)
+    h_bw = ((V_h_l + V_h_r) / denom_h) ** rate_h
+    if bwrestrict and bw_max is not None:
+        h_bw = min(h_bw, bw_max)
+
+    return h_bw, b_bw
+
+
+def _three_step_bw_two(Y_l, X_l, Y_r, X_r, c, p, q, deriv, kernel, vce, nnmatch,
+                       covs_l, covs_r, covs_drop_coll, scaleregul, c_bw, bw_max,
+                       range_l, range_r, bwrestrict):
+    """Three-step plug-in for MSE-TWO branch (per-side independent). Returns (h_l, h_r, b_l, b_r)."""
+    # Step 1: pilot d_bw per side
+    C_d_l = _rdrobust_bw(Y_l, X_l, c, q + 1, q + 1, q + 2, c_bw, range_l, 0,
+                         vce, nnmatch, kernel, covs_l, covs_drop_coll)
+    C_d_r = _rdrobust_bw(Y_r, X_r, c, q + 1, q + 1, q + 2, c_bw, range_r, 0,
+                         vce, nnmatch, kernel, covs_r, covs_drop_coll)
+    V_d_l, B_d_l, R_d_l, rate_d = C_d_l
+    V_d_r, B_d_r, R_d_r, _ = C_d_r
+
+    d_bw_l = (V_d_l / B_d_l ** 2) ** rate_d
+    d_bw_r = (V_d_r / B_d_r ** 2) ** rate_d
+    if bwrestrict and bw_max is not None:
+        d_bw_l = min(d_bw_l, bw_max)
+        d_bw_r = min(d_bw_r, bw_max)
+
+    # Step 2: b_bw per side
+    C_b_l = _rdrobust_bw(Y_l, X_l, c, q, p + 1, q + 1, c_bw, d_bw_l, scaleregul,
+                         vce, nnmatch, kernel, covs_l, covs_drop_coll)
+    C_b_r = _rdrobust_bw(Y_r, X_r, c, q, p + 1, q + 1, c_bw, d_bw_r, scaleregul,
+                         vce, nnmatch, kernel, covs_r, covs_drop_coll)
+    V_b_l, B_b_l, R_b_l, rate_b = C_b_l
+    V_b_r, B_b_r, R_b_r, _ = C_b_r
+
+    denom_b_l = B_b_l ** 2 + scaleregul * R_b_l
+    denom_b_r = B_b_r ** 2 + scaleregul * R_b_r
+    b_bw_l = (V_b_l / denom_b_l) ** rate_b
+    b_bw_r = (V_b_r / denom_b_r) ** rate_b
+    if bwrestrict and bw_max is not None:
+        b_bw_l = min(b_bw_l, bw_max)
+        b_bw_r = min(b_bw_r, bw_max)
+
+    # Step 3: h_bw per side
+    C_h_l = _rdrobust_bw(Y_l, X_l, c, p, deriv, q, c_bw, b_bw_l, scaleregul,
+                         vce, nnmatch, kernel, covs_l, covs_drop_coll)
+    C_h_r = _rdrobust_bw(Y_r, X_r, c, p, deriv, q, c_bw, b_bw_r, scaleregul,
+                         vce, nnmatch, kernel, covs_r, covs_drop_coll)
+    V_h_l, B_h_l, R_h_l, rate_h = C_h_l
+    V_h_r, B_h_r, R_h_r, _ = C_h_r
+
+    denom_h_l = B_h_l ** 2 + scaleregul * R_h_l
+    denom_h_r = B_h_r ** 2 + scaleregul * R_h_r
+    h_bw_l = (V_h_l / denom_h_l) ** rate_h
+    h_bw_r = (V_h_r / denom_h_r) ** rate_h
+    if bwrestrict and bw_max is not None:
+        h_bw_l = min(h_bw_l, bw_max)
+        h_bw_r = min(h_bw_r, bw_max)
+
+    return h_bw_l, h_bw_r, b_bw_l, b_bw_r
+
+
+def _cer_scale(N, p, g_l=0, g_r=0):
+    """CER scaling factor. With clustering use (g_l+g_r) instead of N."""
+    denom = (3 + p) * (3 + 2 * p)
+    if g_l > 0 or g_r > 0:
+        n_eff = g_l + g_r
+    else:
+        n_eff = N
+    return n_eff ** (-p / denom)
+
+
+def _rdbwselect(Y_l, X_l, Y_r, X_r, c, p, q, deriv, kernel, vce, nnmatch,
+                covs_l=None, covs_r=None, covs_drop_coll=True,
+                scaleregul=1, bwrestrict=True, masspoints="adjust", bwcheck=0,
+                cluster_l=0, cluster_r=0):
+    """
+    Unified bandwidth selector supporting all 9 rdrobust selectors.
+
+    Returns a dict with bandwidths for all selectors:
+    {
+        'mserd': (h, b),
+        'msesum': (h, b),
+        'msetwo': (h_l, h_r, b_l, b_r),
+        'msecomb1': (h, b),
+        'msecomb2': (h_l, h_r, b_l, b_r),
+        'cerrd': (h, b),
+        'cersum': (h, b),
+        'certwo': (h_l, h_r, b_l, b_r),
+        'cercomb1': (h, b),
+        'cercomb2': (h_l, h_r, b_l, b_r),
+    }
+    For selectors returning a single h/b, h_l=h_r=h and b_l=b_r=b.
+    """
+    c_bw, bw_max, range_l, range_r, M_l, M_r, masspoints_found, effective_bwcheck = _compute_pilot_bw(
+        X_l, X_r, c, kernel, masspoints, bwcheck, bwrestrict
+    )
+
+    # Compute all three MSE branches
+    h_mserd, b_mserd = _three_step_bw_rd(
+        Y_l, X_l, Y_r, X_r, c, p, q, deriv, kernel, vce, nnmatch,
+        covs_l, covs_r, covs_drop_coll, scaleregul, c_bw, bw_max,
+        range_l, range_r, bwrestrict,
+    )
+    h_msesum, b_msesum = _three_step_bw_sum(
+        Y_l, X_l, Y_r, X_r, c, p, q, deriv, kernel, vce, nnmatch,
+        covs_l, covs_r, covs_drop_coll, scaleregul, c_bw, bw_max,
+        range_l, range_r, bwrestrict,
+    )
+    h_msetwo_l, h_msetwo_r, b_msetwo_l, b_msetwo_r = _three_step_bw_two(
+        Y_l, X_l, Y_r, X_r, c, p, q, deriv, kernel, vce, nnmatch,
+        covs_l, covs_r, covs_drop_coll, scaleregul, c_bw, bw_max,
+        range_l, range_r, bwrestrict,
+    )
+
+    # CER scaling
+    N = len(X_l) + len(X_r)
+    cer_h = _cer_scale(N, p, cluster_l, cluster_r)
+    cer_b = 1.0  # bias bandwidth unchanged for CER
+
+    h_cerrd = h_mserd * cer_h
+    b_cerrd = b_mserd * cer_b
+    h_cersum = h_msesum * cer_h
+    b_cersum = b_msesum * cer_b
+    h_certwo_l = h_msetwo_l * cer_h
+    h_certwo_r = h_msetwo_r * cer_h
+    b_certwo_l = b_msetwo_l * cer_b
+    b_certwo_r = b_msetwo_r * cer_b
+
+    # Comb selectors
+    # comb1 = min(rd, sum)
+    h_msecomb1 = min(h_mserd, h_msesum)
+    b_msecomb1 = min(b_mserd, b_msesum)
+    h_cercomb1 = h_msecomb1 * cer_h
+    b_cercomb1 = b_msecomb1 * cer_b
+
+    # comb2 = median(rd, sum, two) per side
+    def _median3(a, b, c):
+        return sorted([a, b, c])[1]
+
+    h_msecomb2_l = _median3(h_mserd, h_msesum, h_msetwo_l)
+    h_msecomb2_r = _median3(h_mserd, h_msesum, h_msetwo_r)
+    b_msecomb2_l = _median3(b_mserd, b_msesum, b_msetwo_l)
+    b_msecomb2_r = _median3(b_mserd, b_msesum, b_msetwo_r)
+    h_cercomb2_l = h_msecomb2_l * cer_h
+    h_cercomb2_r = h_msecomb2_r * cer_h
+    b_cercomb2_l = b_msecomb2_l * cer_b
+    b_cercomb2_r = b_msecomb2_r * cer_b
+
+    return {
+        "mserd": (h_mserd, h_mserd, b_mserd, b_mserd),
+        "msesum": (h_msesum, h_msesum, b_msesum, b_msesum),
+        "msetwo": (h_msetwo_l, h_msetwo_r, b_msetwo_l, b_msetwo_r),
+        "msecomb1": (h_msecomb1, h_msecomb1, b_msecomb1, b_msecomb1),
+        "msecomb2": (h_msecomb2_l, h_msecomb2_r, b_msecomb2_l, b_msecomb2_r),
+        "cerrd": (h_cerrd, h_cerrd, b_cerrd, b_cerrd),
+        "cersum": (h_cersum, h_cersum, b_cersum, b_cersum),
+        "certwo": (h_certwo_l, h_certwo_r, b_certwo_l, b_certwo_r),
+        "cercomb1": (h_cercomb1, h_cercomb1, b_cercomb1, b_cercomb1),
+        "cercomb2": (h_cercomb2_l, h_cercomb2_r, b_cercomb2_l, b_cercomb2_r),
+    }
+
+
+def _rdbwselect_mserd(Y_l, X_l, Y_r, X_r, c, p, q, deriv, kernel, vce, nnmatch,
+                      covs_l=None, covs_r=None, covs_drop_coll=True,
+                      scaleregul=1, bwrestrict=True):
+    """Legacy entry point for mserd only. Returns (h, b)."""
+    c_bw, bw_max, range_l, range_r, _, _, _, _ = _compute_pilot_bw(
+        X_l, X_r, c, kernel, "adjust", 0, bwrestrict
+    )
+    return _three_step_bw_rd(
+        Y_l, X_l, Y_r, X_r, c, p, q, deriv, kernel, vce, nnmatch,
+        covs_l, covs_r, covs_drop_coll, scaleregul, c_bw, bw_max,
+        range_l, range_r, bwrestrict,
+    )
 
 
 class RDRobust:
@@ -451,6 +671,14 @@ class RDRobust:
         Regularization term scaling for bandwidth selectors.
     """
 
+    # Supported bandwidth selectors (9 total)
+    _VALID_BWSELECT = {
+        "mserd", "msesum", "msetwo",
+        "msecomb1", "msecomb2",
+        "cerrd", "cersum", "certwo",
+        "cercomb1", "cercomb2",
+    }
+
     def __init__(
         self,
         data,
@@ -470,6 +698,12 @@ class RDRobust:
         covs: list[str] | str | None = None,
         covs_drop: bool = True,
         scaleregul: float = 1.0,
+        masspoints: str = "adjust",
+        bwcheck: int = 0,
+        weights: str | None = None,
+        fuzzy: str | None = None,
+        sharpbw: bool = False,
+        cluster: str | None = None,
     ):
         self.data = data.copy()
         self.y_var = y
@@ -486,19 +720,30 @@ class RDRobust:
         self.covs = covs
         self.covs_drop = bool(covs_drop)
         self.scaleregul = float(scaleregul)
+        self.masspoints = masspoints
+        self.bwcheck = int(bwcheck)
+        self.weights = weights
+        self.fuzzy = fuzzy
+        self.sharpbw = bool(sharpbw)
+        self.cluster = cluster
 
         if self.deriv != 0:
             raise NotImplementedError("Only deriv=0 (sharp RD) is supported in this subset.")
         if self.p < 0 or self.q <= self.p:
             raise ValueError("Require 0 <= p < q.")
-        if self.vce not in ("nn", "hc0"):
-            raise NotImplementedError("Only vce='nn' and vce='hc0' are supported in this subset.")
-        if self.bwselect is not None and self.bwselect not in ("mserd", "cerrd"):
+        if self.vce not in ("nn", "hc0", "cluster", "nncluster"):
             raise NotImplementedError(
-                f"bwselect='{self.bwselect}' is not supported. Use 'mserd' or provide h explicitly."
+                "Only vce='nn', 'hc0', 'cluster', and 'nncluster' are supported in this subset."
             )
-        if self.bwselect == "cerrd":
-            raise NotImplementedError("bwselect='cerrd' is not yet implemented.")
+        if self.bwselect is not None and self.bwselect not in self._VALID_BWSELECT:
+            raise NotImplementedError(
+                f"bwselect='{self.bwselect}' is not supported. "
+                f"Supported: {sorted(self._VALID_BWSELECT)} or provide h explicitly."
+            )
+        if self.cluster is not None and self.vce not in ("cluster", "nncluster"):
+            raise ValueError("cluster variable requires vce='cluster' or vce='nncluster'.")
+        if self.vce in ("cluster", "nncluster") and self.cluster is None:
+            raise ValueError("vce='cluster' or vce='nncluster' requires a cluster variable.")
 
         # Bandwidth parsing (may be None if bwselect is used)
         if h is not None:
@@ -532,6 +777,13 @@ class RDRobust:
         else:
             cols = [self.y_var, self.x_var]
 
+        if self.fuzzy is not None:
+            cols.append(self.fuzzy)
+        if self.weights is not None:
+            cols.append(self.weights)
+        if self.cluster is not None:
+            cols.append(self.cluster)
+
         df = self.data[cols].copy()
         df = df.dropna()
         y = df[self.y_var].to_numpy(dtype=float)
@@ -540,6 +792,32 @@ class RDRobust:
             covs_all = df[cov_names].to_numpy(dtype=float)
         else:
             covs_all = None
+
+        # Fuzzy treatment variable
+        T_all = None
+        if self.fuzzy is not None:
+            T_all = df[self.fuzzy].to_numpy(dtype=float)
+
+        # Cluster variable
+        C_all = None
+        if self.cluster is not None:
+            C_all = df[self.cluster].to_numpy(dtype=float)
+
+        # Frequency weights: drop non-positive
+        fw = None
+        if self.weights is not None:
+            fw = df[self.weights].to_numpy(dtype=float)
+            valid = fw > 0
+            if not valid.all():
+                y = y[valid]
+                x = x[valid]
+                fw = fw[valid]
+                if covs_all is not None:
+                    covs_all = covs_all[valid, :]
+                if T_all is not None:
+                    T_all = T_all[valid]
+                if C_all is not None:
+                    C_all = C_all[valid]
 
         n_input = len(self.data)
         nobs = len(y)
@@ -553,6 +831,12 @@ class RDRobust:
         y = y[order]
         if covs_all is not None:
             covs_all = covs_all[order, :]
+        if fw is not None:
+            fw = fw[order]
+        if T_all is not None:
+            T_all = T_all[order]
+        if C_all is not None:
+            C_all = C_all[order]
 
         left_mask = x < self.c
         right_mask = ~left_mask
@@ -574,21 +858,68 @@ class RDRobust:
         else:
             covs_l = covs_r = None
 
+        T_l = T_all[left_mask] if T_all is not None else None
+        T_r = T_all[right_mask] if T_all is not None else None
+
+        C_l = C_all[left_mask] if C_all is not None else None
+        C_r = C_all[right_mask] if C_all is not None else None
+
+        # Perfect compliance detection
+        perf_comp = False
+        if T_l is not None:
+            if np.var(T_l) < 1e-12 or np.var(T_r) < 1e-12:
+                perf_comp = True
+
+        fw_l = fw[left_mask] if fw is not None else None
+        fw_r = fw[right_mask] if fw is not None else None
+
         # Automatic bandwidth selection
         if self.h_l is None:
-            h_bw, b_bw = _rdbwselect_mserd(
+            # Fuzzy RD: use sharp bandwidth selection unless user provided h
+            use_sharpbw = (self.fuzzy is not None) and (self.sharpbw or perf_comp)
+            if self.fuzzy is not None and not use_sharpbw:
+                raise NotImplementedError(
+                    "Fuzzy RD automatic bandwidth selection without sharpbw is not yet supported. "
+                    "Please provide h explicitly or set sharpbw=True."
+                )
+            # Full-sample cluster counts for CER scaling in bandwidth selection
+            g_l_full = len(np.unique(C_l)) if C_l is not None else 0
+            g_r_full = len(np.unique(C_r)) if C_r is not None else 0
+            # Map vce for bandwidth selection residual basis
+            vce_bw = self.vce
+            if vce_bw == "cluster":
+                vce_bw = "hc0"
+            elif vce_bw == "nncluster":
+                vce_bw = "nn"
+            bw_dict = _rdbwselect(
                 Y_l, X_l, Y_r, X_r, self.c, self.p, self.q, self.deriv,
-                self.kernel, self.vce, self.nnmatch,
+                self.kernel, vce_bw, self.nnmatch,
                 covs_l, covs_r, self.covs_drop, self.scaleregul,
+                masspoints=self.masspoints,
+                bwcheck=self.bwcheck,
+                cluster_l=g_l_full,
+                cluster_r=g_r_full,
             )
-            self.h_l = self.h_r = h_bw
-            self.b_l = self.b_r = b_bw
+            sel = self.bwselect or "mserd"
+            self.h_l, self.h_r, self.b_l, self.b_r = bw_dict[sel]
+            self.h_l = float(self.h_l)
+            self.h_r = float(self.h_r)
+            self.b_l = float(self.b_l)
+            self.b_r = float(self.b_r)
 
         # Kernel weights
         w_h_l = _kernel_weight(X_l, self.c, self.h_l, self.kernel)
         w_h_r = _kernel_weight(X_r, self.c, self.h_r, self.kernel)
         w_b_l = _kernel_weight(X_l, self.c, self.b_l, self.kernel)
         w_b_r = _kernel_weight(X_r, self.c, self.b_r, self.kernel)
+
+        # Multiply by frequency weights if provided
+        if fw_l is not None:
+            w_h_l = w_h_l * fw_l
+            w_b_l = w_b_l * fw_l
+        if fw_r is not None:
+            w_h_r = w_h_r * fw_r
+            w_b_r = w_b_r * fw_r
 
         N_h_l = int(np.sum(w_h_l > 0))
         N_h_r = int(np.sum(w_h_r > 0))
@@ -620,6 +951,14 @@ class RDRobust:
         eN_l = len(eX_l)
         eN_r = len(eX_r)
 
+        # Effective cluster arrays and counts (post-bandwidth restriction)
+        eC_l = C_l[ind_l] if C_l is not None else None
+        eC_r = C_r[ind_r] if C_r is not None else None
+        has_cluster = eC_l is not None
+        if has_cluster:
+            if np.isnan(eC_l).any() or np.isnan(eC_r).any():
+                raise ValueError("Cluster variable contains NaN in bandwidth-restricted sample.")
+
         # Design matrices
         R_q_l = np.zeros((eN_l, self.q + 1), dtype=float)
         R_q_r = np.zeros((eN_r, self.q + 1), dtype=float)
@@ -629,13 +968,21 @@ class RDRobust:
         R_p_l = R_q_l[:, : self.p + 1]
         R_p_r = R_q_r[:, : self.p + 1]
 
-        # Multi-column WLS when covs exist
-        if eZ_l is not None:
-            D_l = np.column_stack((eY_l, eZ_l))
-            D_r = np.column_stack((eY_r, eZ_r))
+        # Multi-column WLS: construct D with [Y, T, Z] ordering
+        has_fuzzy = T_l is not None
+        if has_fuzzy:
+            D_l = np.column_stack((eY_l, T_l[ind_l]))
+            D_r = np.column_stack((eY_r, T_r[ind_r]))
+            if eZ_l is not None:
+                D_l = np.column_stack((D_l, eZ_l))
+                D_r = np.column_stack((D_r, eZ_r))
         else:
-            D_l = eY_l[:, None]
-            D_r = eY_r[:, None]
+            if eZ_l is not None:
+                D_l = np.column_stack((eY_l, eZ_l))
+                D_r = np.column_stack((eY_r, eZ_r))
+            else:
+                D_l = eY_l[:, None]
+                D_r = eY_r[:, None]
 
         beta_p_l, invG_p_l = _wls_poly(D_l, eX_l, self.c, W_h_l, self.p)
         beta_p_r, invG_p_r = _wls_poly(D_r, eX_r, self.c, W_h_r, self.p)
@@ -643,34 +990,60 @@ class RDRobust:
         beta_q_r, invG_q_r = _wls_poly(D_r, eX_r, self.c, W_b_r, self.q)
 
         # s vector (covariate-adjustment weights)
+        s = np.array([1.0])
+        dZ = 0
+        gamma_Y = None
+        gamma_T = None
         if eZ_l is not None:
             dZ = eZ_l.shape[1]
             U_l = (R_p_l * W_h_l[:, None]).T @ D_l
             U_r = (R_p_r * W_h_r[:, None]).T @ D_r
             ZWD_l = (eZ_l * W_h_l[:, None]).T @ D_l
             ZWD_r = (eZ_r * W_h_r[:, None]).T @ D_r
-            colsZ = np.arange(1, 1 + dZ)
-            UiGU_l = U_l[:, colsZ].T @ (invG_p_l @ U_l)
-            UiGU_r = U_r[:, colsZ].T @ (invG_p_r @ U_r)
-            ZWZ_l = ZWD_l[:, colsZ] - UiGU_l[:, colsZ]
-            ZWZ_r = ZWD_r[:, colsZ] - UiGU_r[:, colsZ]
-            ZWY_l = ZWD_l[:, 0] - UiGU_l[:, 0]
-            ZWY_r = ZWD_r[:, 0] - UiGU_r[:, 0]
+            if has_fuzzy:
+                colsZ = np.arange(2, 2 + dZ)
+                ZWY_Y_l = ZWD_l[:, 0] - (U_l[:, colsZ].T @ (invG_p_l @ U_l[:, 0]))
+                ZWY_Y_r = ZWD_r[:, 0] - (U_r[:, colsZ].T @ (invG_p_r @ U_r[:, 0]))
+                ZWY_T_l = ZWD_l[:, 1] - (U_l[:, colsZ].T @ (invG_p_l @ U_l[:, 1]))
+                ZWY_T_r = ZWD_r[:, 1] - (U_r[:, colsZ].T @ (invG_p_r @ U_r[:, 1]))
+            else:
+                colsZ = np.arange(1, 1 + dZ)
+                ZWY_Y_l = ZWD_l[:, 0] - (U_l[:, colsZ].T @ (invG_p_l @ U_l[:, 0]))
+                ZWY_Y_r = ZWD_r[:, 0] - (U_r[:, colsZ].T @ (invG_p_r @ U_r[:, 0]))
+            UiGU_l = U_l[:, colsZ].T @ (invG_p_l @ U_l[:, colsZ])
+            UiGU_r = U_r[:, colsZ].T @ (invG_p_r @ U_r[:, colsZ])
+            ZWZ_l = ZWD_l[:, colsZ] - UiGU_l
+            ZWZ_r = ZWD_r[:, colsZ] - UiGU_r
             ZWZ = ZWZ_r + ZWZ_l
-            ZWY = ZWY_r + ZWY_l
+            ZWY_Y = ZWY_Y_r + ZWY_Y_l
             if self.covs_drop:
-                gamma = np.linalg.pinv(ZWZ) @ ZWY
+                gamma_Y = np.linalg.pinv(ZWZ) @ ZWY_Y
             else:
                 try:
                     L = linalg.cholesky(ZWZ, lower=True)
-                    gamma = linalg.solve_triangular(L, ZWY, lower=True)
-                    gamma = linalg.solve_triangular(L.T, gamma, lower=False)
+                    gamma_Y = linalg.solve_triangular(L, ZWY_Y, lower=True)
+                    gamma_Y = linalg.solve_triangular(L.T, gamma_Y, lower=False)
                 except linalg.LinAlgError:
-                    gamma = np.linalg.pinv(ZWZ) @ ZWY
-            s = np.append(1.0, -gamma)
-        else:
-            s = np.array([1.0])
-            dZ = 0
+                    gamma_Y = np.linalg.pinv(ZWZ) @ ZWY_Y
+            if has_fuzzy:
+                ZWY_T = ZWY_T_r + ZWY_T_l
+                if self.covs_drop:
+                    gamma_T = np.linalg.pinv(ZWZ) @ ZWY_T
+                else:
+                    try:
+                        L = linalg.cholesky(ZWZ, lower=True)
+                        gamma_T = linalg.solve_triangular(L, ZWY_T, lower=True)
+                        gamma_T = linalg.solve_triangular(L.T, gamma_T, lower=False)
+                    except linalg.LinAlgError:
+                        gamma_T = np.linalg.pinv(ZWZ) @ ZWY_T
+                # Full s-vectors for [Y, T, Z] multi-column D
+                s_Y = np.concatenate(([1.0, 0.0], -gamma_Y))
+                s_T = np.concatenate(([0.0, 1.0], -gamma_T))
+            else:
+                s = np.append(1.0, -gamma_Y)
+        elif has_fuzzy:
+            # Fuzzy without covs: s remains [1.0] for now; fuzzy s computed after tau
+            pass
 
         # Bias-correction design Q_q
         u_l = (eX_l - self.c) / self.h_l
@@ -695,29 +1068,91 @@ class RDRobust:
         # Point estimates
         deriv = self.deriv
         scalepar = 1.0
-        if eZ_l is None:
-            tau_cl = scalepar * math.factorial(deriv) * (beta_p_r[deriv, 0] - beta_p_l[deriv, 0])
-            tau_bc = scalepar * math.factorial(deriv) * (beta_bc_r[deriv, 0] - beta_bc_l[deriv, 0])
-            tau_cl_l = scalepar * math.factorial(deriv) * beta_p_l[deriv, 0]
-            tau_cl_r = scalepar * math.factorial(deriv) * beta_p_r[deriv, 0]
-            tau_bc_l = scalepar * math.factorial(deriv) * beta_bc_l[deriv, 0]
-            tau_bc_r = scalepar * math.factorial(deriv) * beta_bc_r[deriv, 0]
-        else:
-            tau_cl = float(np.matmul(scalepar * s.T, beta_p_r[deriv, :] - beta_p_l[deriv, :]))
-            tau_bc = float(np.matmul(scalepar * s.T, beta_bc_r[deriv, :] - beta_bc_l[deriv, :]))
-            tau_cl_l = float(np.matmul(scalepar * s.T, beta_p_l[deriv, :]))
-            tau_cl_r = float(np.matmul(scalepar * s.T, beta_p_r[deriv, :]))
-            tau_bc_l = float(np.matmul(scalepar * s.T, beta_bc_l[deriv, :]))
-            tau_bc_r = float(np.matmul(scalepar * s.T, beta_bc_r[deriv, :]))
+        tau_T_cl = np.nan
+        tau_T_bc = np.nan
+        if has_fuzzy:
+            # Fuzzy RD: Wald ratio estimator
+            if eZ_l is not None:
+                tau_Y_cl = scalepar * math.factorial(deriv) * float(
+                    np.matmul(s_Y.T, beta_p_r[deriv, :] - beta_p_l[deriv, :])
+                )
+                tau_Y_bc = scalepar * math.factorial(deriv) * float(
+                    np.matmul(s_Y.T, beta_bc_r[deriv, :] - beta_bc_l[deriv, :])
+                )
+                tau_T_cl = math.factorial(deriv) * float(
+                    np.matmul(s_T.T, beta_p_r[deriv, :] - beta_p_l[deriv, :])
+                )
+                tau_T_bc = math.factorial(deriv) * float(
+                    np.matmul(s_T.T, beta_bc_r[deriv, :] - beta_bc_l[deriv, :])
+                )
+            else:
+                tau_Y_cl = scalepar * math.factorial(deriv) * (beta_p_r[deriv, 0] - beta_p_l[deriv, 0])
+                tau_Y_bc = scalepar * math.factorial(deriv) * (beta_bc_r[deriv, 0] - beta_bc_l[deriv, 0])
+                tau_T_cl = math.factorial(deriv) * (beta_p_r[deriv, 1] - beta_p_l[deriv, 1])
+                tau_T_bc = math.factorial(deriv) * (beta_bc_r[deriv, 1] - beta_bc_l[deriv, 1])
 
-        bias_l = tau_cl_l - tau_bc_l
-        bias_r = tau_cl_r - tau_bc_r
+            tau_cl = tau_Y_cl / tau_T_cl
+            # Delta-method bias correction
+            B_F_Y = tau_Y_cl - tau_Y_bc
+            B_F_T = tau_T_cl - tau_T_bc
+            tau_bc = tau_cl - (B_F_Y / tau_T_cl - tau_Y_cl * B_F_T / (tau_T_cl ** 2))
+
+            # Side-specific estimates are not defined for Wald ratio estimator;
+            # store NaN rather than arbitrary placeholders.
+            tau_cl_l = np.nan
+            tau_cl_r = np.nan
+            tau_bc_l = np.nan
+            tau_bc_r = np.nan
+
+            # Fuzzy s-vector for VCE
+            if eZ_l is not None:
+                s_vce = np.array([
+                    1.0 / tau_T_cl,
+                    -tau_Y_cl / (tau_T_cl ** 2),
+                    *(-(1.0 / tau_T_cl) * gamma_Y + (tau_Y_cl / (tau_T_cl ** 2)) * gamma_T)
+                ])
+            else:
+                s_vce = np.array([1.0 / tau_T_cl, -tau_Y_cl / (tau_T_cl ** 2)])
+        else:
+            if eZ_l is None:
+                tau_cl = scalepar * math.factorial(deriv) * (beta_p_r[deriv, 0] - beta_p_l[deriv, 0])
+                tau_bc = scalepar * math.factorial(deriv) * (beta_bc_r[deriv, 0] - beta_bc_l[deriv, 0])
+                tau_cl_l = scalepar * math.factorial(deriv) * beta_p_l[deriv, 0]
+                tau_cl_r = scalepar * math.factorial(deriv) * beta_p_r[deriv, 0]
+                tau_bc_l = scalepar * math.factorial(deriv) * beta_bc_l[deriv, 0]
+                tau_bc_r = scalepar * math.factorial(deriv) * beta_bc_r[deriv, 0]
+            else:
+                tau_cl = float(np.matmul(scalepar * s.T, beta_p_r[deriv, :] - beta_p_l[deriv, :]))
+                tau_bc = float(np.matmul(scalepar * s.T, beta_bc_r[deriv, :] - beta_bc_l[deriv, :]))
+                tau_cl_l = float(np.matmul(scalepar * s.T, beta_p_l[deriv, :]))
+                tau_cl_r = float(np.matmul(scalepar * s.T, beta_p_r[deriv, :]))
+                tau_bc_l = float(np.matmul(scalepar * s.T, beta_bc_l[deriv, :]))
+                tau_bc_r = float(np.matmul(scalepar * s.T, beta_bc_r[deriv, :]))
+
+        if has_fuzzy:
+            # Side-specific bias decomposition is not defined for the Wald ratio.
+            bias_l = np.nan
+            bias_r = np.nan
+        else:
+            bias_l = tau_cl_l - tau_bc_l
+            bias_r = tau_cl_r - tau_bc_r
 
         # Variance estimation
-        d = len(s) - 1
-        if self.vce == "nn":
+        vce_s = s_vce if has_fuzzy else s
+        d = len(vce_s) - 1
+        vce_select = self.vce
+        if vce_select == "cluster":
+            vce_select = "hc0"
+        elif vce_select == "nncluster":
+            vce_select = "nn"
+        if vce_select == "nn":
             res_h_l = _nn_residuals(eX_l, eY_l, self.nnmatch)[:, None]
             res_h_r = _nn_residuals(eX_r, eY_r, self.nnmatch)[:, None]
+            if has_fuzzy:
+                res_T_l = _nn_residuals(eX_l, T_l[ind_l], self.nnmatch)[:, None]
+                res_T_r = _nn_residuals(eX_r, T_r[ind_r], self.nnmatch)[:, None]
+                res_h_l = np.column_stack((res_h_l, res_T_l))
+                res_h_r = np.column_stack((res_h_r, res_T_r))
             if eZ_l is not None:
                 res_Z_l = np.zeros((eN_l, dZ), dtype=float)
                 res_Z_r = np.zeros((eN_r, dZ), dtype=float)
@@ -737,14 +1172,20 @@ class RDRobust:
             res_h_r = (eY_r - pred_h_r[:, 0])[:, None]
             res_b_l = (eY_l - pred_b_l[:, 0])[:, None]
             res_b_r = (eY_r - pred_b_r[:, 0])[:, None]
+            if has_fuzzy:
+                res_h_l = np.column_stack((res_h_l, T_l[ind_l] - pred_h_l[:, 1]))
+                res_h_r = np.column_stack((res_h_r, T_r[ind_r] - pred_h_r[:, 1]))
+                res_b_l = np.column_stack((res_b_l, T_l[ind_l] - pred_b_l[:, 1]))
+                res_b_r = np.column_stack((res_b_r, T_r[ind_r] - pred_b_r[:, 1]))
             if eZ_l is not None:
-                res_h_l = np.column_stack((res_h_l, eZ_l - pred_h_l[:, 1:]))
-                res_h_r = np.column_stack((res_h_r, eZ_r - pred_h_r[:, 1:]))
-                res_b_l = np.column_stack((res_b_l, eZ_l - pred_b_l[:, 1:]))
-                res_b_r = np.column_stack((res_b_r, eZ_r - pred_b_r[:, 1:]))
+                offset = 2 if has_fuzzy else 1
+                res_h_l = np.column_stack((res_h_l, eZ_l - pred_h_l[:, offset:]))
+                res_h_r = np.column_stack((res_h_r, eZ_r - pred_h_r[:, offset:]))
+                res_b_l = np.column_stack((res_b_l, eZ_l - pred_b_l[:, offset:]))
+                res_b_r = np.column_stack((res_b_r, eZ_r - pred_b_r[:, offset:]))
 
-        # VCE with multi-dimensional residuals when covs exist
-        if d == 0:
+        # VCE with multi-dimensional residuals when covs exist or fuzzy
+        if d == 0 and not has_cluster:
             V_cl_l = _vce_hc0(invG_p_l, R_p_l, W_h_l, res_h_l[:, 0])
             V_cl_r = _vce_hc0(invG_p_r, R_p_r, W_h_r, res_h_r[:, 0])
             ones_l = np.ones_like(W_h_l)
@@ -752,14 +1193,16 @@ class RDRobust:
             V_rb_l = _vce_hc0(invG_p_l, Q_q_l, ones_l, res_b_l[:, 0])
             V_rb_r = _vce_hc0(invG_p_r, Q_q_r, ones_r, res_b_r[:, 0])
         else:
+            # Unified path: handles both covs/fuzzy and clustering
+            _s = vce_s if d > 0 else np.array([1.0])
             RX_l = R_p_l * W_h_l[:, None]
             RX_r = R_p_r * W_h_r[:, None]
-            M_cl_l = _rdrobust_vce_multi(s, RX_l, res_h_l)
-            M_cl_r = _rdrobust_vce_multi(s, RX_r, res_h_r)
+            M_cl_l = _rdrobust_vce_multi(_s, RX_l, res_h_l, eC_l)
+            M_cl_r = _rdrobust_vce_multi(_s, RX_r, res_h_r, eC_r)
             V_cl_l = invG_p_l @ M_cl_l @ invG_p_l
             V_cl_r = invG_p_r @ M_cl_r @ invG_p_r
-            M_rb_l = _rdrobust_vce_multi(s, Q_q_l, res_b_l)
-            M_rb_r = _rdrobust_vce_multi(s, Q_q_r, res_b_r)
+            M_rb_l = _rdrobust_vce_multi(_s, Q_q_l, res_b_l, eC_l)
+            M_rb_r = _rdrobust_vce_multi(_s, Q_q_r, res_b_r, eC_r)
             V_rb_l = invG_p_l @ M_rb_l @ invG_p_l
             V_rb_r = invG_p_r @ M_rb_r @ invG_p_r
 
@@ -839,6 +1282,8 @@ class RDRobust:
             "b_r": self.b_r,
             "tau_cl": tau_cl,
             "tau_bc": tau_bc,
+            "tau_T_cl": tau_T_cl,
+            "tau_T_bc": tau_T_bc,
             "se_tau_cl": se_tau_cl,
             "se_tau_rb": se_tau_rb,
             "tau_cl_l": tau_cl_l,

@@ -61,6 +61,7 @@ class PPMLHDFE:
         tol: float = 1e-8,
         offset: Optional[str] = None,
         exposure: Optional[str] = None,
+        separation: Optional[str] = None,
     ):
         if offset is not None and exposure is not None:
             raise ValueError("Only one of offset or exposure can be specified.")
@@ -74,6 +75,7 @@ class PPMLHDFE:
         self.tol = tol
         self.offset_var = offset
         self.exposure_var = exposure
+        self.separation = separation
 
         # Load offset vector (exposure is converted to log offset)
         self._offset_vec: Optional[np.ndarray] = None
@@ -241,6 +243,8 @@ class PPMLHDFE:
 
         return T
 
+    # _compute_cluster_meat, _fix_psd, _fix_psd_reghdfe: imported from _vce_utils (ADR-0004).
+
     def _compute_vce(
         self,
         X_full: np.ndarray,
@@ -248,7 +252,7 @@ class PPMLHDFE:
         mu: np.ndarray,
         gamma: np.ndarray,
         vce: str,
-        cluster_arr: Optional[np.ndarray],
+        cluster_arrs: Optional[list[np.ndarray]] = None,
     ) -> tuple[np.ndarray, Optional[int]]:
         """Compute VCE in LSDV space."""
         n, k_full = X_full.shape
@@ -274,19 +278,43 @@ class PPMLHDFE:
             if n > 1:
                 cov_full *= n / (n - 1)
         elif vce == "cluster":
-            unique_clusters = np.unique(cluster_arr)
-            cluster_count = len(unique_clusters)
-            meat = np.zeros((k_full, k_full))
-            for g in unique_clusters:
-                mask_g = cluster_arr == g
-                X_g = X_full[mask_g]
-                r_g = residuals[mask_g]
-                score_g = X_g.T @ r_g
-                meat += np.outer(score_g, score_g)
+            if cluster_arrs is None or len(cluster_arrs) == 0:
+                raise ValueError("cluster_arrs required for cluster VCE.")
+            if len(cluster_arrs) == 1:
+                unique_clusters = np.unique(cluster_arrs[0])
+                cluster_count = len(unique_clusters)
+                meat = np.zeros((k_full, k_full))
+                for g in unique_clusters:
+                    mask_g = cluster_arrs[0] == g
+                    X_g = X_full[mask_g]
+                    r_g = residuals[mask_g]
+                    score_g = X_g.T @ r_g
+                    meat += np.outer(score_g, score_g)
 
-            # PPMLHDFE uses vce_asymptotic mode, so only G/(G-1) adjustment applies
-            g_adj = cluster_count / (cluster_count - 1) if cluster_count > 1 else 1.0
-            cov_full = g_adj * XtX_inv @ meat @ XtX_inv
+                # PPMLHDFE uses vce_asymptotic mode, so only G/(G-1) adjustment applies
+                g_adj = cluster_count / (cluster_count - 1) if cluster_count > 1 else 1.0
+                cov_full = g_adj * XtX_inv @ meat @ XtX_inv
+            else:
+                # Multi-way clustering (2-way)
+                meats = []
+                Gs = []
+                for ca in cluster_arrs:
+                    from stataflow.estimators._vce_utils import compute_cluster_meat
+                    meat, G = compute_cluster_meat(X_full, residuals, ca)
+                    meats.append(meat)
+                    Gs.append(G)
+
+                interaction = np.array([
+                    f"{a}__{b}" for a, b in zip(cluster_arrs[0], cluster_arrs[1])
+                ])
+                meat_12, G_12 = compute_cluster_meat(X_full, residuals, interaction)
+
+                omega_meat = meats[0] + meats[1] - meat_12
+
+                G_min = min(Gs)
+                g_adj = G_min / (G_min - 1) if G_min > 1 else 1.0
+                cov_full = g_adj * XtX_inv @ omega_meat @ XtX_inv
+                cluster_count = G_min
         else:
             raise ValueError(f"vce='{vce}' not supported. Use 'ols' or 'cluster'.")
 
@@ -295,8 +323,9 @@ class PPMLHDFE:
     def fit(
         self,
         vce: str = "robust",
-        cluster: Optional[str] = None,
+        cluster: Optional[str | list[str]] = None,
         alpha: float = 0.05,
+        eform: bool = False,
     ) -> ResultSchema:
         """Fit PPMLHDFE model."""
         if vce not in ("ols", "robust", "cluster"):
@@ -305,14 +334,41 @@ class PPMLHDFE:
             raise ValueError("cluster variable required when vce='cluster'.")
         if vce not in ("cluster",) and cluster is not None:
             raise ValueError("cluster only used when vce='cluster'.")
+        if vce == "cluster" and isinstance(cluster, list) and len(cluster) > 2:
+            raise ValueError("Only 1-way and 2-way clustering are supported.")
+
+        cluster_vars = [cluster] if isinstance(cluster, str) else cluster
 
         # Prepare LSDV data via AbsorbingOLS
-        self._abs_ols._prepare_data(cluster_var=cluster)
+        self._abs_ols._prepare_data(cluster_vars=cluster_vars)
+
+        # separation(fe): drop FE groups where all y == 0
+        num_sep_dropped = 0
+        if self.separation == "fe":
+            df = self._abs_ols._df
+            drop_idx = set()
+            for var in self.absorb_vars:
+                grouped = df.groupby(var)[self.y].sum()
+                sep_levels = grouped[grouped == 0].index
+                drop_idx.update(df.index[df[var].isin(sep_levels)].tolist())
+            if drop_idx:
+                df_clean = df.drop(index=list(drop_idx)).copy()
+                num_sep_dropped = len(drop_idx)
+                self._abs_ols = AbsorbingOLS(
+                    data=df_clean,
+                    y=self.y,
+                    x=self.x,
+                    absorb=self.absorb_vars,
+                    add_constant=self.add_constant,
+                    missing=self.missing,
+                )
+                self._abs_ols._prepare_data(cluster_vars=cluster_vars)
+
         X_full = self._abs_ols._design_matrix.copy()
         y = self._abs_ols._dep_var
         n = len(y)
         k_full = X_full.shape[1]
-        cluster_arr = self._abs_ols._cluster_arr
+        cluster_arrs = self._abs_ols._cluster_arrs
 
         # Align offset vector with the retained sample
         offset_vec = None
@@ -371,16 +427,19 @@ class PPMLHDFE:
         df_model = float(k_x)
         df_a = self._abs_ols._df_a
 
-        if vce == "cluster" and cluster_arr is not None:
-            unique_clusters = np.unique(cluster_arr)
-            cluster_count = len(unique_clusters)
+        if vce == "cluster" and cluster_arrs:
+            if len(cluster_arrs) == 1:
+                unique_clusters = np.unique(cluster_arrs[0])
+                cluster_count = len(unique_clusters)
+            else:
+                cluster_count = min(len(np.unique(ca)) for ca in cluster_arrs)
             df_resid = float(cluster_count - 1)
         else:
             cluster_count = None
             df_resid = float(n - k_full)
 
         # VCE (use original X_full and rescaled gamma)
-        cov_full, cluster_count_vce = self._compute_vce(X_full, y, mu, gamma, vce, cluster_arr)
+        cov_full, cluster_count_vce = self._compute_vce(X_full, y, mu, gamma, vce, cluster_arrs)
         if cluster_count is None:
             cluster_count = cluster_count_vce
 
@@ -388,6 +447,12 @@ class PPMLHDFE:
         T = self._build_t_matrix(mu)
         beta_reported = T @ gamma
         cov_reported = T @ cov_full @ T.T
+
+        # For multi-way clustering, cov_reported can be non-PSD due to
+        # inclusion-exclusion. Apply reghdfe-style PSD fix (preserve slopes).
+        if vce == "cluster" and cluster_arrs is not None and len(cluster_arrs) > 1:
+            from stataflow.estimators._vce_utils import fix_psd_reghdfe
+            cov_reported = fix_psd_reghdfe(cov_reported)
 
         diag_cov = np.diag(cov_reported)
         diag_cov = np.maximum(diag_cov, 0)
@@ -398,6 +463,19 @@ class PPMLHDFE:
         z_crit = norm_dist.ppf(1 - alpha / 2)
         ci_low = beta_reported - z_crit * se
         ci_high = beta_reported + z_crit * se
+
+        if eform:
+            # Delta-method transform: g(b) = exp(b), g'(b) = exp(b)
+            D = np.diag(np.exp(beta_reported))
+            beta_reported = np.exp(beta_reported)
+            cov_reported = D @ cov_reported @ D
+            diag_cov = np.diag(cov_reported)
+            diag_cov = np.maximum(diag_cov, 0)
+            se = np.sqrt(diag_cov)
+            z_stats = beta_reported / se
+            p_values = 2 * (1 - norm_dist.cdf(np.abs(z_stats)))
+            ci_low = np.exp(ci_low)
+            ci_high = np.exp(ci_high)
 
         result = ResultSchema()
         result.model = ModelInfo(
@@ -443,6 +521,8 @@ class PPMLHDFE:
             warnings.append(f"Collinear variables dropped: {', '.join(self._abs_ols._collinear_dropped)}")
         if getattr(self._abs_ols, '_num_singletons', 0) > 0:
             warnings.append(f"Singleton observations dropped: {self._abs_ols._num_singletons}")
+        if num_sep_dropped > 0:
+            warnings.append(f"Separation observations dropped: {num_sep_dropped}")
         if not converged:
             warnings.append("IRLS did not converge")
         result.diagnostics = DiagnosticsInfo(
@@ -473,8 +553,8 @@ class PPMLHDFE:
         """Generate predictions after fitting."""
         if not self._is_fitted:
             raise ValueError("Model has not been fitted yet. Call fit() first.")
-        if type not in ("xb", "mu", "residuals"):
-            raise ValueError(f"type='{type}' not supported for PPMLHDFE. Use 'xb', 'mu', or 'residuals'.")
+        if type not in ("xb", "mu", "residuals", "pearson", "deviance", "working"):
+            raise ValueError(f"type='{type}' not supported for PPMLHDFE. Use 'xb', 'mu', 'residuals', 'pearson', 'deviance', or 'working'.")
         if newdata is not None:
             raise NotImplementedError("Out-of-sample prediction for PPMLHDFE not yet implemented.")
         if type == "xb":
@@ -483,7 +563,22 @@ class PPMLHDFE:
             return self._mu
         # residuals: y - mu
         y = self._abs_ols._dep_var
-        return y - self._mu
+        if type == "residuals":
+            return y - self._mu
+        mu = self._mu
+        if type == "pearson":
+            return (y - mu) / np.sqrt(mu)
+        if type == "working":
+            return (y - mu) / mu
+        if type == "deviance":
+            # Stata ppmlhdfe predict, deviance returns the squared deviance
+            # contribution: 2*(y*log(y/mu) - (y-mu)), not the signed residual.
+            # Convention: 0 * log(0) = 0, so when y=0 the inner term is mu.
+            with np.errstate(divide="ignore", invalid="ignore"):
+                raw = y * np.log(y / mu) - (y - mu)
+            term = np.where(y == 0, mu, raw)
+            return 2 * np.maximum(term, 0)
+        return y - self._mu  # fallback
 
     def margins(self, type: str = "dydx") -> SimpleNamespace:
         """Compute marginal effects."""

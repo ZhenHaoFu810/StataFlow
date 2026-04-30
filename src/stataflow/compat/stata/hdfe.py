@@ -15,10 +15,11 @@ def reghdfe(
     *,
     absorb: str | list[str],
     vce: str = "ols",
-    cluster: Optional[str] = None,
+    cluster: Optional[str | list[str]] = None,
     missing: str = "drop",
     keepsingletons: bool = False,
     noconstant: bool = False,
+    savefe: bool = False,
     **kwargs,
 ) -> object:
     """
@@ -30,8 +31,9 @@ def reghdfe(
     ----------
     vce : str
         Variance estimator: "ols", "robust", or "cluster".
-    cluster : str, optional
-        Cluster variable (required when vce="cluster").
+    cluster : str | list[str], optional
+        Cluster variable(s) (required when vce="cluster").
+        Supports 1-way or 2-way clustering.
     keepsingletons : bool
         If True, do not drop singleton observations (Stata ``keepsingletons``).
     noconstant : bool
@@ -52,7 +54,7 @@ def reghdfe(
         missing=missing,
         drop_singletons=not keepsingletons,
     )
-    return model.fit(vce=vce, cluster=cluster)
+    return model.fit(vce=vce, cluster=cluster, savefe=savefe)
 
 
 def ppmlhdfe(
@@ -62,13 +64,15 @@ def ppmlhdfe(
     *,
     absorb: str | list[str],
     vce: str = "robust",
-    cluster: Optional[str] = None,
+    cluster: Optional[str | list[str]] = None,
     missing: str = "drop",
     offset: Optional[str] = None,
     exposure: Optional[str] = None,
     noconstant: bool = False,
     maxiter: int = 100,
     tolerance: float = 1e-8,
+    eform: bool = False,
+    separation: Optional[str] = None,
     **kwargs,
 ) -> object:
     """
@@ -93,5 +97,6 @@ def ppmlhdfe(
         exposure=exposure,
         max_iter=maxiter,
         tol=tolerance,
+        separation=separation,
     )
-    return model.fit(vce=vce, cluster=cluster)
+    return model.fit(vce=vce, cluster=cluster, eform=eform)

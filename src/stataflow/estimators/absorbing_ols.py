@@ -78,6 +78,8 @@ class AbsorbingOLS:
         self._n_input_rows: int = 0
         self._df_a: float = 0.0
         self._cluster_arr: Optional[np.ndarray] = None
+        self._cluster_arrs: list[np.ndarray] = []
+        self._cluster_vars: list[str] = []
 
         # Fitted state
         self._is_fitted: bool = False
@@ -154,8 +156,34 @@ class AbsorbingOLS:
         X_indep = X[:, independent]
         return X_indep, dropped, independent
 
+    # _compute_cluster_meat, _fix_psd, _fix_psd_reghdfe, _compute_multiway_cluster_vce
+    # are imported from _vce_utils (ADR-0004).
+
+    def _compute_multiway_cluster_vce(
+        self,
+        X_full: np.ndarray,
+        residuals: np.ndarray,
+        XtX_inv: np.ndarray,
+        k_full: int,
+        n: int,
+    ) -> tuple[np.ndarray, int]:
+        """Compute 2-way cluster-robust VCE via inclusion-exclusion.
+
+        Thin wrapper that computes k_eff excluding FE parameters nested in cluster vars.
+        """
+        from stataflow.estimators._vce_utils import compute_multiway_cluster_vce
+
+        nested_params = 0
+        for info in self._dummy_info:
+            if info['var'] in self._cluster_vars:
+                nested_params += info['num_levels'] - 1
+        k_eff = k_full - nested_params
+        return compute_multiway_cluster_vce(
+            X_full, residuals, XtX_inv, self._cluster_arrs, k_eff, n,
+        )
+
     def _prepare_data(
-        self, cluster_var: Optional[str] = None
+        self, cluster_vars: Optional[list[str]] = None
     ) -> tuple[np.ndarray, np.ndarray, list[bool], int]:
         """
         Prepare design matrix and dependent variable.
@@ -164,8 +192,10 @@ class AbsorbingOLS:
         so that x variables are dropped if collinear with absorbed dummies.
         """
         all_vars = [self.y] + self.absorb_vars + self.x
-        if cluster_var is not None and cluster_var not in all_vars:
-            all_vars.append(cluster_var)
+        cluster_var_list = cluster_vars or []
+        for cv in cluster_var_list:
+            if cv not in all_vars:
+                all_vars.append(cv)
 
         df = self.data[all_vars].copy()
         self._n_input_rows = len(df)
@@ -193,11 +223,14 @@ class AbsorbingOLS:
         y = df[self.y].values.astype(np.float64)
         n = len(y)
 
-        # Extract cluster variable if provided
-        cluster_arr = None
-        if cluster_var is not None:
-            cluster_arr = df[cluster_var].values
-        self._cluster_arr = cluster_arr
+        # Extract cluster variables if provided
+        self._cluster_arrs = []
+        self._cluster_vars = []
+        for cv in cluster_var_list:
+            self._cluster_arrs.append(df[cv].values)
+            self._cluster_vars.append(cv)
+        # Backward compat
+        self._cluster_arr = self._cluster_arrs[0] if self._cluster_arrs else None
 
         # Build x variables
         X_cols = []
@@ -266,6 +299,7 @@ class AbsorbingOLS:
 
         # Build mapping from original index to reduced index
         orig_to_reduced = {orig: new for new, orig in enumerate(kept_indices)}
+        self._orig_to_reduced = orig_to_reduced
 
         # Track constant
         constant_idx = 0 if self.add_constant else None
@@ -295,7 +329,7 @@ class AbsorbingOLS:
         # Compute df_a
         effective_levels = []
         for i, var in enumerate(self.absorb_vars):
-            if cluster_var is not None and var == cluster_var:
+            if self._cluster_vars and var in self._cluster_vars:
                 continue  # Nested in cluster: contributes 0
             if i < len(fe_levels_for_df_a):
                 effective_levels.append(fe_levels_for_df_a[i])
@@ -310,6 +344,7 @@ class AbsorbingOLS:
             # areg convention: excludes constant from df_a, but only if constant exists
             if self.add_constant:
                 self._df_a -= 1
+        self._df_a = max(0.0, self._df_a)
 
         # Store dummy_info for T matrix construction
         self._dummy_info = dummy_info
@@ -323,8 +358,9 @@ class AbsorbingOLS:
     def fit(
         self,
         vce: str = "ols",
-        cluster: Optional[str] = None,
+        cluster: Optional[str | list[str]] = None,
         alpha: float = 0.05,
+        savefe: bool = False,
     ) -> ResultSchema:
         """
         Fit absorbing OLS model.
@@ -332,9 +368,10 @@ class AbsorbingOLS:
         Parameters
         ----------
         vce : str
-            Variance-covariance estimator type. "ols" or "cluster" supported.
-        cluster : str, optional
-            Cluster variable name (required when vce="cluster").
+            Variance-covariance estimator type. "ols", "robust", or "cluster" supported.
+        cluster : str | list[str], optional
+            Cluster variable name(s) (required when vce="cluster").
+            Supports 1-way or 2-way clustering.
         alpha : float
             Significance level for confidence intervals.
 
@@ -349,8 +386,11 @@ class AbsorbingOLS:
             raise ValueError("cluster variable required when vce='cluster'.")
         if vce != "cluster" and cluster is not None:
             raise ValueError("cluster only used when vce='cluster'.")
+        if vce == "cluster" and isinstance(cluster, list) and len(cluster) > 2:
+            raise ValueError("Only 1-way and 2-way clustering are supported.")
 
-        X_full, y, sample_mask, n_input_rows = self._prepare_data(cluster_var=cluster)
+        cluster_vars = [cluster] if isinstance(cluster, str) else cluster
+        X_full, y, sample_mask, n_input_rows = self._prepare_data(cluster_vars=cluster_vars)
         n = len(y)
         k_full = X_full.shape[1]
 
@@ -379,16 +419,27 @@ class AbsorbingOLS:
         # df_resid depends on VCE type
         cluster_count = None
         if vce == "cluster":
-            unique_clusters = np.unique(self._cluster_arr)
-            cluster_count = len(unique_clusters)
+            if len(self._cluster_arrs) == 1:
+                unique_clusters = np.unique(self._cluster_arrs[0])
+                cluster_count = len(unique_clusters)
+            else:
+                cluster_count = min(len(np.unique(ca)) for ca in self._cluster_arrs)
             df_resid = float(cluster_count - 1)
         elif vce == "robust":
             df_resid = float(n - k_full)
         else:
             df_resid = float(n - k_full)
 
-        # RMSE denominator: both areg and reghdfe use N - k_full
-        rmse_df = float(n - k_full)
+        # RMSE denominator
+        if self._reghdfe_mode and vce == "cluster":
+            # reghdfe: adjust for FEs nested in cluster variables
+            nested_levels = sum(
+                info["num_levels"] for info in self._dummy_info
+                if info["var"] in self._cluster_vars
+            )
+            rmse_df = float(n - df_model - df_a - nested_levels)
+        else:
+            rmse_df = float(n - k_full)
         rmse = np.sqrt(rss / rmse_df) if rmse_df > 0 else 0.0
 
         # Adjusted R-squared
@@ -406,31 +457,38 @@ class AbsorbingOLS:
             XtX_inv = np.linalg.inv(XtX)
             meat = X_full.T @ (X_full * (residuals ** 2)[:, np.newaxis])
             cov_full = XtX_inv @ meat @ XtX_inv
-            if n > 1:
-                cov_full *= n / (n - 1)
+            if n > k_full:
+                cov_full *= n / (n - k_full)
         else:
             # Cluster-robust VCE on full LSDV
             XtX_inv = np.linalg.inv(XtX)
-            unique_clusters = np.unique(self._cluster_arr)
-            cluster_count = len(unique_clusters)
+            if len(self._cluster_arrs) == 1:
+                # Single-way clustering
+                unique_clusters = np.unique(self._cluster_arrs[0])
+                cluster_count = len(unique_clusters)
 
-            meat = np.zeros((k_full, k_full))
-            for g in unique_clusters:
-                mask_g = self._cluster_arr == g
-                X_g = X_full[mask_g]
-                e_g = residuals[mask_g]
-                Xe_g = X_g.T @ e_g
-                meat += np.outer(Xe_g, Xe_g)
+                meat = np.zeros((k_full, k_full))
+                for g in unique_clusters:
+                    mask_g = self._cluster_arrs[0] == g
+                    X_g = X_full[mask_g]
+                    e_g = residuals[mask_g]
+                    Xe_g = X_g.T @ e_g
+                    meat += np.outer(Xe_g, Xe_g)
 
-            # Small-sample adjustment: exclude parameters from FEs nested in cluster
-            nested_params = 0
-            for info in self._dummy_info:
-                if info['var'] == cluster:
-                    nested_params += info['num_levels'] - 1
-            k_eff = k_full - nested_params
-            n_adj = (n - 1) / (n - k_eff) if n > k_eff else 1.0
-            g_adj = cluster_count / (cluster_count - 1) if cluster_count > 1 else 1.0
-            cov_full = n_adj * g_adj * XtX_inv @ meat @ XtX_inv
+                # Small-sample adjustment: exclude parameters from FEs nested in cluster
+                nested_params = 0
+                for info in self._dummy_info:
+                    if info['var'] == self._cluster_vars[0]:
+                        nested_params += info['num_levels'] - 1
+                k_eff = k_full - nested_params
+                n_adj = (n - 1) / (n - k_eff) if n > k_eff else 1.0
+                g_adj = cluster_count / (cluster_count - 1) if cluster_count > 1 else 1.0
+                cov_full = n_adj * g_adj * XtX_inv @ meat @ XtX_inv
+            else:
+                # Multi-way clustering (2-way)
+                cov_full, cluster_count = self._compute_multiway_cluster_vce(
+                    X_full, residuals, XtX_inv, k_full, n
+                )
 
         # Build transformation from full LSDV parameters to reported parameters
         # Reported order: [x1, x2, ..., _cons]
@@ -454,6 +512,24 @@ class AbsorbingOLS:
 
         beta_reported = T @ beta_full
         cov_reported = T @ cov_full @ T.T
+
+        # For multi-way clustering, cov_reported can be non-PSD due to
+        # inclusion-exclusion. Apply reghdfe-style PSD fix (preserve slopes).
+        if vce == "cluster" and len(self._cluster_arrs) > 1:
+            from stataflow.estimators._vce_utils import fix_psd_reghdfe
+            cov_reported = fix_psd_reghdfe(cov_reported)
+
+            # For reghdfe with multi-way clustering, the LSDV-based _cons
+            # variance can diverge from reghdfe's demeaning-based computation.
+            # Use the delta-method VCV for the _cons row/col, which aligns
+            # with reghdfe's internal constant recovery formula.
+            if self._reghdfe_mode and "_cons" in self._coef_names and self._df is not None:
+                retained_x_names = [name for name in self._coef_names if name != "_cons"]
+                k_slopes = len(retained_x_names)
+                cov_slopes = cov_reported[:k_slopes, :k_slopes]
+                x_means = np.array([self._df[name].mean() for name in retained_x_names])
+                cons_var = float(x_means @ cov_slopes @ x_means)
+                cov_reported[k_slopes, k_slopes] = max(cons_var, 0.0)
 
         # Standard errors
         diag_cov = np.diag(cov_reported)
@@ -581,16 +657,19 @@ class AbsorbingOLS:
         self._cov_reported = cov_reported
         self._result = result
 
+        if savefe:
+            result.fixed_effects = self.save_fixed_effects()
+
         return result
 
     def predict(self, type: str = "xb", newdata: Optional[pd.DataFrame] = None) -> np.ndarray:
         """Generate predictions after fitting."""
         if not self._is_fitted:
             raise ValueError("Model has not been fitted yet. Call fit() first.")
-        if type not in ("xb", "residuals", "d", "xbd", "dresiduals"):
+        if type not in ("xb", "residuals", "d", "xbd", "dresiduals", "stdp"):
             raise ValueError(
                 f"type='{type}' not supported for AbsorbingOLS. "
-                "Use 'xb', 'residuals', 'd', 'xbd', or 'dresiduals'."
+                "Use 'xb', 'residuals', 'd', 'xbd', 'dresiduals', or 'stdp'."
             )
 
         if newdata is not None:
@@ -614,6 +693,11 @@ class AbsorbingOLS:
         X_reported = np.column_stack(X_reported_cols) if X_reported_cols else np.zeros((n, 0))
         xb_reported = X_reported @ self._beta_reported
 
+        if type == "stdp":
+            if self._cov_reported is None:
+                raise ValueError("VCE matrix not available. Call fit() first.")
+            var = np.sum((X_reported @ self._cov_reported) * X_reported, axis=1)
+            return np.sqrt(np.maximum(var, 0))
         if type == "xb":
             return xb_reported
         if type == "d":
@@ -634,3 +718,50 @@ class AbsorbingOLS:
         return _build_margins_result(
             effects, J, self._cov_reported, self._coef_names, self._result.sample.nobs
         )
+
+    def save_fixed_effects(self) -> dict[str, pd.Series]:
+        """
+        Recover and return fixed-effect alpha estimates by absorb variable.
+
+        Returns
+        -------
+        dict[str, pd.Series]
+            Mapping from absorb variable name to a Series indexed by factor level
+            with the estimated FE coefficient (alpha) for that level.
+        """
+        if not self._is_fitted:
+            raise ValueError("Model has not been fitted yet. Call fit() first.")
+        if self._beta_full is None:
+            raise ValueError("No fitted coefficients available.")
+
+        reduced_to_orig = {v: k for k, v in self._orig_to_reduced.items()}
+        result: dict[str, pd.Series] = {}
+
+        for fe_idx, info in enumerate(self._dummy_info):
+            var = info["var"]
+            levels = info["levels"]
+            num_levels = info["num_levels"]
+            start = info["start"]
+            kept_reduced = self._fe_dummy_indices_reduced[fe_idx]
+
+            alphas = np.zeros(num_levels)
+            # If add_constant or not the first FE, the first level is the reference
+            # and dummy columns correspond to levels[1:].
+            # Otherwise (no constant, first FE), all levels have dummies.
+            if self.add_constant or fe_idx > 0:
+                for r in kept_reduced:
+                    o = reduced_to_orig[r]
+                    j = o - start  # j=0 corresponds to levels[1]
+                    level_idx = 1 + j
+                    if 0 <= level_idx < num_levels:
+                        alphas[level_idx] = self._beta_full[r]
+            else:
+                for r in kept_reduced:
+                    o = reduced_to_orig[r]
+                    j = o - start
+                    if 0 <= j < num_levels:
+                        alphas[j] = self._beta_full[r]
+
+            result[var] = pd.Series(alphas, index=levels)
+
+        return result

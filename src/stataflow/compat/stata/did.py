@@ -19,6 +19,15 @@ def did_imputation(
     autosample: bool = False,
     window: Optional[list[int]] = None,
     minn: Optional[int] = None,
+    controls: Optional[list[str]] = None,
+    unitcontrols: Optional[list[str]] = None,
+    timecontrols: Optional[list[str]] = None,
+    pretrends: int = 0,
+    wtr: Optional[list[str]] = None,
+    hetby: Optional[str] = None,
+    saveestimates: Optional[str] = None,
+    saveweights: bool = False,
+    sum: bool = False,
     **kwargs,
 ) -> object:
     """
@@ -42,6 +51,15 @@ def did_imputation(
         autosample=autosample,
         window=window,
         minn=minn,
+        controls=controls,
+        unitcontrols=unitcontrols,
+        timecontrols=timecontrols,
+        pretrends=pretrends,
+        wtr=wtr,
+        hetby=hetby,
+        saveestimates=saveestimates,
+        saveweights=saveweights,
+        sum=sum,
     )
 
 
@@ -129,6 +147,8 @@ def csdid(
     method: str = "reg",
     vce: Optional[str] = None,
     cluster: Optional[str] = None,
+    xvars: Optional[list[str]] = None,
+    aggtype: Optional[str] = None,
     **kwargs,
 ) -> object:
     """
@@ -145,6 +165,9 @@ def csdid(
         id=id,
         time=time,
         first_treat=first_treat,
+        xvars=xvars,
     )
     model.fit(method=method, vce=vce, cluster=cluster)
-    return model.estat_event()
+    if aggtype is None:
+        aggtype = "event"
+    return model.estat(aggtype=aggtype)

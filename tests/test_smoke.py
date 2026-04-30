@@ -4,7 +4,7 @@
 def test_import_stataflow():
     """Verify stataflow package is importable."""
     import stataflow
-    assert stataflow.__version__ == "0.1.5"
+    assert stataflow.__version__ == "0.3.0"
 
 
 def test_import_results_module():

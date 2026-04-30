@@ -35,6 +35,12 @@ def rdrobust(
     covs: list[str] | str | None = None,
     covs_drop: bool = True,
     scaleregul: float = 1.0,
+    masspoints: str = "adjust",
+    bwcheck: int = 0,
+    weights: str | None = None,
+    fuzzy: str | None = None,
+    sharpbw: bool = False,
+    cluster: str | None = None,
     **kwargs,
 ) -> ResultSchema:
     """
@@ -61,19 +67,33 @@ def rdrobust(
         Derivative order (only 0 supported).
     kernel : str, default "triangular"
     vce : str, default "nn"
-        Variance estimator: "nn" or "hc0".
+        Variance estimator: "nn", "hc0", "cluster", or "nncluster".
     nnmatch : int, default 3
         Minimum neighbors for nn VCE.
     level : int, default 95
         Confidence level.
     bwselect : str or None
-        Bandwidth selector. Supported: "mserd". Ignored if h is provided.
+        Bandwidth selector. Supported: "mserd", "msesum", "msetwo",
+        "msecomb1", "msecomb2", "cerrd", "cersum", "certwo",
+        "cercomb1", "cercomb2". Ignored if h is provided.
     covs : list[str] or str or None
         Covariate variable name(s).
     covs_drop : bool, default True
         Drop collinear covariates.
     scaleregul : float, default 1.0
         Regularization scaling for bandwidth selectors.
+    masspoints : str, default "adjust"
+        Mass points handling: "adjust", "check", or "off".
+    bwcheck : int, default 0
+        Minimum unique observations within bandwidth window.
+    weights : str or None
+        Frequency weight variable name.
+    fuzzy : str or None
+        Fuzzy RD treatment variable name.
+    sharpbw : bool, default False
+        Use sharp bandwidth selection for fuzzy RD.
+    cluster : str or None
+        Cluster variable name for vce="cluster" or vce="nncluster".
 
     Returns
     -------
@@ -110,5 +130,11 @@ def rdrobust(
         covs=covs,
         covs_drop=covs_drop,
         scaleregul=scaleregul,
+        masspoints=masspoints,
+        bwcheck=bwcheck,
+        weights=weights,
+        fuzzy=fuzzy,
+        sharpbw=sharpbw,
+        cluster=cluster,
     )
     return model.fit()

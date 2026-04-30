@@ -74,7 +74,7 @@ def test_ppmlhdfe_delegation():
 def test_ppmlhdfe_unsupported_kwargs():
     df = _make_ppml_data()
     with pytest.raises(ValueError, match="Unsupported arguments"):
-        ppmlhdfe(df, y="y", x=["x1"], absorb="g1", separation="fe")
+        ppmlhdfe(df, y="y", x=["x1"], absorb="g1", foo="bar")
 
 
 def test_ppmlhdfe_wrapper_has_no_postestimation_methods():

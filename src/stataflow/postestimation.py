@@ -1,4 +1,4 @@
-"""Postestimation helpers for predict and margins."""
+"""Postestimation helpers for predict, margins, and estat."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from scipy.stats import norm as norm_dist
 from types import SimpleNamespace
-from typing import Optional
+from typing import Any, Optional
 
 
 def _build_design_matrix(df: pd.DataFrame, x_vars: list[str], add_constant: bool) -> np.ndarray:
@@ -25,6 +25,98 @@ def predict_xb(beta: np.ndarray, X: np.ndarray) -> np.ndarray:
 def predict_residuals(y: np.ndarray, xb: np.ndarray) -> np.ndarray:
     """Residuals = y - xb."""
     return y - xb
+
+
+def estat_summarize(result: Any, data: pd.DataFrame, variables: list[str] | None = None, dep_var: str | None = None) -> dict[str, dict[str, float]]:
+    """
+    Post-estimation summary statistics aligned with Stata ``estat summarize``.
+
+    Parameters
+    ----------
+    result : ResultSchema
+        Fitted result object with ``sample.mask`` attribute.
+    data : pd.DataFrame
+        Original dataframe.
+    variables : list[str], optional
+        Variables to summarize. Defaults to dependent variable + all regressors.
+    dep_var : str, optional
+        Name of the dependent variable. If provided and not already in variables, prepended.
+
+    Returns
+    -------
+    dict mapping variable name to {'N', 'mean', 'sd', 'min', 'max'}.
+    """
+    mask = getattr(getattr(result, "sample", None), "mask", None)
+    if mask is None:
+        mask = pd.Series(True, index=data.index)
+
+    if variables is None:
+        # Extract variable names from coefficients list
+        coefs = getattr(result, "coefficients", [])
+        variables = [c.name for c in coefs if c.name != "_cons"]
+
+    if dep_var is not None and dep_var not in variables:
+        variables = [dep_var] + variables
+
+    summary: dict[str, dict[str, float]] = {}
+    for var in variables:
+        if var not in data.columns:
+            continue
+        vals = data.loc[mask, var].dropna()
+        if len(vals) == 0:
+            continue
+        summary[var] = {
+            "N": float(len(vals)),
+            "mean": float(vals.mean()),
+            "sd": float(vals.std(ddof=1)),
+            "min": float(vals.min()),
+            "max": float(vals.max()),
+        }
+    return summary
+
+
+def estat_vce(result: Any) -> np.ndarray | None:
+    """
+    Return the variance-covariance matrix of reported coefficients.
+    Aligned with Stata ``estat vce``.
+    """
+    variance = getattr(result, "variance", None)
+    if variance is None:
+        return None
+    values = getattr(variance, "values", None)
+    if values is None:
+        return None
+    return np.asarray(values)
+
+
+def estat_ic(result: Any) -> dict[str, float]:
+    """
+    Information criteria aligned with Stata ``estat ic``.
+
+    Returns AIC and BIC. For models without log-likelihood, returns empty dict.
+    """
+    ll = getattr(getattr(result, "fit", None), "ll", None)
+    if ll is None or np.isnan(ll):
+        return {}
+
+    nobs = getattr(getattr(result, "sample", None), "nobs", 0)
+    df_model = getattr(getattr(result, "fit", None), "df_model", 0)
+    # Stata counts k = df_model + 1 when constant is present
+    # For GLM, df_model already excludes constant; add 1 if has_constant
+    has_constant = getattr(getattr(result, "fit", None), "has_constant", None)
+    if has_constant is None:
+        has_constant = getattr(getattr(result, "model", None), "has_constant", False)
+    k = df_model + (1 if has_constant else 0)
+
+    aic = -2.0 * ll + 2.0 * k
+    bic = -2.0 * ll + k * np.log(nobs)
+    return {
+        "N": float(nobs),
+        "ll": float(ll),
+        "k": float(k),
+        "aic": float(aic),
+        "bic": float(bic),
+    }
 
 
 def margins_ame_linear(beta: np.ndarray) -> np.ndarray:

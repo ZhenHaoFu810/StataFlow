@@ -11,7 +11,7 @@ StataFlow (`stataflow`) is a Python econometrics toolkit that reproduces Stata 1
 
 ## What is not yet supported
 
-- **Multi-way clustering** — `regress` supports two-way clustering (Cameron-Gelbach-Miller 2011); all other commands currently use single-cluster robust inference only.
+- **Three-way and higher multi-way clustering** — two-way clustering is supported on `regress`, `reghdfe`, `ivreghdfe`, and `ppmlhdfe`. Three-way and higher is not yet implemented.
 - **Direct post-estimation on wrapper returns** — the `compat.stata` wrappers return `ResultSchema` result objects. `predict` and `margins` are available on the core estimator layer only.
 - **Full command surfaces for community commands** — `reghdfe`, `ivreghdfe`, `ppmlhdfe`, `did_imputation`, `eventstudyinteract`, `csdid`, and `rdrobust` are implemented as **verified high-frequency subsets**, not complete Stata command reproductions. Unsupported options are explicitly rejected rather than silently ignored.
 
@@ -101,17 +101,17 @@ result = model.fit(vce="robust")
 | `regress` | `stataflow.compat.stata.regress` | OLS, robust, cluster, aweight |
 | `xtreg, fe` | `stataflow.compat.stata.xtreg_fe` | Fixed effects (within), cluster |
 | `areg` | `stataflow.compat.stata.areg` | Single absorb variable FE |
-| `reghdfe` | `stataflow.compat.stata.reghdfe` | 1+ group HDFE, cluster, singleton drop |
+| `reghdfe` | `stataflow.compat.stata.reghdfe` | 1+ group HDFE, 2-way cluster, singleton drop, `savefe`, `predict` |
 | `ivregress 2sls` | `stataflow.compat.stata.ivregress_2sls` | 2SLS, robust, cluster |
-| `ivreghdfe` | `stataflow.compat.stata.ivreghdfe` | IV + 1+ group HDFE, cluster |
+| `ivreghdfe` | `stataflow.compat.stata.ivreghdfe` | IV + 1+ group HDFE, 2SLS/GMM2S/LIML, 2-way cluster, `first`, `weakiv` |
 | `logit` | `stataflow.compat.stata.logit` | MLE, robust, cluster |
 | `probit` | `stataflow.compat.stata.probit` | MLE, robust, cluster |
 | `poisson` | `stataflow.compat.stata.poisson` | MLE, robust, cluster |
-| `ppmlhdfe` | `stataflow.compat.stata.ppmlhdfe` | PPML + 1+ group HDFE |
-| `did_imputation` | `stataflow.compat.stata.did_imputation` | BJS DID imputation |
+| `ppmlhdfe` | `stataflow.compat.stata.ppmlhdfe` | PPML + 1+ group HDFE, 2-way cluster, `separation(fe)`, `eform` |
+| `did_imputation` | `stataflow.compat.stata.did_imputation` | BJS DID imputation, controls, pretrends |
 | `eventstudyinteract` | `stataflow.compat.stata.eventstudyinteract` | Sun & Abraham IW estimator |
-| `csdid` | `stataflow.compat.stata.csdid` | Callaway-Sant'Anna DID (`method="reg"` only) |
-| `rdrobust` | `stataflow.compat.stata.rdrobust` | Sharp RD local polynomial (`bwselect="mserd"`, `covs`) |
+| `csdid` | `stataflow.compat.stata.csdid` | Callaway-Sant'Anna DID (`method="reg"` and `method="dr"`), aggtype |
+| `rdrobust` | `stataflow.compat.stata.rdrobust` | Sharp / Fuzzy RD, full bandwidth selectors, cluster VCE, `rdplot` |
 
 Full details: [`docs/command-support-matrix/README.md`](./docs/command-support-matrix/README.md)
 

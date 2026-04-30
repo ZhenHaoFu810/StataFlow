@@ -14,14 +14,14 @@ StataFlow（`stataflow`）是一个 Python 计量经济学工具包，目标是�
 
 ## 当前尚不支持的内容
 
-- **多维聚类标准误**：`regress` 支持 two-way clustering（Cameron-Gelbach-Miller 2011）；其他命令当前仍只支持单聚类稳健推断。
+- **三维及以上多维聚类**：`regress`、`reghdfe`、`ivreghdfe`、`ppmlhdfe` 已支持 two-way clustering。三维及以上尚未实现。
 - **wrapper 层直接做 post-estimation**：`compat.stata` wrapper 返回 `ResultSchema`，不直接暴露 `.predict()` / `.margins()`；这些接口目前只在核心 estimator 层可用。
 - **community commands 的完整命令面**：`reghdfe`、`ivreghdfe`、`ppmlhdfe`、`did_imputation`、`eventstudyinteract`、`csdid`、`rdrobust` 当前都是**已验证的高频子集**，不是完整 Stata 命令复刻。不支持的参数会显式报错，而不是静默忽略。
 
 ### 完整度图例
 
 - **Stable**：synthetic + real-data dual-run 均已验证，核心 API 短期内不太可能发生破坏性变化。
-- **Alpha**：高频路径已实现并验证，但命令面仍是社区命令的子集。
+- **Beta**：高频路径已实现并验证，命令面仍是社区命令的子集，但主要功能块已覆盖。
 - **Alpha — Partial**：已有可验证实现，但仍缺失较大功能块。
 
 各命令的细化边界见 [命令支持矩阵](./docs/command-support-matrix/README.md)。
@@ -107,17 +107,17 @@ result = model.fit(vce="robust")
 | `regress` | `stataflow.compat.stata.regress` | OLS、robust、cluster、aweight |
 | `xtreg, fe` | `stataflow.compat.stata.xtreg_fe` | within FE、cluster |
 | `areg` | `stataflow.compat.stata.areg` | 单吸收变量 FE |
-| `reghdfe` | `stataflow.compat.stata.reghdfe` | 1+ 组 HDFE、cluster、singleton drop |
+| `reghdfe` | `stataflow.compat.stata.reghdfe` | 1+ 组 HDFE、two-way cluster、singleton drop、`savefe`、`predict` |
 | `ivregress 2sls` | `stataflow.compat.stata.ivregress_2sls` | 2SLS、robust、cluster |
-| `ivreghdfe` | `stataflow.compat.stata.ivreghdfe` | IV + 1+ 组 HDFE、cluster |
+| `ivreghdfe` | `stataflow.compat.stata.ivreghdfe` | IV + 1+ 组 HDFE、2SLS/GMM2S/LIML、two-way cluster、`first`、`weakiv` |
 | `logit` | `stataflow.compat.stata.logit` | MLE、robust、cluster |
 | `probit` | `stataflow.compat.stata.probit` | MLE、robust、cluster |
 | `poisson` | `stataflow.compat.stata.poisson` | MLE、robust、cluster |
-| `ppmlhdfe` | `stataflow.compat.stata.ppmlhdfe` | PPML + 1+ 组 HDFE |
-| `did_imputation` | `stataflow.compat.stata.did_imputation` | BJS DID imputation |
+| `ppmlhdfe` | `stataflow.compat.stata.ppmlhdfe` | PPML + 1+ 组 HDFE、two-way cluster、`separation(fe)`、`eform` |
+| `did_imputation` | `stataflow.compat.stata.did_imputation` | BJS DID imputation、controls、pretrends |
 | `eventstudyinteract` | `stataflow.compat.stata.eventstudyinteract` | Sun & Abraham IW estimator |
-| `csdid` | `stataflow.compat.stata.csdid` | Callaway-Sant'Anna DID（仅 `method="reg"`） |
-| `rdrobust` | `stataflow.compat.stata.rdrobust` | Sharp RD local polynomial（`bwselect="mserd"`、`covs`） |
+| `csdid` | `stataflow.compat.stata.csdid` | Callaway-Sant'Anna DID（`method="reg"` 和 `method="dr"`）、aggtype |
+| `rdrobust` | `stataflow.compat.stata.rdrobust` | Sharp / Fuzzy RD、完整带宽选择器族、cluster VCE、`rdplot` |
 
 完整说明见 [docs/command-support-matrix/README.md](./docs/command-support-matrix/README.md)。
 
