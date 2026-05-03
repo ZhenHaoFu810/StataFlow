@@ -4,14 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "StataFlow"
-version = "0.3.0"
+version = "1.0.0"
 description = "StataFlow: A Python econometrics toolkit aligned with Stata 17"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [{name = "Zhenhao Fu", email = "zhenhaofu2001@gmail.com"}]
 keywords = ["econometrics", "stata", "regression", "fixed-effects", "panel-data"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",

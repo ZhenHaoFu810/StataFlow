@@ -16,13 +16,11 @@ df = pd.DataFrame({
 })
 
 # OLS with robust SE
+print("regress, vce(robust)")
 result = regress(df, y="y", x=["x1", "x2"], vce="robust")
-print("=== OLS with robust SE ===")
-for c in result.coefficients:
-    print(f"{c.name:12s}  beta={c.beta: .4f}  se={c.std_err:.4f}  t={c.t_stat:.4f}")
+result.display()
 
 # OLS with cluster SE
+print("\nregress, vce(cluster cluster_id)")
 result_cluster = regress(df, y="y", x=["x1", "x2"], vce="cluster", cluster="cluster_id")
-print("\n=== OLS with cluster SE ===")
-for c in result_cluster.coefficients:
-    print(f"{c.name:12s}  beta={c.beta: .4f}  se={c.std_err:.4f}  t={c.t_stat:.4f}")
+result_cluster.display()

@@ -2,7 +2,7 @@
 
 This cookbook provides short, copy-pasteable recipes for common econometric tasks in StataFlow. Each recipe shows the Python code alongside the equivalent Stata command.
 
-> **Status legend:** **Stable** = synthetic + real-data verified against Stata 17; **Alpha** = validated subset, unsupported parameters are hard-rejected.
+> **Status legend:** **Stable** = synthetic + real-data verified against Stata 17; core API unlikely to change. **Beta** = high-frequency paths are verified, most major functional blocks are covered. Unsupported parameters are hard-rejected.
 
 ---
 
@@ -128,6 +128,118 @@ result = reghdfe(df, y="y", x=["x1"], absorb="firm_id", keepsingletons=True)
 reghdfe y x1, absorb(firm_id) keepsingletons
 ```
 
+### Two-way clustered standard errors in HDFE
+
+```python
+result = reghdfe(
+    df, y="y", x=["x1", "x2"],
+    absorb="firm_id year",
+    vce="cluster", cluster=["state", "year"],
+)
+```
+
+**Stata equivalent:**
+```stata
+reghdfe y x1 x2, absorb(firm_id year) vce(cluster state year)
+```
+
+> Two-way clustering is also available on `ivreghdfe` and `ppmlhdfe`.
+
+### Save fixed effects estimates
+
+```python
+result = reghdfe(df, y="y", x=["x1"], absorb="firm_id", savefe=True)
+fe_df = result.fixed_effects  # pd.DataFrame with columns: absorb_var, level, fe_estimate
+```
+
+**Stata equivalent:**
+```stata
+reghdfe y x1, absorb(firm_id) savefe
+```
+
+### Individual slope absorption (group-specific trends)
+
+```python
+from stataflow.compat.stata import reghdfe
+
+# Intercept + slope: var##c.time_trend
+result = reghdfe(
+    df, y="y", x=["x1"],
+    absorb="firm_id##c.time",
+    vce="cluster", cluster="firm_id",
+)
+```
+
+**Stata equivalent:**
+```stata
+reghdfe y x1, absorb(firm_id##c.time) vce(cluster firm_id)
+```
+
+> `var##c.slope` adds both a group-specific intercept and a group-specific slope. Use `var#c.slope` for slope-only (no intercept).
+
+### MAP iterative absorption (large-scale FE)
+
+```python
+# Automatically switches to MAP when FE levels > 5000
+result = reghdfe(df, y="y", x=["x1"], absorb="firm_id year", technique="auto")
+
+# Or force MAP explicitly
+result = reghdfe(df, y="y", x=["x1"], absorb="firm_id year", technique="map")
+```
+
+**Stata equivalent:**
+```stata
+reghdfe y x1, absorb(firm_id year) technique(map)
+```
+
+### Driscoll-Kraay panel HAC standard errors
+
+```python
+result = reghdfe(
+    df, y="y", x=["x1", "x2"],
+    absorb="firm_id",
+    vce="dkraay", timevar="year",
+)
+```
+
+**Stata equivalent:**
+```stata
+reghdfe y x1 x2, absorb(firm_id) vce(dkraay year)
+```
+
+> Driscoll-Kraay requires a `timevar` parameter to identify the time dimension. Bandwidth is auto-selected and truncated at T-1.
+
+### Predict stdp (standard error of prediction) for HDFE
+
+```python
+from stataflow import AbsorbingOLS
+
+model = AbsorbingOLS(data=df, y="y", x=["x1"], absorb="firm_id")
+result = model.fit(vce="robust")
+stdp = model.predict(type="stdp")  # standard error of the linear predictor
+```
+
+**Stata equivalent:**
+```stata
+reghdfe y x1, absorb(firm_id) robust
+predict stdp_var, stdp
+```
+
+### estat summarize for HDFE
+
+```python
+from stataflow.postestimation import estat_summarize
+
+result = reghdfe(df, y="y", x=["x1", "x2"], absorb="firm_id")
+summary = estat_summarize(result, data=df, variables=["y", "x1", "x2"], dep_var="y")
+# Returns dict with per-variable N, mean, sd, min, max
+```
+
+**Stata equivalent:**
+```stata
+estat summarize
+```
+
 ---
 
 ## Instrumental Variables
@@ -174,7 +286,123 @@ result = ivreghdfe(
 ivreghdfe y x1 (x2 = z1), absorb(firm_id year) cluster(state)
 ```
 
-> **Status:** Alpha. Validated for common 2SLS + FE paths.
+> **Status:** Beta. Validated for common 2SLS + FE paths. GMM2S and LIML are also supported.
+
+### IV with GMM2S estimator
+
+```python
+result = ivreghdfe(
+    df,
+    y="y",
+    x_exog=["x1"],
+    x_endog=["x2"],
+    instruments=["z1", "z2"],
+    absorb="firm_id",
+    estimator="gmm2s",
+    vce="robust",
+)
+print(f"Hansen J statistic: {result.hansen_j:.3f}")
+```
+
+**Stata equivalent:**
+```stata
+ivreghdfe y x1 (x2 = z1 z2), absorb(firm_id) gmm2s robust
+```
+
+> GMM2S reports the Hansen J statistic for overidentification testing. Access it via `result.hansen_j`.
+
+### IV with LIML estimator and Fuller adjustment
+
+```python
+# LIML with default Fuller (k=1)
+result = ivreghdfe(
+    df, y="y", x_exog=["x1"], x_endog=["x2"],
+    instruments=["z1", "z2"], absorb="firm_id",
+    estimator="liml", vce="robust",
+)
+
+# LIML with custom Fuller parameter
+result = ivreghdfe(
+    df, y="y", x_exog=["x1"], x_endog=["x2"],
+    instruments=["z1", "z2"], absorb="firm_id",
+    estimator="liml", fuller=4, vce="robust",
+)
+
+# LIML with custom k-class value
+result = ivreghdfe(
+    df, y="y", x_exog=["x1"], x_endog=["x2"],
+    instruments=["z1", "z2"], absorb="firm_id",
+    estimator="liml", kclass=0.8, vce="robust",
+)
+```
+
+**Stata equivalent:**
+```stata
+ivreghdfe y x1 (x2 = z1 z2), absorb(firm_id) liml robust
+ivreghdfe y x1 (x2 = z1 z2), absorb(firm_id) fuller(4) robust
+```
+
+### First-stage diagnostics
+
+```python
+result = ivreghdfe(
+    df, y="y", x_exog=["x1"], x_endog=["x2"],
+    instruments=["z1", "z2"], absorb="firm_id",
+    first=True, vce="robust",
+)
+
+first = result.first_stage
+for endog_var, stats in first.items():
+    print(f"{endog_var}: R2={stats['r2']:.4f}, "
+          f"Partial R2={stats['partial_r2']:.4f}, "
+          f"Shea R2={stats['shea_r2']:.4f}, "
+          f"F={stats['f_stat']:.2f}")
+```
+
+**Stata equivalent:**
+```stata
+ivreghdfe y x1 (x2 = z1 z2), absorb(firm_id) first robust
+```
+
+### Weak instrument diagnostics
+
+```python
+result = ivreghdfe(
+    df, y="y", x_exog=["x1"], x_endog=["x2"],
+    instruments=["z1", "z2"], absorb="firm_id",
+    vce="robust",
+)
+
+print(f"Kleibergen-Paap LM: {result.idstat:.3f}")
+print(f"Cragg-Donald Wald F: {result.widstat:.3f}")
+print(f"Stock-Yogo 10% critical: {result.widstat_cv:.1f}")
+```
+
+**Stata equivalent:**
+```stata
+ivreghdfe y x1 (x2 = z1 z2), absorb(firm_id) robust
+```
+
+> Weak instrument tests are always computed and attached to the result object.
+
+### Predict stdp for IV HDFE
+
+```python
+from stataflow import IVAbsorbingOLS
+
+model = IVAbsorbingOLS(
+    data=df, y="y", x_exog=["x1"], x_endog=["x2"],
+    instruments=["z1", "z2"], absorb="firm_id",
+)
+result = model.fit(vce="robust")
+stdp = model.predict(type="stdp")
+```
+
+**Stata equivalent:**
+```stata
+ivreghdfe y x1 (x2 = z1 z2), absorb(firm_id) robust
+predict stdp_var, stdp
+```
 
 ---
 
@@ -219,7 +447,7 @@ result = poisson(df, y="count_y", x=["x1", "x2"], vce="robust")
 poisson count_y x1 x2, robust
 ```
 
-> `offset` and `exposure` are not yet supported and will raise `NotImplementedError`.
+> `offset` and `exposure` are supported for `ppmlhdfe` (see PPML section below). They are not yet available for the `poisson` wrapper.
 
 ### PPML with high-dimensional fixed effects
 
@@ -241,7 +469,101 @@ result = ppmlhdfe(
 ppmlhdfe count_y x1 x2, absorb(firm_id year) vce(cluster state)
 ```
 
-> **Status:** Alpha. Convergence can be controlled with `maxiter` and `tolerance`.
+> **Status:** Beta. Convergence can be controlled with `maxiter` and `tolerance`. eform, separation, and residuals are also supported.
+
+### PPML with offset or exposure
+
+```python
+# Offset (already in log form)
+result = ppmlhdfe(
+    df, y="count_y", x=["x1", "x2"],
+    absorb="firm_id year",
+    offset="ln_population",
+)
+
+# Exposure (automatically logged)
+result = ppmlhdfe(
+    df, y="count_y", x=["x1", "x2"],
+    absorb="firm_id year",
+    exposure="population",
+)
+```
+
+**Stata equivalent:**
+```stata
+ppmlhdfe count_y x1 x2, absorb(firm_id year) offset(ln_population)
+ppmlhdfe count_y x1 x2, absorb(firm_id year) exposure(population)
+```
+
+### PPML eform — incidence-rate ratios
+
+```python
+result = ppmlhdfe(
+    df, y="count_y", x=["x1", "x2"],
+    absorb="firm_id",
+    eform=True,
+)
+# Coefficients and CIs are exponentiated
+```
+
+**Stata equivalent:**
+```stata
+ppmlhdfe count_y x1 x2, absorb(firm_id) eform
+```
+
+### PPML separation detection
+
+```python
+result = ppmlhdfe(
+    df, y="count_y", x=["x1", "x2"],
+    absorb="firm_id year",
+    separation="fe",
+)
+# Verbose output includes separated FE groups and dropped observations
+```
+
+**Stata equivalent:**
+```stata
+ppmlhdfe count_y x1 x2, absorb(firm_id year) separation(fe)
+```
+
+### PPML residual types
+
+```python
+from stataflow import PPMLHDFE
+
+model = PPMLHDFE(data=df, y="count_y", x=["x1"], absorb="firm_id")
+result = model.fit()
+
+pearson = model.predict(type="pearson")    # Pearson residuals
+deviance = model.predict(type="deviance")  # Deviance residuals
+working = model.predict(type="working")    # Working residuals
+```
+
+**Stata equivalent:**
+```stata
+ppmlhdfe count_y x1, absorb(firm_id)
+predict pearson_res, pearson
+predict deviance_res, deviance
+predict working_res, working
+```
+
+### PPML estat ic (AIC / BIC)
+
+```python
+from stataflow.postestimation import estat_ic
+
+result = ppmlhdfe(df, y="count_y", x=["x1", "x2"], absorb="firm_id")
+ic = estat_ic(result)
+print(f"N={ic['N']}, ll={ic['ll']:.2f}, k={ic['k']}, AIC={ic['aic']:.2f}, BIC={ic['bic']:.2f}")
+```
+
+**Stata equivalent:**
+```stata
+estat ic
+```
+
+> `estat_ic` also works with `result` objects from `logit`, `probit`, and `poisson`.
 
 ---
 
@@ -269,7 +591,7 @@ result = did_imputation(
 did_imputation y unit_id year first_treat_year, cluster(state) allhorizons autosample
 ```
 
-> **Status:** Alpha.
+> **Status:** Beta. Controls, pretrends, and heterogeneous effects are supported.
 
 ### Sun-Abraham event study (auto-generated dummies)
 
@@ -339,7 +661,99 @@ csdid y, ivar(unit_id) time(year) gvar(first_treat_year) method(drimp)
 csdid_estat event
 ```
 
-> **Status:** Alpha. Only `method="reg"` is currently supported.
+> **Status:** Beta. `method="reg"`, `"drimp"`, and `"dripw"` are supported.
+
+### CSDID with doubly-robust method
+
+```python
+# Doubly-robust (requires never-treated units)
+result = csdid(
+    df, y="y", id="unit_id", time="year",
+    first_treat="first_treat_year",
+    method="drimp",
+    cluster="state",
+)
+```
+
+**Stata equivalent:**
+```stata
+csdid y, ivar(unit_id) time(year) gvar(first_treat_year) method(drimp)
+```
+
+### CSDID aggregation types
+
+```python
+# The estat() method returns different aggregation views
+result = csdid(df, y="y", id="unit_id", time="year",
+               first_treat="first_treat_year", method="reg")
+
+event_agg = result.estat(aggtype="event")     # Event-study view
+group_agg = result.estat(aggtype="group")     # By treatment cohort
+simple_agg = result.estat(aggtype="simple")   # Single ATT
+calendar_agg = result.estat(aggtype="calendar")  # By calendar time
+pretrend_agg = result.estat(aggtype="pretrend")  # Joint F-test of pre-trends
+```
+
+**Stata equivalent:**
+```stata
+csdid_estat event
+csdid_estat simple
+csdid_estat group
+csdid_estat calendar
+csdid_estat pretrend
+```
+
+### DID imputation with controls and pretrends
+
+```python
+result = did_imputation(
+    df, y="y", id="unit_id", time="year",
+    first_treat="first_treat_year",
+    controls=["x1", "x2"],
+    unitcontrols=["unit_char"],   # Time-invariant unit characteristics
+    timecontrols=["gdp_growth"],  # Common time-varying controls
+    pretrends=3,                  # Test pre-treatment trend significance
+    cluster="state",
+)
+# result._event_horizons includes pre-trend F-test p-value
+```
+
+**Stata equivalent:**
+```stata
+did_imputation y unit_id year first_treat_year, controls(x1 x2) unitcontrols(unit_char) timecontrols(gdp_growth) pretrends(3) cluster(state)
+```
+
+### DID imputation — save estimates and weights
+
+```python
+result = did_imputation(
+    df, y="y", id="unit_id", time="year",
+    first_treat="first_treat_year",
+    saveestimates="estimates_file",  # Saves to named file
+    saveweights=True,                # Attach weights to result
+)
+```
+
+**Stata equivalent:**
+```stata
+did_imputation y unit_id year first_treat_year, saveestimates(estimates_file) saveweights
+```
+
+### DID imputation — heterogeneous effects
+
+```python
+result = did_imputation(
+    df, y="y", id="unit_id", time="year",
+    first_treat="first_treat_year",
+    hetby="industry",   # Heterogeneous effects by group
+    cluster="state",
+)
+```
+
+**Stata equivalent:**
+```stata
+did_imputation y unit_id year first_treat_year, hetby(industry) cluster(state)
+```
 
 ---
 
@@ -383,7 +797,116 @@ result = rdrobust(
 rdrobust vote margin, c(0) covs(z)
 ```
 
-> **Status:** Alpha — Partial. Automatic selectors may use documented numerical tolerances.
+> **Status:** Beta. Sharp and fuzzy RD with 9 bandwidth selectors, covariates, and cluster VCE are supported.
+
+### RD with MSE-optimal bandwidth families
+
+```python
+# Default MSE-optimal, one bandwidth each side
+result = rdrobust(df, y="vote", x="margin", c=0.0, bwselect="mserd")
+
+# Two distinct bandwidths (one per side)
+result = rdrobust(df, y="vote", x="margin", c=0.0, bwselect="msetwo")
+
+# Sum of bandwidths (same bandwidth both sides)
+result = rdrobust(df, y="vote", x="margin", c=0.0, bwselect="msesum")
+
+# Combined selectors
+result = rdrobust(df, y="vote", x="margin", c=0.0, bwselect="msecomb1")
+result = rdrobust(df, y="vote", x="margin", c=0.0, bwselect="msecomb2")
+
+# Coverage-error-optimal selectors
+result = rdrobust(df, y="vote", x="margin", c=0.0, bwselect="cerrd")
+result = rdrobust(df, y="vote", x="margin", c=0.0, bwselect="certwo")
+result = rdrobust(df, y="vote", x="margin", c=0.0, bwselect="cersum")
+result = rdrobust(df, y="vote", x="margin", c=0.0, bwselect="cercomb1")
+result = rdrobust(df, y="vote", x="margin", c=0.0, bwselect="cercomb2")
+```
+
+**Stata equivalent:**
+```stata
+rdrobust vote margin, c(0) bwselect(mserd)
+```
+
+> All 9 MSE-optimal and CER-optimal bandwidth selectors from `rdrobust` are supported.
+
+### Fuzzy RD
+
+```python
+result = rdrobust(
+    df, y="vote", x="margin", c=0.0,
+    fuzzy="treatment",  # Treatment take-up variable for fuzzy design
+    bwselect="mserd",
+)
+# Result coefficients report the Wald ratio estimate
+```
+
+**Stata equivalent:**
+```stata
+rdrobust vote margin, c(0) fuzzy(treatment) bwselect(mserd)
+```
+
+### RD with cluster-robust VCE
+
+```python
+# Cluster-robust VCE
+result = rdrobust(
+    df, y="vote", x="margin", c=0.0,
+    vce="cluster", cluster="state",
+    bwselect="mserd",
+)
+
+# Nearest-neighbor cluster VCE
+result = rdrobust(
+    df, y="vote", x="margin", c=0.0,
+    vce="nncluster", cluster="state",
+    bwselect="mserd",
+)
+```
+
+**Stata equivalent:**
+```stata
+rdrobust vote margin, c(0) vce(cluster state) bwselect(mserd)
+rdrobust vote margin, c(0) vce(nncluster state) bwselect(mserd)
+```
+
+### RD with mass points and frequency weights
+
+```python
+result = rdrobust(
+    df, y="vote", x="margin", c=0.0,
+    masspoints="adjust",  # "adjust" (default) or "check"
+    bwcheck=10,           # Number of masspoints checks
+    weights="pop_weight",  # Frequency weights
+    bwselect="mserd",
+)
+```
+
+**Stata equivalent:**
+```stata
+rdrobust vote margin, c(0) masspoints(adjust) bwselect(mserd) [fw=pop_weight]
+```
+
+### rdplot — RD visualization
+
+```python
+from stataflow.compat.stata import rdplot
+
+plot_result = rdplot(
+    df, y="vote", x="margin", c=0.0,
+    nbins=20,                    # Number of bins or IMSE-optimal
+    binselect="esmv",            # Evenly-spaced mimicking variance
+    p=4,                         # Polynomial order for fit overlay
+)
+# plot_result["bins"]  -> DataFrame of bin statistics
+# plot_result["fit"]   -> DataFrame of polynomial fit coordinates
+# plot_result["info"]  -> metadata dict
+```
+
+**Stata equivalent:**
+```stata
+rdplot vote margin, c(0) nbins(20) binselect(esmv)
+```
 
 ---
 
@@ -481,11 +1004,22 @@ result = regress(df, y="y", x=["x1##x2"])
 ```python
 result = regress(df, y="y", x=["x1", "x2"], vce="robust")
 
-print(f"{'Variable':<15} {'Coef.':>10} {'Std.Err.':>10} {'t':>8} {'P>|t|':>8} {'[95% CI]':>20}")
-print("-" * 75)
+# Stata-style regression table
+result.display()
+
+# With confidence intervals
+result.display(show_ci=True)
+
+# Get as string (for logging, saving)
+text = result.summary()
+```
+
+For programmatic access:
+
+```python
 for c in result.coefficients:
-    print(f"{c.name:<15} {c.beta:>10.4f} {c.std_err:>10.4f} "
-          f"{c.t_stat:>8.2f} {c.p_value:>8.4f} [{c.ci_low:>8.4f}, {c.ci_high:>8.4f}]")
+    print(f"{c.name:<15} {c.beta:>10.6f} {c.std_err:>10.6f} "
+          f"{c.t_stat:>8.2f} {c.p_value:>8.3f}")
 ```
 
 ### Extract coefficients to a pandas DataFrame
@@ -510,13 +1044,16 @@ coef_df = pd.DataFrame([
 ### Access fit statistics
 
 ```python
-print(f"R-squared:         {result.fit.r2:.4f}")
-print(f"Adjusted R-squared: {result.fit.r2_a:.4f}")
-print(f"F statistic:        {result.fit.f_statistic:.2f}")
+print(f"R-squared:          {result.fit.r2:.4f}")
+print(f"Adjusted R-squared: {result.fit.r2_adj:.4f}")
+print(f"F statistic:        {result.fit.f_stat:.2f}")
 print(f"F p-value:          {result.fit.f_pvalue:.4f}")
 print(f"Model df:           {result.fit.df_model:.0f}")
 print(f"Residual df:        {result.fit.df_resid:.0f}")
 print(f"Observations:       {result.sample.nobs}")
+print(f"RMSE:               {result.fit.rmse:.4f}")
+if result.fit.df_a:
+    print(f"Absorbed df:        {result.fit.df_a:.0f}")
 ```
 
 ### Save results to CSV or Stata format
@@ -548,6 +1085,66 @@ result = did_imputation(...)
 print(result._event_horizons)
 ```
 
+### Access fixed effects estimates
+
+```python
+result = reghdfe(df, y="y", x=["x1"], absorb="firm_id year", savefe=True)
+fe_df = result.fixed_effects  # pd.DataFrame
+for absorb_var in fe_df["absorb_var"].unique():
+    subset = fe_df[fe_df["absorb_var"] == absorb_var]
+    print(f"{absorb_var}: {len(subset)} levels")
+```
+
+### Access first-stage statistics (IV HDFE)
+
+```python
+result = ivreghdfe(..., first=True)
+first = result.first_stage  # dict keyed by endogenous variable name
+for var, stats in first.items():
+    print(f"{var}: R2={stats['r2']:.4f}, Partial R2={stats['partial_r2']:.4f}")
+```
+
+### Access weak instrument diagnostics
+
+```python
+result = ivreghdfe(..., vce="robust")
+print(f"KP LM stat:    {result.idstat:.3f}")   # Kleibergen-Paap underidentification
+print(f"CD Wald F:     {result.widstat:.3f}")  # Cragg-Donald weak identification
+print(f"Stock-Yogo 10%: {result.widstat_cv:.1f}")  # Critical value at 10%
+```
+
+### Access Hansen J overidentification test (GMM2S)
+
+```python
+result = ivreghdfe(..., estimator="gmm2s")
+print(f"Hansen J: {result.hansen_j:.3f}")
+```
+
+### Use estat_summarize and estat_ic
+
+```python
+from stataflow.postestimation import estat_summarize, estat_ic
+
+result = reghdfe(df, y="y", x=["x1", "x2"], absorb="firm_id")
+
+# estat summarize
+summary = estat_summarize(result, data=df, variables=["y", "x1", "x2"], dep_var="y")
+
+# estat ic (for ML models: logit, probit, poisson, ppmlhdfe)
+result = ppmlhdfe(df, y="count_y", x=["x1", "x2"], absorb="firm_id")
+ic = estat_ic(result)
+print(f"AIC={ic['aic']:.2f}, BIC={ic['bic']:.2f}")
+```
+
+### Access PPMLHDFE-specific fit statistics
+
+```python
+result = ppmlhdfe(df, y="count_y", x=["x1"], absorb="firm_id")
+print(f"Deviance:    {result.fit.deviance:.2f}")
+print(f"Pseudo R2:   {result.fit.pseudo_r2:.4f}")
+print(f"Log-likelihood: {result.fit.ll:.2f}")
+```
+
 ---
 
 ## Common Gotchas
@@ -564,16 +1161,30 @@ result = regress(df, y="y", x=["x1"])
 
 ### Unsupported parameters are hard-rejected
 
-StataFlow raises `ValueError` or `NotImplementedError` for any parameter that is not explicitly supported. It never silently ignores options. Check `docs/command-support-matrix/` for the exact supported subset of each command.
+StataFlow raises `ValueError` or `NotImplementedError` for any parameter that is not explicitly supported. It never silently ignores options. Check `command-support-matrix/` for the exact supported subset of each command.
 
 ### Clustering
 
-`regress` supports two-way clustering (e.g., `cluster=["state", "year"]`). All other commands currently use single-cluster robust inference only.
+Two-way clustering (Cameron-Gelbach-Miller 2011) is supported on `regress`, `reghdfe`, `ivreghdfe`, and `ppmlhdfe` via `cluster=["var1", "var2"]`. All commands support single-cluster robust inference. Three-way and higher clustering is not yet available.
 
-### Post-estimation is on the core layer only
+Driscoll-Kraay panel HAC standard errors are available on `reghdfe` via `vce="dkraay"` with a required `timevar` parameter.
 
-The `compat.stata` wrappers return a `ResultSchema`. For programmatic prediction or margins, use the underlying estimator classes in `stataflow.estimators` directly.
+### Post-estimation
+
+The `compat.stata` wrappers return a `ResultSchema` with coefficients, standard errors, and fit statistics. For `predict` and `margins`, use the core estimator layer (`stataflow` namespace) directly.
+
+Post-estimation utilities `estat_summarize` and `estat_ic` are available in `stataflow.postestimation` and accept `ResultSchema` from either layer.
+
+### Driscoll-Kraay VCE requires a time variable
+
+```python
+# Wrong — missing timevar
+result = reghdfe(df, y="y", x=["x1"], absorb="firm_id", vce="dkraay")
+
+# Correct
+result = reghdfe(df, y="y", x=["x1"], absorb="firm_id", vce="dkraay", timevar="year")
+```
 
 ---
 
-*Last updated: 2026-04-23. For per-command support matrices, see `docs/command-support-matrix/`.*
+*Last updated: 2026-04-30. For per-command support matrices, see `command-support-matrix/`.*

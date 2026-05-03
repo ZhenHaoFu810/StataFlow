@@ -68,7 +68,11 @@ class PPMLHDFE:
         self.data = data
         self.y = y
         self.x = list(x)
-        self.absorb_vars = list(absorb) if isinstance(absorb, list) else [absorb]
+        from stataflow.estimators._absorb_spec import AbsorbSpec
+        if isinstance(absorb, list) and len(absorb) > 0 and isinstance(absorb[0], AbsorbSpec):
+            self.absorb_vars = [spec.var for spec in absorb]
+        else:
+            self.absorb_vars = list(absorb) if isinstance(absorb, list) else [absorb]
         self.add_constant = add_constant
         self.missing = missing
         self.max_iter = max_iter
@@ -281,40 +285,21 @@ class PPMLHDFE:
             if cluster_arrs is None or len(cluster_arrs) == 0:
                 raise ValueError("cluster_arrs required for cluster VCE.")
             if len(cluster_arrs) == 1:
-                unique_clusters = np.unique(cluster_arrs[0])
-                cluster_count = len(unique_clusters)
-                meat = np.zeros((k_full, k_full))
-                for g in unique_clusters:
-                    mask_g = cluster_arrs[0] == g
-                    X_g = X_full[mask_g]
-                    r_g = residuals[mask_g]
-                    score_g = X_g.T @ r_g
-                    meat += np.outer(score_g, score_g)
-
+                from stataflow.estimators._vce_utils import compute_cluster_meat
+                meat, cluster_count = compute_cluster_meat(
+                    X_full, residuals, cluster_arrs[0]
+                )
                 # PPMLHDFE uses vce_asymptotic mode, so only G/(G-1) adjustment applies
                 g_adj = cluster_count / (cluster_count - 1) if cluster_count > 1 else 1.0
                 cov_full = g_adj * XtX_inv @ meat @ XtX_inv
             else:
-                # Multi-way clustering (2-way)
-                meats = []
-                Gs = []
-                for ca in cluster_arrs:
-                    from stataflow.estimators._vce_utils import compute_cluster_meat
-                    meat, G = compute_cluster_meat(X_full, residuals, ca)
-                    meats.append(meat)
-                    Gs.append(G)
-
-                interaction = np.array([
-                    f"{a}__{b}" for a, b in zip(cluster_arrs[0], cluster_arrs[1])
-                ])
-                meat_12, G_12 = compute_cluster_meat(X_full, residuals, interaction)
-
-                omega_meat = meats[0] + meats[1] - meat_12
-
-                G_min = min(Gs)
-                g_adj = G_min / (G_min - 1) if G_min > 1 else 1.0
-                cov_full = g_adj * XtX_inv @ omega_meat @ XtX_inv
-                cluster_count = G_min
+                # Multi-way clustering (2-way) via shared utility (ADR-0004)
+                from stataflow.estimators._vce_utils import compute_multiway_cluster_vce
+                cov_full, cluster_count = compute_multiway_cluster_vce(
+                    X=X_full, residuals=residuals, M_inv=XtX_inv,
+                    cluster_arrs=cluster_arrs, k_eff=k_full, n=n,
+                    small_sample_adjust=False
+                )
         else:
             raise ValueError(f"vce='{vce}' not supported. Use 'ols' or 'cluster'.")
 

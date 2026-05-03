@@ -149,27 +149,9 @@ class GLMBase:
     def _detect_collinearity(
         self, X: np.ndarray, names: list[str]
     ) -> tuple[np.ndarray, list[str]]:
-        """Detect and drop collinear columns using QR decomposition."""
-        dropped = []
-        if X.shape[1] <= 1:
-            return X, dropped
-
-        rank = np.linalg.matrix_rank(X)
-        if rank == X.shape[1]:
-            return X, dropped
-
-        Q, R = np.linalg.qr(X, mode='complete')
-        tol = 1e-10
-        independent = []
-
-        for i in range(X.shape[1]):
-            if i < R.shape[0] and abs(R[i, i]) > tol:
-                independent.append(i)
-            else:
-                dropped.append(names[i])
-
-        X_indep = X[:, independent]
-        self._coef_names = [names[i] for i in independent]
+        from stataflow.estimators._vce_utils import detect_collinear_columns
+        X_indep, dropped, kept = detect_collinear_columns(X, names)
+        self._coef_names = [names[i] for i in kept]
         return X_indep, dropped
 
     def _irls_fit(self, X: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray, bool]:
@@ -265,16 +247,9 @@ class GLMBase:
             meat = (X * residuals[:, np.newaxis]).T @ (X * residuals[:, np.newaxis])
             cov_beta = XtX_inv @ meat @ XtX_inv
         elif vce == "cluster":
-            unique_clusters = np.unique(cluster_arr)
-            cluster_count = len(unique_clusters)
             residuals = y - mu
-            meat = np.zeros((k, k))
-            for g in unique_clusters:
-                mask_g = cluster_arr == g
-                X_g = X[mask_g]
-                r_g = residuals[mask_g]
-                score_g = X_g.T @ r_g
-                meat += np.outer(score_g, score_g)
+            from stataflow.estimators._vce_utils import compute_cluster_meat
+            meat, cluster_count = compute_cluster_meat(X, residuals, cluster_arr)
             n_adj = (n - 1) / (n - k) if n > k else 1.0
             g_adj = cluster_count / (cluster_count - 1) if cluster_count > 1 else 1.0
             cov_beta = n_adj * g_adj * XtX_inv @ meat @ XtX_inv

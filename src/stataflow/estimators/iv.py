@@ -165,28 +165,8 @@ class IV2SLS:
     def _detect_collinearity(
         self, X: np.ndarray, names: list[str]
     ) -> tuple[np.ndarray, list[str], list[int]]:
-        """Detect and drop collinear columns."""
-        dropped = []
-
-        if X.shape[1] <= 1:
-            return X, dropped, list(range(X.shape[1]))
-
-        rank = np.linalg.matrix_rank(X)
-        if rank == X.shape[1]:
-            return X, dropped, list(range(X.shape[1]))
-
-        R = np.linalg.qr(X, mode='r')
-        tol = 1e-10
-        independent = []
-
-        for i in range(X.shape[1]):
-            if i < R.shape[0] and abs(R[i, i]) > tol:
-                independent.append(i)
-            else:
-                dropped.append(names[i])
-
-        X_indep = X[:, independent]
-        return X_indep, dropped, independent
+        from stataflow.estimators._vce_utils import detect_collinear_columns
+        return detect_collinear_columns(X, names)
 
     def fit(
         self,
@@ -416,7 +396,11 @@ class IVAbsorbingOLS:
         self.x_exog = list(x_exog)
         self.x_endog = list(x_endog)
         self.instruments = list(instruments)
-        self.absorb_vars = [absorb] if isinstance(absorb, str) else list(absorb)
+        from stataflow.estimators._absorb_spec import AbsorbSpec
+        if isinstance(absorb, list) and len(absorb) > 0 and isinstance(absorb[0], AbsorbSpec):
+            self.absorb_vars = [spec.var for spec in absorb]
+        else:
+            self.absorb_vars = [absorb] if isinstance(absorb, str) else list(absorb)
         self._reghdfe_mode = True  # ivreghdfe semantics regardless of absorb count
         self.add_constant = add_constant
         self.missing = missing
@@ -465,23 +449,8 @@ class IVAbsorbingOLS:
     def _detect_collinearity(
         self, X: np.ndarray, names: list[str]
     ) -> tuple[np.ndarray, list[str], list[int]]:
-        """Detect and drop collinear columns."""
-        dropped = []
-        if X.shape[1] <= 1:
-            return X, dropped, list(range(X.shape[1]))
-        rank = np.linalg.matrix_rank(X)
-        if rank == X.shape[1]:
-            return X, dropped, list(range(X.shape[1]))
-        R = np.linalg.qr(X, mode='r')
-        tol = 1e-10
-        independent = []
-        for i in range(X.shape[1]):
-            if i < R.shape[0] and abs(R[i, i]) > tol:
-                independent.append(i)
-            else:
-                dropped.append(names[i])
-        X_indep = X[:, independent]
-        return X_indep, dropped, independent
+        from stataflow.estimators._vce_utils import detect_collinear_columns
+        return detect_collinear_columns(X, names)
 
     # _compute_cluster_meat, _fix_psd, _fix_psd_reghdfe: imported from _vce_utils (ADR-0004).
 
@@ -952,6 +921,55 @@ class IVAbsorbingOLS:
             "sy_25pct": sy["25%"],
         }
 
+    def _fit_2sls(
+        self, X_full, Z_full, X_proj, y, y_resid, W, WtW,
+        reported_indices, vce, n, k_x_full, df_resid, k_eff,
+    ):
+        """Second-stage OLS on projected X (2SLS) with VCE."""
+        XtX_proj = X_proj.T @ X_proj
+        Xty_proj = X_proj.T @ y
+        beta_full = np.linalg.solve(XtX_proj, Xty_proj)
+        residuals = y - X_full @ beta_full
+        rss_struct = float(np.sum(residuals ** 2))
+
+        # Residualized projection for F-stat
+        beta_reported_for_f = beta_full[reported_indices]
+        X_proj_reported = X_proj[:, reported_indices]
+        if W.shape[1] > 0:
+            gamma_x = np.linalg.solve(WtW, W.T @ X_proj_reported)
+            X_tilde_proj = X_proj_reported - W @ gamma_x
+        else:
+            X_tilde_proj = X_proj_reported
+        rss_2s_resid = float(np.sum((y_resid - X_tilde_proj @ beta_reported_for_f) ** 2))
+
+        # VCE
+        M_inv = np.linalg.inv(XtX_proj)
+        cluster_count = None
+        if vce == "ols":
+            sigma2 = rss_struct / df_resid if df_resid > 0 else 0.0
+            cov_full = sigma2 * M_inv
+        elif vce == "robust":
+            e_sq = residuals ** 2
+            XtOmegaX = (X_proj * e_sq[:, np.newaxis]).T @ X_proj
+            cov_full = M_inv @ XtOmegaX @ M_inv
+            if n > k_x_full:
+                cov_full *= n / (n - k_x_full)
+        else:
+            if len(self._cluster_arrs) == 1:
+                from stataflow.estimators._vce_utils import compute_cluster_meat
+                meat, cluster_count = compute_cluster_meat(
+                    X_proj, residuals, self._cluster_arrs[0]
+                )
+                g_adj = cluster_count / (cluster_count - 1) if cluster_count > 1 else 1.0
+                n_adj = (n - 1) / (n - k_eff) if n > k_eff else 1.0
+                cov_full = n_adj * g_adj * M_inv @ meat @ M_inv
+            else:
+                cov_full, cluster_count = self._compute_multiway_cluster_vce(
+                    X_proj, residuals, M_inv, k_eff, n
+                )
+
+        return beta_full, residuals, cov_full, rss_struct, rss_2s_resid, cluster_count
+
     def _fit_gmm2s(
         self,
         X_full: np.ndarray,
@@ -1359,50 +1377,9 @@ class IVAbsorbingOLS:
         # Estimator-specific coefficient and VCE
         extra_stats: dict = {}
         if estimator == "2sls":
-            # Second stage: OLS of y on X_proj
-            XtX_proj = X_proj.T @ X_proj
-            Xty_proj = X_proj.T @ y
-            beta_full = np.linalg.solve(XtX_proj, Xty_proj)
-            residuals = y - X_full @ beta_full
-            rss_struct = float(np.sum(residuals ** 2))
-
-            # Residualized 2SLS projection for F-stat
-            beta_reported_for_f = beta_full[reported_indices]
-            X_proj_reported = X_proj[:, reported_indices]
-            if W.shape[1] > 0:
-                gamma_x = np.linalg.solve(WtW, W.T @ X_proj_reported)
-                X_tilde_proj = X_proj_reported - W @ gamma_x
-            else:
-                X_tilde_proj = X_proj_reported
-            rss_2s_resid = float(np.sum((y_resid - X_tilde_proj @ beta_reported_for_f) ** 2))
-
-            # VCE on full LSDV coefficients
-            M_inv = np.linalg.inv(XtX_proj)
-            if vce == "ols":
-                sigma2 = rss_struct / df_resid if df_resid > 0 else 0.0
-                cov_full = sigma2 * M_inv
-            elif vce == "robust":
-                e_sq = residuals ** 2
-                XtOmegaX = (X_proj * e_sq[:, np.newaxis]).T @ X_proj
-                cov_full = M_inv @ XtOmegaX @ M_inv
-                if n > k_x_full:
-                    cov_full *= n / (n - k_x_full)
-            else:
-                if len(self._cluster_arrs) == 1:
-                    meat = np.zeros((k_x_full, k_x_full))
-                    for g in np.unique(self._cluster_arrs[0]):
-                        mask_g = self._cluster_arrs[0] == g
-                        X_g = X_proj[mask_g]
-                        e_g = residuals[mask_g]
-                        Xe_g = X_g.T @ e_g
-                        meat += np.outer(Xe_g, Xe_g)
-                    g_adj = cluster_count / (cluster_count - 1) if cluster_count > 1 else 1.0
-                    n_adj = (n - 1) / (n - k_eff) if n > k_eff else 1.0
-                    cov_full = n_adj * g_adj * M_inv @ meat @ M_inv
-                else:
-                    cov_full, cluster_count = self._compute_multiway_cluster_vce(
-                        X_proj, residuals, M_inv, k_eff, n
-                    )
+            beta_full, residuals, cov_full, rss_struct, rss_2s_resid, cluster_count = \
+                self._fit_2sls(X_full, Z_full, X_proj, y, y_resid, W, WtW,
+                               reported_indices, vce, n, k_x_full, df_resid, k_eff)
         elif estimator == "gmm2s":
             beta_full, residuals, cov_full, extra_stats = self._fit_gmm2s(
                 X_full, Z_full, y, vce, n, k_x_full, k_x_reported, df_resid

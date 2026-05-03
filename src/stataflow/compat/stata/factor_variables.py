@@ -31,6 +31,8 @@ from typing import List, Tuple, Set, Any
 import numpy as np
 import pandas as pd
 
+from stataflow.estimators._absorb_spec import AbsorbSpec
+
 
 # Regexes for unsupported syntax that must be hard-rejected
 _UNSUPPORTED_PATTERNS = [
@@ -335,14 +337,86 @@ def expand_factor_terms(data: pd.DataFrame, terms: List[str]) -> Tuple[pd.DataFr
     return df, out
 
 
-def parse_absorb(value: str | List[str]) -> List[str]:
+def _parse_slope_term(term: str) -> AbsorbSpec:
+    """Parse a single absorb term that may contain slope syntax.
+
+    Supports:
+    - ``firm_id`` → AbsorbSpec(var="firm_id", slopes=[], has_intercept=True)
+    - ``firm_id##c.time`` → AbsorbSpec(var="firm_id", slopes=["time"], has_intercept=True)
+    - ``firm_id#c.time`` → AbsorbSpec(var="firm_id", slopes=["time"], has_intercept=False)
+    - ``firm_id##c.(x1 x2)`` → AbsorbSpec(var="firm_id", slopes=["x1", "x2"], has_intercept=True)
+    """
+    term = term.strip()
+
+    # Match ##c.(var1 var2) or #c.(var1 var2)
+    m = re.match(r"^(.+?)##c\.\(([^)]+)\)$", term)
+    if m:
+        var = m.group(1).strip()
+        slopes = [s.strip() for s in m.group(2).split()]
+        return AbsorbSpec(var=var, slopes=slopes, has_intercept=True)
+
+    m = re.match(r"^(.+?)#c\.\(([^)]+)\)$", term)
+    if m:
+        var = m.group(1).strip()
+        slopes = [s.strip() for s in m.group(2).split()]
+        return AbsorbSpec(var=var, slopes=slopes, has_intercept=False)
+
+    # Match ##c.var or #c.var
+    m = re.match(r"^(.+?)##c\.(.+)$", term)
+    if m:
+        var = m.group(1).strip()
+        slope = m.group(2).strip()
+        return AbsorbSpec(var=var, slopes=[slope], has_intercept=True)
+
+    m = re.match(r"^(.+?)#c\.(.+)$", term)
+    if m:
+        var = m.group(1).strip()
+        slope = m.group(2).strip()
+        return AbsorbSpec(var=var, slopes=[slope], has_intercept=False)
+
+    # Plain variable (intercept-only)
+    return AbsorbSpec(var=term, slopes=[], has_intercept=True)
+
+
+def _split_absorb_string(value: str) -> List[str]:
+    """Split an absorb string on whitespace, but not inside parentheses.
+
+    This ensures ``firm_id##c.(x1 x2)`` stays as a single term.
+    """
+    terms = []
+    current = []
+    depth = 0
+    for char in value:
+        if char == "(":
+            depth += 1
+            current.append(char)
+        elif char == ")":
+            depth -= 1
+            current.append(char)
+        elif char.isspace() and depth == 0:
+            if current:
+                terms.append("".join(current))
+                current = []
+        else:
+            current.append(char)
+    if current:
+        terms.append("".join(current))
+    return terms
+
+
+def parse_absorb(value: str | List[str]) -> List[AbsorbSpec]:
     """Parse ``absorb`` argument allowing list or space-separated string.
+
+    Also parses slope syntax ``var##c.slope`` and ``var#c.slope``.
 
     Examples
     --------
-    ``parse_absorb("firm year")`` → ``["firm", "year"]``
-    ``parse_absorb(["firm", "year"])`` → ``["firm", "year"]``
+    ``parse_absorb("firm year")`` → ``[AbsorbSpec("firm"), AbsorbSpec("year")]``
+    ``parse_absorb("firm_id##c.time")`` → ``[AbsorbSpec("firm_id", ["time"])]``
     """
     if isinstance(value, str):
-        return value.split()
-    return [str(v) for v in value]
+        raw_terms = _split_absorb_string(value)
+    else:
+        raw_terms = [str(v) for v in value]
+
+    return [_parse_slope_term(t) for t in raw_terms]

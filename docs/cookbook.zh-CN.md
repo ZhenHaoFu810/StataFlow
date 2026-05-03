@@ -85,18 +85,28 @@ print(df.describe())      # 描述统计
 
 ### 2.3 结果如何查看
 
-Stata 的结果直接输出在屏幕上。stataflow 返回一个 **结果对象**，你需要主动打印：
+stataflow 返回一个 **结果对象**，调用 `.display()` 即可输出 Stata 风格回归表：
 
 ```python
 result = regress(df, y="y", x=["x1", "x2"], vce="robust")
 
-# 遍历所有系数
-for c in result.coefficients:
-    print(f"{c.name:12s}  beta={c.beta: .4f}  se={c.std_err:.4f}  t={c.t_stat:.4f}")
+# 一键输出 Stata 风格回归表
+result.display()
 
-# 样本信息
+# 含置信区间
+result.display(show_ci=True)
+
+# 获取字符串（用于日志/保存）
+text = result.summary()
+```
+
+程序化访问：
+
+```python
+for c in result.coefficients:
+    print(f"{c.name:12s}  beta={c.beta:.6f}  se={c.std_err:.6f}  t={c.t_stat:.2f}")
 print(f"观测值: {result.sample.nobs}")
-print(f"R-squared: {result.fit.r2:.4f}")
+print(f"R2: {result.fit.r2:.4f}")
 ```
 
 ---
@@ -192,7 +202,107 @@ reghdfe y x1, absorb(firm_id) keepsingletons
 reghdfe y x1, absorb(firm_id) noconstant
 ```
 
-### 3.4 完整示例：合成数据上的 OLS
+### 3.4 HDFE 双向聚类
+
+```python
+result = reghdfe(
+    df, y="y", x=["x1", "x2"],
+    absorb="firm_id year",
+    vce="cluster", cluster=["state", "year"],
+)
+```
+
+**Stata 对应**：
+```stata
+reghdfe y x1 x2, absorb(firm_id year) vce(cluster state year)
+```
+
+> 双向聚类同样适用于 `ivreghdfe` 和 `ppmlhdfe`。
+
+### 3.5 保存固定效应估计值 (`savefe`)
+
+```python
+result = reghdfe(df, y="y", x=["x1"], absorb="firm_id", savefe=True)
+fe_df = result.fixed_effects  # pd.DataFrame
+```
+
+**Stata 对应**：
+```stata
+reghdfe y x1, absorb(firm_id) savefe
+```
+
+### 3.6 个体斜率吸收（分组特定趋势）
+
+```python
+# 截距 + 斜率：var##c.time
+result = reghdfe(
+    df, y="y", x=["x1"],
+    absorb="firm_id##c.time",
+    vce="cluster", cluster="firm_id",
+)
+
+# 仅斜率（无截距）：var#c.time
+result = reghdfe(
+    df, y="y", x=["x1"],
+    absorb="firm_id#c.time",
+    vce="cluster", cluster="firm_id",
+)
+```
+
+**Stata 对应**：
+```stata
+reghdfe y x1, absorb(firm_id##c.time) vce(cluster firm_id)
+reghdfe y x1, absorb(firm_id#c.time) vce(cluster firm_id)
+```
+
+### 3.7 MAP 迭代吸收（大规模固定效应）
+
+```python
+# 自动切换（FE 级别数 > 5000 时启用 MAP）
+result = reghdfe(df, y="y", x=["x1"], absorb="firm_id year", technique="auto")
+
+# 手动强制启用
+result = reghdfe(df, y="y", x=["x1"], absorb="firm_id year", technique="map")
+```
+
+**Stata 对应**：
+```stata
+reghdfe y x1, absorb(firm_id year) technique(map)
+```
+
+### 3.8 Driscoll-Kraay 面板 HAC 标准误
+
+```python
+result = reghdfe(
+    df, y="y", x=["x1", "x2"],
+    absorb="firm_id",
+    vce="dkraay", timevar="year",
+)
+```
+
+**Stata 对应**：
+```stata
+reghdfe y x1 x2, absorb(firm_id) vce(dkraay year)
+```
+
+> Driscoll-Kraay 需要 `timevar` 参数指定时间变量。带宽自动选择并在 T-1 处截断。
+
+### 3.9 estatsummarize（描述统计）
+
+```python
+from stataflow.postestimation import estat_summarize
+
+result = reghdfe(df, y="y", x=["x1", "x2"], absorb="firm_id")
+summary = estat_summarize(result, data=df, variables=["y", "x1", "x2"], dep_var="y")
+# 返回 dict，每变量含 N, mean, sd, min, max
+```
+
+**Stata 对应**：
+```stata
+estat summarize
+```
+
+### 3.10 完整示例：合成数据上的 OLS
 
 ```python
 import numpy as np
@@ -211,8 +321,7 @@ df = pd.DataFrame({
 
 # OLS + 稳健标准误
 result = regress(df, y="y", x=["x1", "x2"], vce="robust")
-for c in result.coefficients:
-    print(f"{c.name:12s}  beta={c.beta: .4f}  se={c.std_err:.4f}  t={c.t_stat:.4f}")
+result.display()
 ```
 
 ### 3.5 完整示例：双向固定效应
@@ -244,8 +353,7 @@ result = reghdfe(
     cluster="cluster_id",
 )
 
-for c in result.coefficients:
-    print(f"{c.name:12s}  beta={c.beta: .4f}  se={c.std_err:.4f}  t={c.t_stat:.4f}")
+result.display()
 ```
 
 ---
@@ -294,7 +402,63 @@ result = ivreghdfe(
 ivreghdfe y x1 (x2 = z1), absorb(firm_id year) cluster(state)
 ```
 
-### 4.3 完整示例
+### 4.3 IV + HDFE 高级估计方法
+
+```python
+# GMM2S（两步高效 GMM，附带 Hansen J 检验）
+result = ivreghdfe(
+    df, y="y", x_exog=["x1"], x_endog=["x2"],
+    instruments=["z1", "z2"], absorb="firm_id",
+    estimator="gmm2s", vce="robust",
+)
+print(f"Hansen J = {result.hansen_j:.3f}")
+
+# LIML（含 Fuller 调整）
+result = ivreghdfe(
+    df, y="y", x_exog=["x1"], x_endog=["x2"],
+    instruments=["z1", "z2"], absorb="firm_id",
+    estimator="liml", fuller=4, vce="robust",
+)
+
+# LIML k-class（自定义 k 值）
+result = ivreghdfe(
+    df, y="y", x_exog=["x1"], x_endog=["x2"],
+    instruments=["z1", "z2"], absorb="firm_id",
+    estimator="liml", kclass=0.8, vce="robust",
+)
+```
+
+**Stata 对应**：
+```stata
+ivreghdfe y x1 (x2 = z1 z2), absorb(firm_id) gmm2s robust
+ivreghdfe y x1 (x2 = z1 z2), absorb(firm_id) fuller(4) robust
+```
+
+### 4.4 第一阶段诊断与弱工具变量检验
+
+```python
+# 第一阶段诊断
+result = ivreghdfe(
+    df, y="y", x_exog=["x1"], x_endog=["x2"],
+    instruments=["z1", "z2"], absorb="firm_id",
+    first=True, vce="robust",
+)
+first = result.first_stage
+for var, s in first.items():
+    print(f"R2={s['r2']:.4f}, Partial R2={s['partial_r2']:.4f}, F={s['f_stat']:.1f}")
+
+# 弱工具变量检验（任何 IV 估计后自动附加）
+print(f"KP LM = {result.idstat:.3f}")
+print(f"CD Wald F = {result.widstat:.3f}")
+print(f"Stock-Yogo 10% = {result.widstat_cv:.1f}")
+```
+
+**Stata 对应**：
+```stata
+ivreghdfe y x1 (x2 = z1 z2), absorb(firm_id) first robust
+```
+
+### 4.5 完整示例
 
 ```python
 import numpy as np
@@ -321,8 +485,7 @@ result = ivregress_2sls(
     instruments=["z1", "z2"], vce="robust",
 )
 
-for c in result.coefficients:
-    print(f"{c.name:12s}  beta={c.beta: .4f}  se={c.std_err:.4f}  t={c.t_stat:.4f}")
+result.display()
 ```
 
 ---
@@ -361,7 +524,7 @@ result = poisson(df, y="count_y", x=["x1", "x2"], vce="robust")
 result = poisson(df, y="count_y", x=["x1"], noconstant=True)
 ```
 
-**注意**：`offset` 和 `exposure` 在当前版本中尚未支持。
+**注意**：`offset` 和 `exposure` 在 `ppmlhdfe` 中已支持（见下文 5.5），`poisson` wrapper 暂未支持。
 
 ### 5.3 PPML + 高维固定效应 — `ppmlhdfe`
 
@@ -389,7 +552,69 @@ result = ppmlhdfe(
 ppmlhdfe count_y x1 x2, absorb(firm_id year) vce(cluster state)
 ```
 
-### 5.4 完整示例：Logit
+### 5.4 PPML offset / exposure / eform / separation
+
+```python
+# Offset（已取对数）
+result = ppmlhdfe(
+    df, y="count_y", x=["x1", "x2"],
+    absorb="firm_id year", offset="ln_population",
+)
+
+# Exposure（自动取对数）
+result = ppmlhdfe(
+    df, y="count_y", x=["x1", "x2"],
+    absorb="firm_id year", exposure="population",
+)
+
+# eform — 系数取指数（发生率比 IRR）
+result = ppmlhdfe(df, y="count_y", x=["x1"], absorb="firm_id", eform=True)
+
+# separation(fe) — 分离检测
+result = ppmlhdfe(
+    df, y="count_y", x=["x1", "x2"],
+    absorb="firm_id year", separation="fe",
+)
+```
+
+**Stata 对应**：
+```stata
+ppmlhdfe count_y x1 x2, absorb(firm_id year) offset(ln_population)
+ppmlhdfe count_y x1 x2, absorb(firm_id year) exposure(population)
+ppmlhdfe count_y x1, absorb(firm_id) eform
+ppmlhdfe count_y x1 x2, absorb(firm_id year) separation(fe)
+```
+
+### 5.5 PPML 残差类型与信息准则
+
+```python
+from stataflow import PPMLHDFE
+from stataflow.postestimation import estat_ic
+
+model = PPMLHDFE(data=df, y="count_y", x=["x1"], absorb="firm_id")
+result = model.fit()
+
+# 残差类型
+pearson = model.predict(type="pearson")    # Pearson 残差
+deviance = model.predict(type="deviance")  # Deviance 残差
+working = model.predict(type="working")    # Working 残差
+
+# 信息准则
+ic = estat_ic(result)
+print(f"AIC={ic['aic']:.2f}, BIC={ic['bic']:.2f}")
+```
+
+**Stata 对应**：
+```stata
+ppmlhdfe count_y x1, absorb(firm_id)
+predict pearson_res, pearson
+predict deviance_res, deviance
+estat ic
+```
+
+> `estat_ic` 同样适用于 `logit`、`probit`、`poisson` 结果。
+
+### 5.6 完整示例：Logit
 
 ```python
 import numpy as np
@@ -407,8 +632,7 @@ y_binary = (latent > 0).astype(int)
 df = pd.DataFrame({"y_binary": y_binary, "x1": x1, "x2": x2})
 
 result = logit(df, y="y_binary", x=["x1", "x2"], vce="robust")
-for c in result.coefficients:
-    print(f"{c.name:12s}  beta={c.beta: .4f}  se={c.std_err:.4f}  z={c.t_stat:.4f}")
+result.display()
 ```
 
 ---
@@ -431,8 +655,7 @@ result = did_imputation(
     autosample=True,    # 自动样本选择
 )
 
-for c in result.coefficients:
-    print(f"{c.name:15s} beta={c.beta: .4f} se={c.std_err:.4f}")
+result.display()
 ```
 
 **Stata 对应**：
@@ -500,13 +723,12 @@ result = csdid(
     id="unit_id",
     time="year",
     first_treat="first_treat_year",
-    method="reg",           # 仅支持 regression-adjustment
+    method="reg",           # "reg"、"drimp"、"dripw" 均支持
     cluster="state",
 )
 
 # result 已经是 estat_event 的聚合结果
-for c in result.coefficients:
-    print(f"{c.name:15s} beta={c.beta: .4f} se={c.std_err:.4f}")
+result.display()
 ```
 
 **Stata 对应**：
@@ -515,7 +737,47 @@ csdid y, ivar(unit_id) time(year) gvar(first_treat_year) method(drimp)
 csdid_estat event
 ```
 
-**注意**：当前仅支持 `method="reg"`。`drimp`、`dripw` 等方法尚未实现。
+### 6.4 CSDID 聚合类型与 DID 高级功能
+
+```python
+# CSDID 多种聚合
+result = csdid(df, y="y", id="unit_id", time="year",
+               first_treat="first_treat_year", method="reg")
+event_agg = result.estat(aggtype="event")
+simple_agg = result.estat(aggtype="simple")
+group_agg = result.estat(aggtype="group")
+calendar_agg = result.estat(aggtype="calendar")
+
+# did_imputation 含控制变量和预趋势检验
+result = did_imputation(
+    df, y="y", id="unit_id", time="year",
+    first_treat="first_treat_year",
+    controls=["x1", "x2"],
+    unitcontrols=["unit_char"],
+    timecontrols=["gdp_growth"],
+    pretrends=3,                   # 检验前 3 期预趋势
+    cluster="state",
+)
+
+# did_imputation 保存权重与异质性
+result = did_imputation(
+    df, y="y", id="unit_id", time="year",
+    first_treat="first_treat_year",
+    saveweights=True,
+    hetby="industry",
+    cluster="state",
+)
+```
+
+**Stata 对应**：
+```stata
+csdid_estat event
+csdid_estat simple
+csdid_estat group
+csdid_estat calendar
+did_imputation y unit_id year first_treat_year, controls(x1 x2) pretrends(3) cluster(state)
+did_imputation y unit_id year first_treat_year, hetby(industry) cluster(state)
+```
 
 ---
 
@@ -553,7 +815,62 @@ rdrobust vote margin, c(0) covs(z)
 rdrobust vote margin, c(0) h(15) kernel(uniform) vce(hc0)
 ```
 
-### 7.2 读取 RD 结果
+### 7.2 高级 RD 功能
+
+```python
+# 全部 9 种带宽选择器（MSE-optimal 和 CER-optimal）
+result = rdrobust(df, y="vote", x="margin", c=0.0, bwselect="mserd")
+result = rdrobust(df, y="vote", x="margin", c=0.0, bwselect="msetwo")
+result = rdrobust(df, y="vote", x="margin", c=0.0, bwselect="msesum")
+result = rdrobust(df, y="vote", x="margin", c=0.0, bwselect="msecomb1")
+result = rdrobust(df, y="vote", x="margin", c=0.0, bwselect="cerrd")
+result = rdrobust(df, y="vote", x="margin", c=0.0, bwselect="certwo")
+result = rdrobust(df, y="vote", x="margin", c=0.0, bwselect="cersum")
+result = rdrobust(df, y="vote", x="margin", c=0.0, bwselect="cercomb1")
+result = rdrobust(df, y="vote", x="margin", c=0.0, bwselect="cercomb2")
+
+# Fuzzy RD
+result = rdrobust(
+    df, y="vote", x="margin", c=0.0,
+    fuzzy="treatment",          # 处理接收变量
+    bwselect="mserd",
+)
+# 系数报告 Wald ratio 估计量
+
+# 聚类标准误
+result = rdrobust(
+    df, y="vote", x="margin", c=0.0,
+    vce="cluster", cluster="state",
+    bwselect="mserd",
+)
+result = rdrobust(
+    df, y="vote", x="margin", c=0.0,
+    vce="nncluster", cluster="state",
+    bwselect="mserd",
+)
+
+# Mass points 和频数权重
+result = rdrobust(
+    df, y="vote", x="margin", c=0.0,
+    masspoints="adjust", bwcheck=10,
+    weights="pop_weight", bwselect="mserd",
+)
+
+# rdplot — RD 可视化
+from stataflow.compat.stata import rdplot
+plot_result = rdplot(df, y="vote", x="margin", c=0.0, nbins=20, binselect="esmv")
+# plot_result["bins"] / plot_result["fit"] / plot_result["info"]
+```
+
+**Stata 对应**：
+```stata
+rdrobust vote margin, c(0) fuzzy(treatment) bwselect(mserd)
+rdrobust vote margin, c(0) vce(cluster state) bwselect(mserd)
+rdrobust vote margin, c(0) bwselect(mserd) [fw=pop_weight]
+rdplot vote margin, c(0) nbins(20) binselect(esmv)
+```
+
+### 7.3 读取 RD 结果
 
 ```python
 result = rdrobust(df, y="vote", x="margin", c=0.0, bwselect="mserd")
@@ -571,7 +888,7 @@ print(f"左侧有效样本 = {extra['N_h_l']}")
 print(f"右侧有效样本 = {extra['N_h_r']}")
 ```
 
-### 7.3 完整示例
+### 7.4 完整示例
 
 ```python
 import pandas as pd
@@ -722,11 +1039,12 @@ result = reghdfe(df, y="y", x=["x1"], absorb=["firm", "year"])
 result = regress(df, y="y", x=["x1", "x2"])
 
 print(f"R-squared:     {result.fit.r2:.4f}")
-print(f"调整 R-squared: {result.fit.r2_a:.4f}")
-print(f"F 统计量:       {result.fit.f_statistic:.2f}")
+print(f"调整 R-squared: {result.fit.r2_adj:.4f}")
+print(f"F 统计量:       {result.fit.f_stat:.2f}")
 print(f"F p-value:      {result.fit.f_pvalue:.4f}")
 print(f"模型自由度:      {result.fit.df_model:.0f}")
 print(f"残差自由度:      {result.fit.df_resid:.0f}")
+print(f"RMSE:          {result.fit.rmse:.4f}")
 ```
 
 ### Q5: 结果里的 `t_stat` 到底是 t 还是 z？
@@ -737,12 +1055,23 @@ print(f"残差自由度:      {result.fit.df_resid:.0f}")
 
 **A**: stataflow 对未实现的参数采取 **hard-reject** 策略（抛出 `ValueError` 或 `NotImplementedError`），而不是静默忽略。这能防止你得到错误的结果。如果你遇到了不支持的参数，请：
 
-1. 查阅 `docs/command-support-matrix/` 中对应命令的支持矩阵。
+1. 查阅 `command-support-matrix/` 中对应命令的支持矩阵。
 2. 检查是否可以用其他方式实现（例如手动生成虚拟变量）。
 
 ### Q7: 聚类标准误只能有一层吗？
 
-**A**: `regress` 支持双向聚类（`cluster=["state", "year"]`，Cameron-Gelbach-Miller 2011）。其余命令目前仅支持单层聚类。
+**A**: `regress`、`reghdfe`、`ivreghdfe`、`ppmlhdfe` 均支持双向聚类（Cameron-Gelbach-Miller 2011）。Driscoll-Kraay 面板 HAC 标准误可在 `reghdfe` 中通过 `vce="dkraay"` 使用（需指定 `timevar`）。
+
+### Q9: PPML 中如何获取 AIC/BIC？
+
+**A**: 使用 `estat_ic`：
+
+```python
+from stataflow.postestimation import estat_ic
+result = ppmlhdfe(df, y="count_y", x=["x1"], absorb="firm_id")
+ic = estat_ic(result)
+print(f"AIC={ic['aic']:.2f}, BIC={ic['bic']:.2f}")
+```
 
 ### Q8: 如何保存结果到文件？
 
@@ -792,8 +1121,8 @@ coef_df.to_stata("regression_results.dta", write_index=False)
 | 字段 | 说明 |
 |------|------|
 | `result.fit.r2` | R-squared |
-| `result.fit.r2_a` | 调整 R-squared |
-| `result.fit.f_statistic` | F 统计量 |
+| `result.fit.r2_adj` | 调整 R-squared |
+| `result.fit.f_stat` | F 统计量 |
 | `result.fit.f_pvalue` | F 检验 p 值 |
 | `result.fit.df_model` | 模型自由度 |
 | `result.fit.df_resid` | 残差自由度 |
@@ -814,12 +1143,16 @@ coef_df.to_stata("regression_results.dta", write_index=False)
 | `c.ci_high` | 置信区间上限 |
 
 ```python
-# 示例：打印完整的回归表
-print(f"{'Variable':<15} {'Coef.':>10} {'Std.Err.':>10} {'t':>8} {'P>|t|':>8} {'[95% CI]':>20}")
-print("-" * 75)
+# 一键输出 Stata 风格回归表
+result.display()
+
+# 含置信区间
+result.display(show_ci=True)
+
+# 程序化访问
 for c in result.coefficients:
-    print(f"{c.name:<15} {c.beta:>10.4f} {c.std_err:>10.4f} "
-          f"{c.t_stat:>8.2f} {c.p_value:>8.4f} [{c.ci_low:>8.4f}, {c.ci_high:>8.4f}]")
+    print(f"{c.name:<15} {c.beta:>10.6f} {c.std_err:>10.6f} "
+          f"{c.t_stat:>8.2f} {c.p_value:>8.3f}")
 ```
 
 ### 10.5 特殊结果字段
@@ -828,6 +1161,22 @@ for c in result.coefficients:
 
 - **DID / Event Study**: `result._event_horizons` 存储各期效应的时间点。
 - **RD**: `result._rd_extras` 存储带宽、有效样本、tau_cl、tau_bc 等。
+- **reghdfe (savefe=True)**: `result.fixed_effects` 存储固定效应估计值（pd.DataFrame）。
+- **ivreghdfe (first=True)**: `result.first_stage` 存储第一阶段诊断（每个内生变量含 R2、partial R2、Shea R2、F 统计量）。
+- **ivreghdfe (GMM2S)**: `result.hansen_j` 存储 Hansen J 过度识别检验统计量。
+- **ivreghdfe (自动)**: `result.idstat`（KP LM）、`result.widstat`（CD Wald F）、`result.widstat_cv`（Stock-Yogo 临界值）存储弱工具变量检验结果。
+
+### 10.6 postestimation 工具
+
+```python
+from stataflow.postestimation import estat_summarize, estat_ic
+
+# 描述统计（适用所有模型）
+summary = estat_summarize(result, data=df, variables=["y", "x1", "x2"], dep_var="y")
+
+# 信息准则（适用 logit / probit / poisson / ppmlhdfe）
+ic = estat_ic(result)
+```
 
 ---
 
@@ -838,18 +1187,18 @@ for c in result.coefficients:
 | `regress` | `regress()` | Stable |
 | `xtreg, fe` | `xtreg_fe()` | Stable |
 | `areg` | `areg()` | Stable |
-| `reghdfe` | `reghdfe()` | Alpha |
+| `reghdfe` | `reghdfe()` | Beta |
 | `ivregress 2sls` | `ivregress_2sls()` | Stable |
-| `ivreghdfe` | `ivreghdfe()` | Alpha |
+| `ivreghdfe` | `ivreghdfe()` | Beta |
 | `logit` | `logit()` | Stable |
 | `probit` | `probit()` | Stable |
 | `poisson` | `poisson()` | Stable |
-| `ppmlhdfe` | `ppmlhdfe()` | Alpha |
-| `did_imputation` | `did_imputation()` | Alpha |
-| `eventstudyinteract` | `eventstudyinteract()` | Alpha |
-| `csdid` | `csdid()` | Alpha |
-| `rdrobust` | `rdrobust()` | Alpha — Partial |
+| `ppmlhdfe` | `ppmlhdfe()` | Beta |
+| `did_imputation` | `did_imputation()` | Beta |
+| `eventstudyinteract` | `eventstudyinteract()` | Beta |
+| `csdid` | `csdid()` | Beta |
+| `rdrobust` | `rdrobust()` | Beta |
 
 ---
 
-*本文档最后更新于 2026-04-23。有关各命令的详细支持参数和已知限制，请参阅 `docs/command-support-matrix/`。*
+*本文档最后更新于 2026-04-30。有关各命令的详细支持参数和已知限制，请参阅 `command-support-matrix/`。*
