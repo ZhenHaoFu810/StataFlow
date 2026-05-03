@@ -42,6 +42,12 @@ workspace/qwencode-current/review-*.md
 scripts/internal/*.log
 scripts/internal/__pycache__/
 
+# Credentials
+*token*
+*secret*
+*.pem
+*.key
+
 # OS
 .DS_Store
 Thumbs.db

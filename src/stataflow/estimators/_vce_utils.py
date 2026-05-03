@@ -120,3 +120,29 @@ def compute_multiway_cluster_vce(
 
     cov_full = n_adj * g_adj * M_inv @ omega_meat @ M_inv
     return cov_full, G_min
+
+
+def detect_collinear_columns(
+    X: np.ndarray, names: list[str], tol: float = 1e-10,
+) -> tuple[np.ndarray, list[str], list[int]]:
+    """Detect and drop collinear columns via QR decomposition.
+
+    Returns (X_indep, dropped_names, kept_indices).
+    Used by all estimators for pre-OLS collinearity screening (ADR-0004).
+    """
+    if X.shape[1] <= 1:
+        return X, [], list(range(X.shape[1]))
+
+    rank = np.linalg.matrix_rank(X)
+    if rank == X.shape[1]:
+        return X, [], list(range(X.shape[1]))
+
+    R = np.linalg.qr(X, mode='r')
+    independent = []
+    dropped = []
+    for i in range(X.shape[1]):
+        if i < R.shape[0] and abs(R[i, i]) > tol:
+            independent.append(i)
+        else:
+            dropped.append(names[i])
+    return X[:, independent], dropped, independent

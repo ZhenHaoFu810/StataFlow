@@ -31,6 +31,5 @@ result = ivregress_2sls(
     vce="robust",
 )
 
-print("=== ivregress 2sls with robust VCE ===")
-for c in result.coefficients:
-    print(f"{c.name:12s}  beta={c.beta: .4f}  se={c.std_err:.4f}  t={c.t_stat:.4f}")
+print("ivregress 2sls with robust VCE")
+result.display()

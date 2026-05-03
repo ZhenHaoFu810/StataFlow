@@ -20,6 +20,7 @@ def reghdfe(
     keepsingletons: bool = False,
     noconstant: bool = False,
     savefe: bool = False,
+    timevar: Optional[str] = None,
     **kwargs,
 ) -> object:
     """
@@ -30,10 +31,12 @@ def reghdfe(
     Parameters
     ----------
     vce : str
-        Variance estimator: "ols", "robust", or "cluster".
+        Variance estimator: "ols", "robust", "cluster", or "dkraay".
     cluster : str | list[str], optional
         Cluster variable(s) (required when vce="cluster").
         Supports 1-way or 2-way clustering.
+    timevar : str, optional
+        Time variable name (required when vce="dkraay").
     keepsingletons : bool
         If True, do not drop singleton observations (Stata ``keepsingletons``).
     noconstant : bool
@@ -54,7 +57,7 @@ def reghdfe(
         missing=missing,
         drop_singletons=not keepsingletons,
     )
-    return model.fit(vce=vce, cluster=cluster, savefe=savefe)
+    return model.fit(vce=vce, cluster=cluster, savefe=savefe, timevar=timevar)
 
 
 def ppmlhdfe(

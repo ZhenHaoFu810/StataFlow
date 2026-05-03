@@ -209,3 +209,130 @@ class ResultSchema:
     def from_json(cls, json_str: str) -> "ResultSchema":
         """Deserialize from JSON string."""
         return cls.from_dict(json.loads(json_str))
+
+    # ── Display ────────────────────────────────────────────────────────
+
+    def summary(self, width: int = 80, show_ci: bool = False) -> str:
+        """Return a Stata-style regression table as a formatted string.
+
+        Parameters
+        ----------
+        width : int
+            Maximum line width (default 80).
+        show_ci : bool
+            If True, include 95% confidence interval columns (default False).
+        """
+        L = []
+        sep = "-" * width
+
+        # ── Header ──
+        fam = self.model.estimator_family
+        cmd = self.model.command or fam
+        L.append(f"{cmd}")
+        L.append("-" * len(cmd))
+
+        # Model specification line
+        coef_names = [c.name for c in self.coefficients]
+        x_vars = [n for n in coef_names if n != "_cons"]
+        if x_vars:
+            x_str = " + ".join(x_vars)
+            L.append(f"y ~ {x_str}")
+
+        # Sample and VCE line
+        info_parts = [f"N = {self.sample.nobs:,}"]
+        vce_label = self.model.vcetype.upper() if self.model.vcetype != "ols" else "OLS"
+        info_parts.append(f"VCE = {vce_label}")
+        if self.fit.df_a is not None and self.fit.df_a > 0:
+            info_parts.append(f"df_a = {int(self.fit.df_a)}")
+        if self.model.absorb_vars:
+            fe_str = ", ".join(self.model.absorb_vars)
+            info_parts.insert(0, f"FE: {fe_str}")
+        L.append("    ".join(info_parts))
+
+        if self.model.cluster_var:
+            cv = self.model.cluster_var
+            cv_str = cv if isinstance(cv, str) else ", ".join(cv)
+            L.append(f"Cluster: {cv_str}")
+
+        L.append(sep)
+
+        # ── Coefficient table ──
+        if self.coefficients:
+            # Determine column widths from actual data
+            name_w = max(max(len(c.name) for c in self.coefficients), 6)
+            name_w = min(name_w, 18)  # cap very long names
+
+            # Format strings
+            if show_ci:
+                header = (f"{'':>{name_w}}  {'Coef.':>10}  {'Std.Err.':>10}"
+                          f"  {'t':>6}  {'P>|t|':>6}  {'[95% CI]':>20}")
+            else:
+                header = (f"{'':>{name_w}}  {'Coef.':>10}  {'Std.Err.':>10}"
+                          f"  {'t':>6}  {'P>|t|':>6}")
+            L.append(header)
+            L.append("-" * len(header))
+
+            for c in self.coefficients:
+                beta_str = f"{c.beta:>10.6f}"
+                se_str = f"{c.std_err:>10.6f}"
+                t_str = f"{c.t_stat:>6.2f}"
+                p_str = f"{c.p_value:>6.3f}"
+                row = (f"{c.name:>{name_w}}  {beta_str}  {se_str}"
+                       f"  {t_str}  {p_str}")
+                if show_ci:
+                    ci_str = f"[{c.ci_low:.6f}, {c.ci_high:.6f}]"
+                    row += f"  {ci_str:>20}"
+                L.append(row)
+
+        L.append(sep)
+
+        # ── Footer ──
+        fit_stats = []
+        if self.fit.r2 is not None:
+            fit_stats.append(f"R2 = {self.fit.r2:.4f}")
+        if self.fit.r2_adj is not None:
+            fit_stats.append(f"R2-Adj = {self.fit.r2_adj:.4f}")
+        if self.fit.rmse is not None and self.fit.rmse > 0:
+            fit_stats.append(f"RMSE = {self.fit.rmse:.4f}")
+        if fit_stats:
+            L.append("    ".join(fit_stats))
+
+        # F-statistic (OLS, FE, absorbing_ols)
+        if fam in ("ols", "fixed_effects", "absorbing_ols") and self.fit.f_stat is not None:
+            L.append(f"F({int(self.fit.df_model)}, {int(self.fit.df_resid)})"
+                     f" = {self.fit.f_stat:.2f}"
+                     f"    Prob > F = {self.fit.f_pvalue:.4f}")
+
+        # IV-specific: estimator type, Hansen J
+        if fam == "iv":
+            est_label = self.model.command.upper() if self.model.command else "IV"
+            L.append(f"Estimator: {est_label}")
+
+        # GLM-specific: log-likelihood, pseudo-R2, deviance
+        if fam in ("glm", "ppml"):
+            if self.fit.ll is not None:
+                L.append(f"Log-likelihood = {self.fit.ll:.4f}")
+            if self.fit.pseudo_r2 is not None:
+                L.append(f"Pseudo R2 = {self.fit.pseudo_r2:.4f}")
+            if self.fit.deviance is not None:
+                L.append(f"Deviance = {self.fit.deviance:.2f}")
+
+        # RD-specific
+        if fam == "rdrobust":
+            L.append(f"Kernel: {getattr(self.model, 'kernel', 'triangular')}")
+
+        # Warnings
+        if self.diagnostics.warnings:
+            L.append("")
+            L.append("Warnings:")
+            for w in self.diagnostics.warnings:
+                L.append(f"  * {w}")
+
+        return "\n".join(L)
+
+    def display(self, width: int = 80, show_ci: bool = False) -> None:
+        """Print the summary table to stdout."""
+        print(self.summary(width=width, show_ci=show_ci))
+
+    def __repr__(self) -> str:
+        return self.summary()
