@@ -21,6 +21,7 @@ def reghdfe(
     noconstant: bool = False,
     savefe: bool = False,
     timevar: Optional[str] = None,
+    technique: Optional[str] = None,
     **kwargs,
 ) -> object:
     """
@@ -41,6 +42,8 @@ def reghdfe(
         If True, do not drop singleton observations (Stata ``keepsingletons``).
     noconstant : bool
         If True, omit the constant term (Stata ``noconstant``).
+    technique : str, optional
+        Solver technique: "auto", "map", or "lsdv".  Defaults to "auto".
     """
     # Parse Stata-style vce(cluster var) syntax
     if vce is not None and vce.startswith('cluster '):
@@ -61,6 +64,7 @@ def reghdfe(
         add_constant=not noconstant,
         missing=missing,
         drop_singletons=not keepsingletons,
+        technique=technique if technique is not None else "auto",
     )
     return model.fit(vce=vce, cluster=cluster, savefe=savefe, timevar=timevar)
 

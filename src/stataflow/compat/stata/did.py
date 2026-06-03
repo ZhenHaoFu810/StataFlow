@@ -34,6 +34,13 @@ def did_imputation(
     Stata-compatible wrapper for ``did_imputation``.
 
     Maps to :class:`stataflow.estimators.DIDImputation`.
+
+    Parameters
+    ----------
+    cluster : str, optional
+        Cluster variable for cluster-robust standard errors.
+        Defaults to ``id`` (the unit identifier) when not provided,
+        matching Stata's ``did_imputation`` default behavior.
     """
     if kwargs:
         raise ValueError(f"Unsupported arguments: {list(kwargs.keys())}")

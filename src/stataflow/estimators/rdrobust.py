@@ -824,6 +824,9 @@ class RDRobust:
                     T_all = T_all[valid]
                 if C_all is not None:
                     C_all = C_all[valid]
+            # aweight normalization: sum(w) = N after missing drop
+            if fw is not None and fw.sum() > 0:
+                fw = fw / fw.sum() * len(fw)
 
         n_input = len(self.data)
         nobs = len(y)

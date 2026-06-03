@@ -266,4 +266,18 @@ stata/output/phase2/
 
 *报告完成时间: 2026-06-03*
 *总投入: 6 个并行 Agent + 人工验证 + 手动修复*
-*问题总数: 108（已修复 21，待修复 87）*
+### 2026-06-03 — P2 修复（批次 3，5 项）
+
+| # | 问题 | 命令族 | 修复内容 | 验证 |
+|---|------|--------|----------|------|
+| 22 | **DID-008**: did_imputation pretrends 未用 cluster-robust VCE | DID | _fit_twfe_covariates 添加 cluster 参数，VCE 计算使用 compute_cluster_meat | 54 项 DID 测试通过 |
+| 23 | **IV-04**: X/Z 独立共线性检测导致列集合不匹配 | IV | IV2SLS _prepare_data 先检测 X，再对 [X_kept, inst_only] 联合检测，确保 instrument 与 X 共线时被丢弃 | 9 项 IV 测试通过 |
+| 24 | **GLM-03**: wrapper 不返回模型实例 | GLM | logit/probit/poisson wrapper 返回 fitted model 实例（保留 _result），支持 predict/margins | 17 项 GLM + 41 项 factor 测试通过 |
+| 25 | **LINEAR-04**: 三路因子交互被硬拒绝 | Linear | expand_factor_term 支持 3+ 路 ##/# 交互，使用 itertools.combinations + 笛卡尔积生成所有交互列 | 41 项 factor 测试通过 |
+| 26 | **PANEL-09**: MAP predict xbd 遗漏 FE 贡献 | Panel | _fit_map 保存 residuals，predict("xbd") 在 MAP 路径返回 y - residuals 以包含 FE | 49 项 HDFE 测试通过 |
+
+---
+
+*报告完成时间: 2026-06-03*
+*总投入: 6 个并行 Agent + 人工验证 + 手动修复*
+*问题总数: 108（已修复 26，待修复 82）*
