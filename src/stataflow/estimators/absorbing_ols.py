@@ -396,7 +396,13 @@ class AbsorbingOLS:
                     v_prev1 = v_old
             else:
                 # max_iter reached without convergence – warn but continue
-                pass
+                warnings.warn(
+                    f"MAP partial-out did not converge within {max_iter} iterations "
+                    f"(max_diff={max_diff:.2e} > tol={tol:.2e}). "
+                    "Results may be numerically unstable.",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
 
             variables[:, j] = v
 
