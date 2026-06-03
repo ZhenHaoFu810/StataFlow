@@ -1,0 +1,102 @@
+{
+  "case_id": "oos_regress_airfare",
+  "command": "regress",
+  "dataset_key": "airfare",
+  "status": "passed",
+  "field_checks": [
+    {
+      "field": "nobs",
+      "python": 4596,
+      "stata": 4596.0,
+      "passed": true,
+      "message": "nobs: Python=4596.000000000000000, Stata=4596.000000000000000, abs_diff=0.00e+00, rel_diff=0.00e+00, PASS"
+    },
+    {
+      "field": "df_model",
+      "python": 5.0,
+      "stata": 5.0,
+      "passed": true,
+      "message": "df_model: Python=5.000000000000000, Stata=5.000000000000000, abs_diff=0.00e+00, rel_diff=0.00e+00, PASS"
+    },
+    {
+      "field": "df_resid",
+      "python": 4590.0,
+      "stata": 4590.0,
+      "passed": true,
+      "message": "df_resid: Python=4590.000000000000000, Stata=4590.000000000000000, abs_diff=0.00e+00, rel_diff=0.00e+00, PASS"
+    },
+    {
+      "field": "r2",
+      "python": 0.3916699250533183,
+      "stata": 0.39166993,
+      "passed": true,
+      "message": "r2: Python=0.391669925053318, Stata=0.391669930000000, abs_diff=4.95e-09, rel_diff=1.26e-08, PASS"
+    },
+    {
+      "field": "r2_adj",
+      "python": 0.3910072561263611,
+      "stata": 0.39100726,
+      "passed": true,
+      "message": "r2_adj: Python=0.391007256126361, Stata=0.391007260000000, abs_diff=3.87e-09, rel_diff=9.91e-09, PASS"
+    },
+    {
+      "field": "rmse",
+      "python": 0.3405577335850608,
+      "stata": 0.34055773,
+      "passed": true,
+      "message": "rmse: Python=0.340557733585061, Stata=0.340557730000000, abs_diff=3.59e-09, rel_diff=1.05e-08, PASS"
+    },
+    {
+      "field": "f_stat",
+      "python": 591.0491787381382,
+      "stata": 591.04918,
+      "passed": true,
+      "message": "f_stat: Python=591.049178738138153, Stata=591.049179999999978, abs_diff=1.26e-06, rel_diff=2.13e-09, PASS"
+    }
+  ],
+  "coefficient_checks": [
+    {
+      "name": "ldist",
+      "beta_passed": true,
+      "beta_message": "beta[ldist]: Python=0.453888424310670, Stata=0.453888420000000, abs_diff=4.31e-09, rel_diff=9.50e-09, PASS",
+      "se_passed": true,
+      "se_message": "se[ldist]: Python=0.009000853577984, Stata=0.009000850000000, abs_diff=3.58e-09, rel_diff=3.98e-07, PASS"
+    },
+    {
+      "name": "concen",
+      "beta_passed": true,
+      "beta_message": "beta[concen]: Python=0.323895566980006, Stata=0.323895570000000, abs_diff=3.02e-09, rel_diff=9.32e-09, PASS",
+      "se_passed": true,
+      "se_message": "se[concen]: Python=0.030233689864093, Stata=0.030233690000000, abs_diff=1.36e-10, rel_diff=4.50e-09, PASS"
+    },
+    {
+      "name": "y98",
+      "beta_passed": true,
+      "beta_message": "beta[y98]: Python=0.021447940408622, Stata=0.021447940000000, abs_diff=4.09e-10, rel_diff=1.91e-08, PASS",
+      "se_passed": true,
+      "se_message": "se[y98]: Python=0.014210984335429, Stata=0.014210980000000, abs_diff=4.34e-09, rel_diff=3.05e-07, PASS"
+    },
+    {
+      "name": "y99",
+      "beta_passed": true,
+      "beta_message": "beta[y99]: Python=0.037571595679385, Stata=0.037571600000000, abs_diff=4.32e-09, rel_diff=1.15e-07, PASS",
+      "se_passed": true,
+      "se_message": "se[y99]: Python=0.014210312296059, Stata=0.014210310000000, abs_diff=2.30e-09, rel_diff=1.62e-07, PASS"
+    },
+    {
+      "name": "y00",
+      "beta_passed": true,
+      "beta_message": "beta[y00]: Python=0.099472554851588, Stata=0.099472550000000, abs_diff=4.85e-09, rel_diff=4.88e-08, PASS",
+      "se_passed": true,
+      "se_message": "se[y00]: Python=0.014212289270837, Stata=0.014212290000000, abs_diff=7.29e-10, rel_diff=5.13e-08, PASS"
+    },
+    {
+      "name": "_cons",
+      "beta_passed": true,
+      "beta_message": "beta[_cons]: Python=1.818908531109528, Stata=1.818908500000000, abs_diff=3.11e-08, rel_diff=1.71e-08, PASS",
+      "se_passed": true,
+      "se_message": "se[_cons]: Python=0.072561177522084, Stata=0.072561180000000, abs_diff=2.48e-09, rel_diff=3.41e-08, PASS"
+    }
+  ],
+  "notes": ""
+}

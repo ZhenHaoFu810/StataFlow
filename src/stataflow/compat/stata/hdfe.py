@@ -16,11 +16,13 @@ def reghdfe(
     absorb: str | list[str],
     vce: str = "ols",
     cluster: Optional[str | list[str]] = None,
+    aweight: Optional[str] = None,
     missing: str = "drop",
     keepsingletons: bool = False,
     noconstant: bool = False,
     savefe: bool = False,
     timevar: Optional[str] = None,
+    technique: Optional[str] = None,
     **kwargs,
 ) -> object:
     """
@@ -41,12 +43,25 @@ def reghdfe(
         If True, do not drop singleton observations (Stata ``keepsingletons``).
     noconstant : bool
         If True, omit the constant term (Stata ``noconstant``).
+    technique : str, optional
+        Solver technique: "auto", "map", or "lsdv".  Defaults to "auto".
     """
+    # Parse Stata-style vce(cluster var) syntax
+    if vce is not None and vce.startswith('cluster '):
+        cluster = vce.split(' ', 1)[1]
+        vce = 'cluster'
+
     if kwargs:
         raise ValueError(f"Unsupported arguments: {list(kwargs.keys())}")
 
     data_expanded, x_expanded = expand_factor_terms(data, x)
     absorb_vars = parse_absorb(absorb)
+
+    weight_type = None
+    weights = None
+    if aweight is not None:
+        weight_type = "aweight"
+        weights = data[aweight].values
 
     model = AbsorbingOLS(
         data=data_expanded,
@@ -56,6 +71,9 @@ def reghdfe(
         add_constant=not noconstant,
         missing=missing,
         drop_singletons=not keepsingletons,
+        technique=technique if technique is not None else "auto",
+        weights=weights,
+        weight_type=weight_type,
     )
     return model.fit(vce=vce, cluster=cluster, savefe=savefe, timevar=timevar)
 
@@ -76,6 +94,7 @@ def ppmlhdfe(
     tolerance: float = 1e-8,
     eform: bool = False,
     separation: Optional[str] = None,
+    aweight: Optional[str] = None,
     **kwargs,
 ) -> object:
     """
@@ -101,5 +120,6 @@ def ppmlhdfe(
         max_iter=maxiter,
         tol=tolerance,
         separation=separation,
+        weights=aweight,
     )
     return model.fit(vce=vce, cluster=cluster, eform=eform)

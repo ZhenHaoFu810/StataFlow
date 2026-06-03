@@ -34,6 +34,13 @@ def did_imputation(
     Stata-compatible wrapper for ``did_imputation``.
 
     Maps to :class:`stataflow.estimators.DIDImputation`.
+
+    Parameters
+    ----------
+    cluster : str, optional
+        Cluster variable for cluster-robust standard errors.
+        Defaults to ``id`` (the unit identifier) when not provided,
+        matching Stata's ``did_imputation`` default behavior.
     """
     if kwargs:
         raise ValueError(f"Unsupported arguments: {list(kwargs.keys())}")
@@ -77,6 +84,8 @@ def eventstudyinteract(
     omit: Optional[int] = None,
     vce: str = "ols",
     cluster: Optional[str] = None,
+    covariates: Optional[list[str]] = None,
+    aweight: Optional[str] = None,
     **kwargs,
 ) -> object:
     """
@@ -133,6 +142,8 @@ def eventstudyinteract(
         cohort=cohort,
         control_cohort=control_cohort,
         absorb=absorb,
+        covariates=covariates,
+        weights=aweight,
     )
     return model.fit(vce=vce, cluster=cluster)
 
@@ -148,14 +159,49 @@ def csdid(
     vce: Optional[str] = None,
     cluster: Optional[str] = None,
     xvars: Optional[list[str]] = None,
-    aggtype: Optional[str] = None,
+    notyet: bool = False,
+    window: Optional[list[int]] = None,
+    minn: Optional[int] = None,
+    gtcontrol: Optional[bool] = None,
+    longdiff: bool = False,
+    long: bool = False,
+    long2: bool = False,
+    asinr: bool = False,
+    pscoretrim: Optional[float] = None,
+    saverif: Optional[str] = None,
+    wboot: bool = False,
+    rseed: Optional[int] = None,
+    pointwise: bool = False,
     **kwargs,
-) -> object:
+) -> CSDID:
     """
     Stata-compatible wrapper for ``csdid``.
 
     Maps to :class:`stataflow.estimators.CSDID`.
+
+    Returns the fitted :class:`CSDID` model object.  Use ``model.estat()``
+    for post-estimation aggregation (``event``, ``simple``, ``group``,
+    ``calendar``, ``pretrend``).
     """
+    for option, value in (
+        ("window", window),
+        ("minn", minn),
+        ("gtcontrol", gtcontrol),
+        ("longdiff", longdiff),
+        ("long", long),
+        ("long2", long2),
+        ("asinr", asinr),
+        ("pscoretrim", pscoretrim),
+        ("saverif", saverif),
+        ("wboot", wboot),
+        ("rseed", rseed),
+        ("pointwise", pointwise),
+    ):
+        if value is not None and value is not False:
+            raise NotImplementedError(
+                f"{option} is a known Stata csdid option but is not implemented."
+            )
+
     if kwargs:
         raise ValueError(f"Unsupported arguments: {list(kwargs.keys())}")
 
@@ -167,7 +213,5 @@ def csdid(
         first_treat=first_treat,
         xvars=xvars,
     )
-    model.fit(method=method, vce=vce, cluster=cluster)
-    if aggtype is None:
-        aggtype = "event"
-    return model.estat(aggtype=aggtype)
+    model.fit(method=method, vce=vce, cluster=cluster, notyet=notyet)
+    return model

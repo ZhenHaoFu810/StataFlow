@@ -25,6 +25,22 @@ def regress(
 
     Maps to :class:`stataflow.estimators.OLS`.
     """
+    # Parse Stata-style vce(cluster var) syntax
+    if vce is not None and vce.startswith("cluster "):
+        cluster = vce.split(" ", 1)[1]
+        vce = "cluster"
+
+    # Handle known Stata options
+    alpha = 0.05
+    if "level" in kwargs:
+        level = kwargs.pop("level")
+        alpha = 1.0 - level / 100.0
+    for known_unsupported in ("beta", "eform"):
+        if known_unsupported in kwargs:
+            kwargs.pop(known_unsupported)
+            raise NotImplementedError(
+                f"'{known_unsupported}' is not yet supported by the regress wrapper."
+            )
     if kwargs:
         raise ValueError(f"Unsupported arguments: {list(kwargs.keys())}")
 
@@ -45,7 +61,7 @@ def regress(
         weight_type=weight_type,
         missing=missing,
     )
-    return model.fit(vce=vce, cluster=cluster)
+    return model.fit(vce=vce, cluster=cluster, alpha=alpha)
 
 
 def xtreg_fe(
@@ -64,6 +80,20 @@ def xtreg_fe(
 
     Maps to :class:`stataflow.estimators.FixedEffectsOLS`.
     """
+    if vce is not None and vce.startswith("cluster "):
+        cluster = vce.split(" ", 1)[1]
+        vce = "cluster"
+
+    alpha = 0.05
+    if "level" in kwargs:
+        level = kwargs.pop("level")
+        alpha = 1.0 - level / 100.0
+    for known_unsupported in ("beta", "eform"):
+        if known_unsupported in kwargs:
+            kwargs.pop(known_unsupported)
+            raise NotImplementedError(
+                f"'{known_unsupported}' is not yet supported by the xtreg_fe wrapper."
+            )
     if kwargs:
         raise ValueError(f"Unsupported arguments: {list(kwargs.keys())}")
     if isinstance(cluster, list):
@@ -81,7 +111,7 @@ def xtreg_fe(
         fe=fe,
         missing=missing,
     )
-    return model.fit(vce=vce, cluster=cluster)
+    return model.fit(vce=vce, cluster=cluster, alpha=alpha)
 
 
 def areg(
@@ -92,6 +122,8 @@ def areg(
     absorb: str,
     vce: str = "ols",
     cluster: Optional[str | list[str]] = None,
+    aweight: Optional[str] = None,
+    noconstant: bool = False,
     missing: str = "drop",
     **kwargs,
 ) -> object:
@@ -101,6 +133,20 @@ def areg(
     Maps to :class:`stataflow.estimators.AbsorbingOLS` with a single
     absorption variable.
     """
+    if vce is not None and vce.startswith("cluster "):
+        cluster = vce.split(" ", 1)[1]
+        vce = "cluster"
+
+    alpha = 0.05
+    if "level" in kwargs:
+        level = kwargs.pop("level")
+        alpha = 1.0 - level / 100.0
+    for known_unsupported in ("beta", "eform"):
+        if known_unsupported in kwargs:
+            kwargs.pop(known_unsupported)
+            raise NotImplementedError(
+                f"'{known_unsupported}' is not yet supported by the areg wrapper."
+            )
     if kwargs:
         raise ValueError(f"Unsupported arguments: {list(kwargs.keys())}")
     if isinstance(cluster, list):
@@ -114,12 +160,20 @@ def areg(
     if len(absorb_parsed) > 1:
         raise ValueError("areg supports only a single absorb variable")
 
+    weight_type = None
+    weights = None
+    if aweight is not None:
+        weight_type = "aweight"
+        weights = data[aweight].values
+
     model = AbsorbingOLS(
         data=data_expanded,
         y=y,
         x=x_expanded,
         absorb=absorb_parsed[0],
-        add_constant=True,
+        add_constant=not noconstant,
         missing=missing,
+        weights=weights,
+        weight_type=weight_type,
     )
-    return model.fit(vce=vce, cluster=cluster)
+    return model.fit(vce=vce, cluster=cluster, alpha=alpha)

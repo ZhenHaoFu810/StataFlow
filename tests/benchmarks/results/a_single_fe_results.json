@@ -1,0 +1,43 @@
+{
+  "stata": {
+    "coef_x1": 0.5021372,
+    "coef_x2": 0.30089646,
+    "se_x1": 0.0010131,
+    "se_x2": 0.00099901,
+    "r2": 0.57783762,
+    "N": 1000000.0,
+    "rank": 2.0,
+    "df_r": 9999.0,
+    "total_time": 3.5031282901763916,
+    "timer_time": 2.57,
+    "exit_code": 0
+  },
+  "python": {
+    "total_time": 192.0457227230072,
+    "success": false,
+    "error": "Unable to allocate 74.5 GiB for an array with shape (1000000, 10002) and data type float64",
+    "error_type": "MemoryError"
+  },
+  "comparison": {
+    "coef_x1": {
+      "stata": 0.5021372,
+      "python": null,
+      "rel_diff": null
+    },
+    "coef_x2": {
+      "stata": 0.30089646,
+      "python": null,
+      "rel_diff": null
+    },
+    "se_x1": {
+      "stata": 0.0010131,
+      "python": null,
+      "rel_diff": null
+    },
+    "se_x2": {
+      "stata": 0.00099901,
+      "python": null,
+      "rel_diff": null
+    }
+  }
+}

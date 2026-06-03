@@ -1,0 +1,109 @@
+{
+  "case_id": "oos_reghdfe_airfare_factor",
+  "command": "reghdfe",
+  "dataset_key": "airfare",
+  "status": "passed",
+  "field_checks": [
+    {
+      "field": "nobs",
+      "python": 4596,
+      "stata": 4596.0,
+      "passed": true,
+      "message": "nobs: Python=4596.000000000000000, Stata=4596.000000000000000, abs_diff=0.00e+00, rel_diff=0.00e+00, PASS"
+    },
+    {
+      "field": "df_model",
+      "python": 6.0,
+      "stata": 6.0,
+      "passed": true,
+      "message": "df_model: Python=6.000000000000000, Stata=6.000000000000000, abs_diff=0.00e+00, rel_diff=0.00e+00, PASS"
+    },
+    {
+      "field": "df_resid",
+      "python": 3441.0,
+      "stata": 3441.0,
+      "passed": true,
+      "message": "df_resid: Python=3441.000000000000000, Stata=3441.000000000000000, abs_diff=0.00e+00, rel_diff=0.00e+00, PASS"
+    },
+    {
+      "field": "df_a",
+      "python": 1149.0,
+      "stata": 1149.0,
+      "passed": true,
+      "message": "df_a: Python=1149.000000000000000, Stata=1149.000000000000000, abs_diff=0.00e+00, rel_diff=0.00e+00, PASS"
+    },
+    {
+      "field": "r2",
+      "python": 0.9560487552061923,
+      "stata": 0.95604876,
+      "passed": true,
+      "message": "r2: Python=0.956048755206192, Stata=0.956048760000000, abs_diff=4.79e-09, rel_diff=5.01e-09, PASS"
+    },
+    {
+      "field": "r2_adj",
+      "python": 0.9413089305935639,
+      "stata": 0.94130893,
+      "passed": true,
+      "message": "r2_adj: Python=0.941308930593564, Stata=0.941308930000000, abs_diff=5.94e-10, rel_diff=6.31e-10, PASS"
+    },
+    {
+      "field": "rmse",
+      "python": 0.10572329727065019,
+      "stata": 0.1057233,
+      "passed": true,
+      "message": "rmse: Python=0.105723297270650, Stata=0.105723300000000, abs_diff=2.73e-09, rel_diff=2.58e-08, PASS"
+    },
+    {
+      "field": "f_stat",
+      "python": 100.00944707342342,
+      "stata": 100.00945,
+      "passed": true,
+      "message": "f_stat: Python=100.009447073423416, Stata=100.009450000000001, abs_diff=2.93e-06, rel_diff=2.93e-08, PASS"
+    }
+  ],
+  "coefficient_checks": [
+    {
+      "name": "1998.year",
+      "beta_passed": true,
+      "beta_message": "beta[1998.year]: Python=0.164209225704480, Stata=0.164209230000000, abs_diff=4.30e-09, rel_diff=2.62e-08, PASS",
+      "se_passed": true,
+      "se_message": "se[1998.year]: Python=0.045021426041828, Stata=0.045021430000000, abs_diff=3.96e-09, rel_diff=8.79e-08, PASS"
+    },
+    {
+      "name": "1999.year",
+      "beta_passed": true,
+      "beta_message": "beta[1999.year]: Python=0.217282722009883, Stata=0.217282720000000, abs_diff=2.01e-09, rel_diff=9.25e-09, PASS",
+      "se_passed": true,
+      "se_message": "se[1999.year]: Python=0.045021426041830, Stata=0.045021430000000, abs_diff=3.96e-09, rel_diff=8.79e-08, PASS"
+    },
+    {
+      "name": "2000.year",
+      "beta_passed": true,
+      "beta_message": "beta[2000.year]: Python=0.506924368625965, Stata=0.506924370000000, abs_diff=1.37e-09, rel_diff=2.71e-09, PASS",
+      "se_passed": true,
+      "se_message": "se[2000.year]: Python=0.045021426041830, Stata=0.045021430000000, abs_diff=3.96e-09, rel_diff=8.79e-08, PASS"
+    },
+    {
+      "name": "1998.year#c.ldist",
+      "beta_passed": true,
+      "beta_message": "beta[1998.year#c.ldist]: Python=-0.020886816904518, Stata=-0.020886820000000, abs_diff=3.10e-09, rel_diff=1.48e-07, PASS",
+      "se_passed": true,
+      "se_message": "se[1998.year#c.ldist]: Python=0.006690801842700, Stata=0.006690800000000, abs_diff=1.84e-09, rel_diff=2.75e-07, PASS"
+    },
+    {
+      "name": "1999.year#c.ldist",
+      "beta_passed": true,
+      "beta_message": "beta[1999.year#c.ldist]: Python=-0.027207819975875, Stata=-0.027207820000000, abs_diff=2.41e-11, rel_diff=8.87e-10, PASS",
+      "se_passed": true,
+      "se_message": "se[1999.year#c.ldist]: Python=0.006690801842700, Stata=0.006690800000000, abs_diff=1.84e-09, rel_diff=2.75e-07, PASS"
+    },
+    {
+      "name": "2000.year#c.ldist",
+      "beta_passed": true,
+      "beta_message": "beta[2000.year#c.ldist]: Python=-0.061376298196678, Stata=-0.061376300000000, abs_diff=1.80e-09, rel_diff=2.94e-08, PASS",
+      "se_passed": true,
+      "se_message": "se[2000.year#c.ldist]: Python=0.006690801842700, Stata=0.006690800000000, abs_diff=1.84e-09, rel_diff=2.75e-07, PASS"
+    }
+  ],
+  "notes": ""
+}

@@ -1,0 +1,364 @@
+{
+  "family": "glm",
+  "cases": 5,
+  "passed": 5,
+  "blocked": 0,
+  "reports": [
+    {
+      "case_id": "oos_logit_vote1",
+      "command": "logit",
+      "dataset_key": "vote1",
+      "status": "passed",
+      "field_checks": [
+        {
+          "field": "nobs",
+          "python": 173,
+          "stata": 173.0,
+          "passed": true,
+          "message": "nobs: Python=173.000000000000000, Stata=173.000000000000000, abs_diff=0.00e+00, rel_diff=0.00e+00, PASS"
+        },
+        {
+          "field": "df_model",
+          "python": 3.0,
+          "stata": 3.0,
+          "passed": true,
+          "message": "df_model: Python=3.000000000000000, Stata=3.000000000000000, abs_diff=0.00e+00, rel_diff=0.00e+00, PASS"
+        },
+        {
+          "field": "ll",
+          "python": -84.18406586308,
+          "stata": -84.184066,
+          "passed": true,
+          "message": "ll: Python=-84.184065863079994, Stata=-84.184066000000001, abs_diff=1.37e-07, rel_diff=1.63e-09, PASS"
+        },
+        {
+          "field": "chi2",
+          "python": 69.36987224277968,
+          "stata": 69.369872,
+          "passed": true,
+          "message": "chi2: Python=69.369872242779678, Stata=69.369872000000001, abs_diff=2.43e-07, rel_diff=3.50e-09, PASS"
+        }
+      ],
+      "coefficient_checks": [
+        {
+          "name": "lexpendA",
+          "beta_passed": true,
+          "beta_message": "beta[lexpendA]: Python=0.536269915251047, Stata=0.536269920000000, abs_diff=4.75e-09, rel_diff=8.86e-09, PASS",
+          "se_passed": true,
+          "se_message": "se[lexpendA]: Python=0.142528772314895, Stata=0.142528770000000, abs_diff=2.31e-09, rel_diff=1.62e-08, PASS"
+        },
+        {
+          "name": "lexpendB",
+          "beta_passed": true,
+          "beta_message": "beta[lexpendB]: Python=-0.668358037618527, Stata=-0.668358040000000, abs_diff=2.38e-09, rel_diff=3.56e-09, PASS",
+          "se_passed": true,
+          "se_message": "se[lexpendB]: Python=0.153730878098028, Stata=0.153730880000000, abs_diff=1.90e-09, rel_diff=1.24e-08, PASS"
+        },
+        {
+          "name": "prtystrA",
+          "beta_passed": true,
+          "beta_message": "beta[prtystrA]: Python=-0.168041164524337, Stata=-0.168041160000000, abs_diff=4.52e-09, rel_diff=2.69e-08, PASS",
+          "se_passed": true,
+          "se_message": "se[prtystrA]: Python=0.028209048180132, Stata=0.028209050000000, abs_diff=1.82e-09, rel_diff=6.45e-08, PASS"
+        },
+        {
+          "name": "_cons",
+          "beta_passed": true,
+          "beta_message": "beta[_cons]: Python=9.367900434180813, Stata=9.367900400000000, abs_diff=3.42e-08, rel_diff=3.65e-09, PASS",
+          "se_passed": true,
+          "se_message": "se[_cons]: Python=1.708407240074310, Stata=1.708407200000000, abs_diff=4.01e-08, rel_diff=2.35e-08, PASS"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "oos_probit_vote1",
+      "command": "probit",
+      "dataset_key": "vote1",
+      "status": "passed",
+      "field_checks": [
+        {
+          "field": "nobs",
+          "python": 173,
+          "stata": 173.0,
+          "passed": true,
+          "message": "nobs: Python=173.000000000000000, Stata=173.000000000000000, abs_diff=0.00e+00, rel_diff=0.00e+00, PASS"
+        },
+        {
+          "field": "df_model",
+          "python": 3.0,
+          "stata": 3.0,
+          "passed": true,
+          "message": "df_model: Python=3.000000000000000, Stata=3.000000000000000, abs_diff=0.00e+00, rel_diff=0.00e+00, PASS"
+        },
+        {
+          "field": "ll",
+          "python": -84.35247985346872,
+          "stata": -84.35248,
+          "passed": true,
+          "message": "ll: Python=-84.352479853468722, Stata=-84.352480000000000, abs_diff=1.47e-07, rel_diff=1.74e-09, PASS"
+        },
+        {
+          "field": "chi2",
+          "python": 69.03304426200222,
+          "stata": 69.033044,
+          "passed": true,
+          "message": "chi2: Python=69.033044262002221, Stata=69.033044000000004, abs_diff=2.62e-07, rel_diff=3.80e-09, PASS"
+        }
+      ],
+      "coefficient_checks": [
+        {
+          "name": "lexpendA",
+          "beta_passed": true,
+          "beta_message": "beta[lexpendA]: Python=0.319235233803722, Stata=0.319235230000000, abs_diff=3.80e-09, rel_diff=1.19e-08, PASS",
+          "se_passed": true,
+          "se_message": "se[lexpendA]: Python=0.081009668400135, Stata=0.081009670000000, abs_diff=1.60e-09, rel_diff=1.97e-08, PASS"
+        },
+        {
+          "name": "lexpendB",
+          "beta_passed": true,
+          "beta_message": "beta[lexpendB]: Python=-0.389035878781755, Stata=-0.389035880000000, abs_diff=1.22e-09, rel_diff=3.13e-09, PASS",
+          "se_passed": true,
+          "se_message": "se[lexpendB]: Python=0.084934881585979, Stata=0.084934880000000, abs_diff=1.59e-09, rel_diff=1.87e-08, PASS"
+        },
+        {
+          "name": "prtystrA",
+          "beta_passed": true,
+          "beta_message": "beta[prtystrA]: Python=-0.096438712080354, Stata=-0.096438710000000, abs_diff=2.08e-09, rel_diff=2.16e-08, PASS",
+          "se_passed": true,
+          "se_message": "se[prtystrA]: Python=0.014864152943165, Stata=0.014864150000000, abs_diff=2.94e-09, rel_diff=1.98e-07, PASS"
+        },
+        {
+          "name": "_cons",
+          "beta_passed": true,
+          "beta_message": "beta[_cons]: Python=5.350451787983205, Stata=5.350451800000000, abs_diff=1.20e-08, rel_diff=2.25e-09, PASS",
+          "se_passed": true,
+          "se_message": "se[_cons]: Python=0.903946777305808, Stata=0.903946770000000, abs_diff=7.31e-09, rel_diff=8.08e-09, PASS"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "oos_poisson_fertil1",
+      "command": "poisson",
+      "dataset_key": "fertil1",
+      "status": "passed",
+      "field_checks": [
+        {
+          "field": "nobs",
+          "python": 1129,
+          "stata": 1129.0,
+          "passed": true,
+          "message": "nobs: Python=1129.000000000000000, Stata=1129.000000000000000, abs_diff=0.00e+00, rel_diff=0.00e+00, PASS"
+        },
+        {
+          "field": "df_model",
+          "python": 4.0,
+          "stata": 4.0,
+          "passed": true,
+          "message": "df_model: Python=4.000000000000000, Stata=4.000000000000000, abs_diff=0.00e+00, rel_diff=0.00e+00, PASS"
+        },
+        {
+          "field": "ll",
+          "python": -2094.1819631741146,
+          "stata": -2094.182,
+          "passed": true,
+          "message": "ll: Python=-2094.181963174114571, Stata=-2094.181999999999789, abs_diff=3.68e-05, rel_diff=1.76e-08, PASS"
+        },
+        {
+          "field": "chi2",
+          "python": 98.89093549819154,
+          "stata": 98.890935,
+          "passed": true,
+          "message": "chi2: Python=98.890935498191538, Stata=98.890934999999999, abs_diff=4.98e-07, rel_diff=5.04e-09, PASS"
+        }
+      ],
+      "coefficient_checks": [
+        {
+          "name": "educ",
+          "beta_passed": true,
+          "beta_message": "beta[educ]: Python=-0.047266648757980, Stata=-0.047266650000000, abs_diff=1.24e-09, rel_diff=2.63e-08, PASS",
+          "se_passed": true,
+          "se_message": "se[educ]: Python=0.006844432320430, Stata=0.006844430000000, abs_diff=2.32e-09, rel_diff=3.39e-07, PASS"
+        },
+        {
+          "name": "age",
+          "beta_passed": true,
+          "beta_message": "beta[age]: Python=0.210762049988083, Stata=0.210762050000000, abs_diff=1.19e-11, rel_diff=5.65e-11, PASS",
+          "se_passed": true,
+          "se_message": "se[age]: Python=0.054419303451608, Stata=0.054419300000000, abs_diff=3.45e-09, rel_diff=6.34e-08, PASS"
+        },
+        {
+          "name": "agesq",
+          "beta_passed": true,
+          "beta_message": "beta[agesq]: Python=-0.002280398079173, Stata=-0.002280400000000, abs_diff=1.92e-09, rel_diff=8.42e-07, PASS",
+          "se_passed": true,
+          "se_message": "se[agesq]: Python=0.000613887461214, Stata=0.000613890000000, abs_diff=2.54e-09, rel_diff=4.14e-06, PASS"
+        },
+        {
+          "name": "black",
+          "beta_passed": true,
+          "beta_message": "beta[black]: Python=0.278348722423084, Stata=0.278348880000000, abs_diff=1.58e-07, rel_diff=5.66e-07, PASS",
+          "se_passed": true,
+          "se_message": "se[black]: Python=0.057665317308764, Stata=0.057665310000000, abs_diff=7.31e-09, rel_diff=1.27e-07, PASS"
+        },
+        {
+          "name": "_cons",
+          "beta_passed": true,
+          "beta_message": "beta[_cons]: Python=-3.205750564613820, Stata=-3.205750500000000, abs_diff=6.46e-08, rel_diff=2.02e-08, PASS",
+          "se_passed": true,
+          "se_message": "se[_cons]: Python=1.198051401426197, Stata=1.198051400000000, abs_diff=1.43e-09, rel_diff=1.19e-09, PASS"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "oos_ppmlhdfe_fertil1",
+      "command": "ppmlhdfe",
+      "dataset_key": "fertil1",
+      "status": "passed",
+      "field_checks": [
+        {
+          "field": "nobs",
+          "python": 1129,
+          "stata": 1129.0,
+          "passed": true,
+          "message": "nobs: Python=1129.000000000000000, Stata=1129.000000000000000, abs_diff=0.00e+00, rel_diff=0.00e+00, PASS"
+        },
+        {
+          "field": "df_model",
+          "python": 4.0,
+          "stata": 4.0,
+          "passed": true,
+          "message": "df_model: Python=4.000000000000000, Stata=4.000000000000000, abs_diff=0.00e+00, rel_diff=0.00e+00, PASS"
+        },
+        {
+          "field": "df_a",
+          "python": 7.0,
+          "stata": 7.0,
+          "passed": true,
+          "message": "df_a: Python=7.000000000000000, Stata=7.000000000000000, abs_diff=0.00e+00, rel_diff=0.00e+00, PASS"
+        },
+        {
+          "field": "ll",
+          "python": -2077.4189793295486,
+          "stata": -2077.419,
+          "passed": true,
+          "message": "ll: Python=-2077.418979329548620, Stata=-2077.418999999999869, abs_diff=2.07e-05, rel_diff=9.95e-09, PASS"
+        }
+      ],
+      "coefficient_checks": [
+        {
+          "name": "educ",
+          "beta_passed": true,
+          "beta_message": "beta[educ]: Python=-0.042561765373920, Stata=-0.042561770000000, abs_diff=4.63e-09, rel_diff=1.09e-07, PASS",
+          "se_passed": true,
+          "se_message": "se[educ]: Python=0.007626054466114, Stata=0.007626050000000, abs_diff=4.47e-09, rel_diff=5.86e-07, PASS"
+        },
+        {
+          "name": "age",
+          "beta_passed": true,
+          "beta_message": "beta[age]: Python=0.203614920506999, Stata=0.203614920000000, abs_diff=5.07e-10, rel_diff=2.49e-09, PASS",
+          "se_passed": true,
+          "se_message": "se[age]: Python=0.052474079137596, Stata=0.052474080000000, abs_diff=8.62e-10, rel_diff=1.64e-08, PASS"
+        },
+        {
+          "name": "agesq",
+          "beta_passed": true,
+          "beta_message": "beta[agesq]: Python=-0.002217792192808, Stata=-0.002217790000000, abs_diff=2.19e-09, rel_diff=9.89e-07, PASS",
+          "se_passed": true,
+          "se_message": "se[agesq]: Python=0.000593487236773, Stata=0.000593490000000, abs_diff=2.76e-09, rel_diff=4.66e-06, PASS"
+        },
+        {
+          "name": "black",
+          "beta_passed": true,
+          "beta_message": "beta[black]: Python=0.322615168069497, Stata=0.322615170000000, abs_diff=1.93e-09, rel_diff=5.98e-09, PASS",
+          "se_passed": true,
+          "se_message": "se[black]: Python=0.058144950578971, Stata=0.058144950000000, abs_diff=5.79e-10, rel_diff=9.96e-09, PASS"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "oos_logit_smoke_factor",
+      "command": "logit",
+      "dataset_key": "smoke",
+      "status": "passed",
+      "field_checks": [
+        {
+          "field": "nobs",
+          "python": 807,
+          "stata": 807.0,
+          "passed": true,
+          "message": "nobs: Python=807.000000000000000, Stata=807.000000000000000, abs_diff=0.00e+00, rel_diff=0.00e+00, PASS"
+        },
+        {
+          "field": "df_model",
+          "python": 5.0,
+          "stata": 5.0,
+          "passed": true,
+          "message": "df_model: Python=5.000000000000000, Stata=5.000000000000000, abs_diff=0.00e+00, rel_diff=0.00e+00, PASS"
+        },
+        {
+          "field": "ll",
+          "python": -524.4182143538933,
+          "stata": -524.41821,
+          "passed": true,
+          "message": "ll: Python=-524.418214353893291, Stata=-524.418210000000045, abs_diff=4.35e-06, rel_diff=8.30e-09, PASS"
+        },
+        {
+          "field": "chi2",
+          "python": 26.174661502763,
+          "stata": 26.174662,
+          "passed": true,
+          "message": "chi2: Python=26.174661502763001, Stata=26.174662000000001, abs_diff=4.97e-07, rel_diff=1.90e-08, PASS"
+        }
+      ],
+      "coefficient_checks": [
+        {
+          "name": "educ",
+          "beta_passed": true,
+          "beta_message": "beta[educ]: Python=-0.111568392231210, Stata=-0.111568390000000, abs_diff=2.23e-09, rel_diff=2.00e-08, PASS",
+          "se_passed": true,
+          "se_message": "se[educ]: Python=0.026696600093348, Stata=0.026696600000000, abs_diff=9.33e-11, rel_diff=3.50e-09, PASS"
+        },
+        {
+          "name": "age",
+          "beta_passed": true,
+          "beta_message": "beta[age]: Python=-0.015739576703596, Stata=-0.015739580000000, abs_diff=3.30e-09, rel_diff=2.09e-07, PASS",
+          "se_passed": true,
+          "se_message": "se[age]: Python=0.004485591287349, Stata=0.004485590000000, abs_diff=1.29e-09, rel_diff=2.87e-07, PASS"
+        },
+        {
+          "name": "1.white",
+          "beta_passed": true,
+          "beta_message": "beta[1.white]: Python=-0.148639807611337, Stata=-0.148639810000000, abs_diff=2.39e-09, rel_diff=1.61e-08, PASS",
+          "se_passed": true,
+          "se_message": "se[1.white]: Python=0.566279708124435, Stata=0.566279710000000, abs_diff=1.88e-09, rel_diff=3.31e-09, PASS"
+        },
+        {
+          "name": "income",
+          "beta_passed": true,
+          "beta_message": "beta[income]: Python=0.000002038926739, Stata=0.000002039000000, abs_diff=7.33e-11, rel_diff=3.59e-05, PASS",
+          "se_passed": true,
+          "se_message": "se[income]: Python=0.000025299454632, Stata=0.000025300000000, abs_diff=5.45e-10, rel_diff=2.16e-05, PASS"
+        },
+        {
+          "name": "1.white#c.income",
+          "beta_passed": true,
+          "beta_message": "beta[1.white#c.income]: Python=0.000008380639361, Stata=0.000008381000000, abs_diff=3.61e-10, rel_diff=4.30e-05, PASS",
+          "se_passed": true,
+          "se_message": "se[1.white#c.income]: Python=0.000026569293959, Stata=0.000026570000000, abs_diff=7.06e-10, rel_diff=2.66e-05, PASS"
+        },
+        {
+          "name": "_cons",
+          "beta_passed": true,
+          "beta_message": "beta[_cons]: Python=1.500573541434802, Stata=1.500573500000000, abs_diff=4.14e-08, rel_diff=2.76e-08, PASS",
+          "se_passed": true,
+          "se_message": "se[_cons]: Python=0.655993609199568, Stata=0.655993610000000, abs_diff=8.00e-10, rel_diff=1.22e-09, PASS"
+        }
+      ],
+      "notes": ""
+    }
+  ]
+}

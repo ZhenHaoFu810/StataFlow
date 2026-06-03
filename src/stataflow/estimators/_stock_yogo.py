@@ -164,7 +164,12 @@ def stock_yogo_critical_values(
     k2 : int
         Number of excluded instruments (L1).
     fuller : float
-        Fuller parameter (only affects LIML; not yet implemented).
+        Fuller parameter (only affects LIML). When ``fuller > 0`` with
+        ``model="liml"``, the standard LIML critical values are not
+        applicable; Fuller-adjusted LIML uses distinct "relative bias"
+        and "maximum bias" tables (Stock-Yogo 2005, Tables 5.6–5.9).
+        Those tables are not yet hard-coded, so this function returns
+        NaN in that case to avoid misleading inference.
 
     Returns
     -------
@@ -176,6 +181,12 @@ def stock_yogo_critical_values(
 
     nendog = int(nendog)
     k2 = int(k2)
+
+    # Fuller-adjusted LIML uses different Stock-Yogo tables (relative bias
+    # and maximum bias) that are not yet implemented. Return NaN to avoid
+    # returning standard LIML values which would mislead weak-IV diagnosis.
+    if model == "liml" and fuller > 0:
+        return {"10%": np.nan, "15%": np.nan, "20%": np.nan, "25%": np.nan}
 
     # When exactly identified (k2 == nendog), 2SLS uses LIML critical values
     use_liml = (model == "2sls" and k2 == nendog)
