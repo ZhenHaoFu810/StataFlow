@@ -122,6 +122,13 @@ def test_areg_level():
         assert np.isclose(c.ci_high, d.ci_high, rtol=1e-10)
 
 
+def test_areg_noconstant():
+    df = _make_fe_data()
+    res = areg(df, y="y", x=["x1"], absorb="id", noconstant=True)
+    names = [c.name for c in res.coefficients]
+    assert "_cons" not in names
+
+
 def test_areg_unsupported_kwargs():
     df = _make_fe_data()
     with pytest.raises(ValueError, match="Unsupported arguments"):

@@ -245,6 +245,15 @@ stata/output/phase2/
 
 ---
 
+### 2026-06-03 — P2 修复（DID-006 + DID-007）
+
+| # | 问题 | 命令族 | 修复内容 | 验证 |
+|---|------|--------|----------|------|
+| 19 | **DID-006**: CSDID `cluster_var` 始终为 `None` | DID | `_fit_reg`/`_fit_dr` 保存实际 cluster 列名到 `self._cluster_var`，`_finalize_fit` 传入 `ResultSchema` | 54 项 DID 测试通过 |
+| 20 | **DID-007**: CSDID `df_resid` 使用 `n_units` 而非 cluster 实际层级数 | DID | `_n_clust` 从 `df[cluster_col].nunique()` 计算，而非固定 `n_units` | 54 项 DID 测试通过 |
+
+---
+
 *报告完成时间: 2026-06-03*
 *总投入: 6 个并行 Agent + 人工验证 + 手动修复*
-*问题总数: 108（已修复 18，待修复 90）*
+*问题总数: 108（已修复 20，待修复 88）*

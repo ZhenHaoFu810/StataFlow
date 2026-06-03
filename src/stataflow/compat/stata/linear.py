@@ -122,6 +122,7 @@ def areg(
     absorb: str,
     vce: str = "ols",
     cluster: Optional[str | list[str]] = None,
+    noconstant: bool = False,
     missing: str = "drop",
     **kwargs,
 ) -> object:
@@ -163,7 +164,7 @@ def areg(
         y=y,
         x=x_expanded,
         absorb=absorb_parsed[0],
-        add_constant=True,
+        add_constant=not noconstant,
         missing=missing,
     )
     return model.fit(vce=vce, cluster=cluster, alpha=alpha)
