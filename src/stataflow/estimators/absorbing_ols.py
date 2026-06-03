@@ -1091,6 +1091,7 @@ class AbsorbingOLS:
         self._design_matrix = X_ols
         self._dep_var = y_partial
         self._beta_full = beta_full
+        self._map_residuals = residuals
         self._cov_full = cov_slopes
         self._T = np.eye(report_dim)
         self._x_indices_in_full = list(range(int(self.add_constant), int(self.add_constant) + k_x))
@@ -1580,6 +1581,10 @@ class AbsorbingOLS:
         xbd = self._design_matrix @ self._beta_full
 
         if type == "xbd":
+            # MAP path: _design_matrix does not contain FE dummies,
+            # so xbd must be reconstructed from y - residuals (PANEL-09).
+            if hasattr(self, "_map_residuals") and self._map_residuals is not None:
+                return self._dep_var - self._map_residuals
             return xbd
         if type == "residuals":
             return self._dep_var - xbd
