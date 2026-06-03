@@ -111,9 +111,17 @@ def compute_multiway_cluster_vce(
         meats.append(meat)
         Gs.append(G)
 
-    interaction = np.array([
-        f"{a}__{b}" for a, b in zip(cluster_arrs[0], cluster_arrs[1])
-    ])
+    # Safe interaction encoding using integer labels to avoid separator
+    # collision (e.g. cluster values that naturally contain "__").
+    seen = {}
+    interaction = np.empty(len(cluster_arrs[0]), dtype=int)
+    idx = 0
+    for i, (a, b) in enumerate(zip(cluster_arrs[0], cluster_arrs[1])):
+        key = (a, b)
+        if key not in seen:
+            seen[key] = idx
+            idx += 1
+        interaction[i] = seen[key]
     meat_12, G_12 = compute_cluster_meat(X, residuals, interaction)
 
     omega_meat = meats[0] + meats[1] - meat_12

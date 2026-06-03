@@ -39,3 +39,41 @@ def test_fix_psd_reghdfe_without_constant_does_not_treat_last_slope_as_constant(
     eigvals = np.linalg.eigvalsh(fixed)
     assert np.min(eigvals) >= -1e-12
     assert not np.allclose(fixed[:2, :2], mat[:2, :2])
+
+
+def test_multiway_cluster_interaction_avoids_separator_collision():
+    """2-way cluster interaction must not merge distinct pairs when values contain '__'."""
+    from stataflow.estimators._vce_utils import compute_cluster_meat
+
+    rng = np.random.default_rng(42)
+    n = 100
+    k = 3
+    X = rng.normal(size=(n, k))
+    residuals = rng.normal(size=n)
+
+    # cluster1 has 'a__b', cluster2 has 'c'
+    # Another row has 'a' in cluster1 and 'b__c' in cluster2
+    # Old string-based interaction would produce 'a__b__c' for both
+    c1 = np.array(['a__b'] * 50 + ['a'] * 50)
+    c2 = np.array(['c'] * 50 + ['b__c'] * 50)
+
+    # Build interaction the same way compute_multiway_cluster_vce does
+    seen = {}
+    interaction = np.empty(len(c1), dtype=int)
+    idx = 0
+    for i, (a, b) in enumerate(zip(c1, c2)):
+        key = (a, b)
+        if key not in seen:
+            seen[key] = idx
+            idx += 1
+        interaction[i] = seen[key]
+
+    meat, G = compute_cluster_meat(X, residuals, interaction)
+    # There are exactly 2 distinct pairs: ('a__b','c') and ('a','b__c')
+    assert G == 2, f"Expected 2 interaction clusters, got {G}"
+
+    # Old string approach would have produced 'a__b__c' for both pairs
+    old_interaction = np.array([f"{a}__{b}" for a, b in zip(c1, c2)])
+    old_meat, old_G = compute_cluster_meat(X, residuals, old_interaction)
+    # This demonstrates the bug: old approach sees only 1 cluster
+    assert old_G == 1, f"Old approach should show 1 merged cluster, got {old_G}"
