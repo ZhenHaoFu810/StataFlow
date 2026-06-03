@@ -291,3 +291,68 @@ Phase A 仅支持 1-2 个**纯分类**吸收变量（无 slopes、无 individual
 2. **Singleton Drop**：真实数据中 singleton 的迭代剔除可能影响样本量和 cluster 数量。建议先在 synthetic 样例中锁定行为，再在 real-data 中验证。
 3. **常数项**：`reghdfe` v5+ 默认在输出表中加 `_cons`，但系数向量中的常数实际上由 FE 的平均值恢复而来。Python 实现需要明确是否走同样的恢复路径。**已确认：复用 `AbsorbingOLS` 的 `T` 矩阵变换，扩展为多组 FE 未加权均值。**
 4. **R2 口径**：`reghdfe` 提供四种 R2（overall/within × standard/adjusted），与 `areg` 和 `xtreg` 的口径不完全一致，需在研究档案中明确记录选取的口径。**Phase A 以 overall R2 / Adjusted R2 为主对齐字段。**
+
+---
+
+## Wave 7 研究收束：多向聚类 VCE
+
+### 1. Cameron-Gelbach-Miller 包含-排除原理
+
+`reghdfe` 的 `vce(cluster var1 var2)` 使用 Cameron-Gelbach-Miller (2011) 的包含-排除（inclusion-exclusion）公式。对 Q 个聚类维度：
+
+```
+Ω = Σ_{q=1..Q} (-1)^(q+1) * Σ_{combinations of size q} M_q
+```
+
+其中 `M_q` 是按该 q-way 组合聚类的 meat 矩阵。
+
+**2-way 特例（最常用）：**
+```
+Ω = M_1 + M_2 - M_12
+```
+- `M_1`：按 `var1` 聚类的 meat
+- `M_2`：按 `var2` 聚类的 meat
+- `M_12`：按 `var1` × `var2` 交叉分类聚类的 meat
+
+### 2. Meat 矩阵计算
+
+对任意聚类因子 `F`：
+1. 计算逐观测 score：`s_i = w_i * e_i * X_i`（`w` 为权重，`e` 为残差，`X` 为设计矩阵行）
+2. 按 cluster 求和：`S_g = Σ_{i∈g} s_i`
+3. Meat = `Σ_g S_g' * S_g`
+
+### 3. 小样本修正
+
+`reghdfe` 对多向聚类的修正为：
+```
+dof_adj = (N - 1) / (N - nested_adj - df_m - df_a) * G / (G - 1)
+```
+其中 `G` 对每一层聚类分别计算。注意：多向聚类时 `G` 随组合变化（`G_1`, `G_2`, `G_12`）。
+
+### 4. PSD Fix
+
+多向聚类 VCE 可能非正定（尤其 cluster 数少时）。`reghdfe` 的 `reghdfe_fix_psd()`：
+1. 对 VCE 做特征分解
+2. 将负特征值替换为 0
+3. 重构矩阵
+
+**Python 实现路径**：扩展现有 `AbsorbingOLS.fit()` 中的 `vce="cluster"` 分支，接受 `cluster=[var1, var2]` 列表，按上述公式计算 `M_1`, `M_2`, `M_12`。
+
+### 5. `savefe` 实现逻辑
+
+`savefe` 在回归完成后恢复 FE 系数（alphas）：
+1. 计算 `d = y - xb - resid`（总 FE 贡献）
+2. 对 LSDV 框架：直接从 LSDV 全参数 `γ` 中提取 FE dummy 系数，无需迭代恢复
+3. 返回每个 absorb 变量各水平的 alpha 估计值
+
+Python 实现路径：
+- 在 `AbsorbingOLS` 收敛/拟合后，从 `_beta_full` 中提取 dummy 系数段
+- 按原始数据行映射回各 absorb 变量的水平值
+- 返回 `pd.DataFrame` 或字典，结构对齐 Stata `reghdfe, savefe` 生成的变量
+
+## Wave 7 研究收束：`residuals()` 命令选项
+
+`reghdfe` 支持 `residuals(newvar)` 保存残差。在 LSDV 框架下：
+- `residuals` = `y - xb - Dα`（含 FE 的完整残差）
+- 即 `y - xbd`
+- 已可通过 `predict(type="residuals")` 获取；Wave 7 只需在 `compat.stata.reghdfe` 中暴露 `residuals=` 参数并调用 `predict`

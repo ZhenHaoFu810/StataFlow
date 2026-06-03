@@ -112,7 +112,7 @@ When completing a task, update `workspace/current-task/REPORT.md` with: modified
 Every new command requires:
 - **Synthetic/controlled cases** (formula, degrees of freedom, sample screening, edge cases)
 - **Real public dataset cases** (at least one)
-- **Field-level comparison** with relative tolerance `< 1e-6` for: coefficients, standard errors, t-statistics, R-squared, RMSE, F-statistic, degrees of freedom
+- **Field-level comparison** with relative tolerance `< 1e-6` for: coefficients, standard errors, t-statistics, R-squared, RMSE, F-statistic, degrees of freedom. Exceptions governed by ADR-0003 (LSDV _cons SE under multi-way cluster) and any subsequent ADRs.
 
 Use `tests/golden/test_utils.py` (`parse_stata_log`, `tolerance_close`) as the standard comparison toolkit.
 

@@ -1,89 +1,44 @@
-# Open-Source Export Manifest
+# Open-Source Export Manifest — v2.0.0
 #
-# This manifest drives scripts/release/export_open_source.ps1.
-# Principle: StataFlow (main repo) is the sole maintenance source.
-# StataFlow_open_source is a reproducible export target.
-#
-# Default posture for new files in non-whitelisted directories: CLOSED.
+# Minimal export: core source, examples, user docs, validation evidence.
+# No tests, research data, development docs, or Stata artifacts.
 # ---------------------------------------------------------------------------
 
 meta:
   source_repo: "StataFlow"
   target_repo: "StataFlow_open_source"
-  manifest_version: "1.2.0"
+  manifest_version: "2.0.0"
 
-# ---------------------------------------------------------------------------
-# Whitelist: every path that enters the open-source repo must be matched here.
-# ---------------------------------------------------------------------------
 whitelist:
-  # Root-level standard files
   files:
     - "README.md"
     - "README.zh-CN.md"
     - "LICENSE"
     - "pyproject.toml"
     - ".gitignore"
+    - "VALIDATION.md"
 
-  # Entire open subdirectories (recursively)
   directories:
     - "src/stataflow/"
     - "examples/"
-    - "docs/adr/"
-    - "docs/architecture/"
-    - "docs/command-support-matrix/"
-    - "docs/release/"
-    - "docs/validation/"
-    - "scripts/validation/"
 
-  # Specific files inside mixed or partially-closed directories
   specific_files:
-    - "docs/cookbook.md"
-    - "docs/cookbook.zh-CN.md"
-    - "docs/project-charter.md"
     - "docs/USER_GUIDE.md"
     - "docs/USER_GUIDE.zh-CN.md"
-    - "docs/operations/open-source-scope-audit.md"
-    - "docs/operations/open-source-export.md"
-    - "scripts/__init__.py"
-    - "scripts/release/export_open_source.ps1"
-    - "scripts/release/export_open_source.py"
-    - "scripts/release/open_source_manifest.yml"
+    - "docs/cookbook.md"
+    - "docs/cookbook.zh-CN.md"
     - ".github/workflows/ci.yml"
 
-  # Data / research artifacts required by open tests or examples
-  data_directories:
-    - "research/data/public/"
-    - "research/results/validation/"
-    - "tests/data/"
-
-  # Test files (non-golden only)
-  test_files:
-    - "tests/__init__.py"
-    - "tests/conftest.py"
-    - "tests/test_*.py"
-
-# ---------------------------------------------------------------------------
-# Blacklist: applied AFTER whitelist copying. Catches generated artifacts,
-# secrets, and anything that must never be exported.
-# ---------------------------------------------------------------------------
 blacklist:
   patterns:
-    - "Pypi token.txt"
+    - "__pycache__/**"
+    - "*.pyc"
+    - "*.egg-info/**"
+    - ".pytest_cache/**"
+    - "build/**"
+    - "dist/**"
+    - "*.log"
+    - "*.tmp"
     - "*token*"
     - "*secret*"
     - "*credential*"
-    - "QWEN.md"
-    - "CLAUDE.md"
-    - ".qwen/**"
-    - "dist/**"
-    - "__pycache__/**"
-    - "*.egg-info/**"
-    - ".pytest_cache/**"
-    - ".vscode/**"
-    - ".idea/**"
-    - "stata/cases/**"
-    - "stata/output/**"
-    - "tests/golden/**"
-    - "workspace/**"
-    - "*.log"
-    - "*.tmp"

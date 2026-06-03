@@ -25,6 +25,11 @@ def regress(
 
     Maps to :class:`stataflow.estimators.OLS`.
     """
+    # Parse Stata-style vce(cluster var) syntax
+    if vce is not None and vce.startswith("cluster "):
+        cluster = vce.split(" ", 1)[1]
+        vce = "cluster"
+
     if kwargs:
         raise ValueError(f"Unsupported arguments: {list(kwargs.keys())}")
 
@@ -64,6 +69,10 @@ def xtreg_fe(
 
     Maps to :class:`stataflow.estimators.FixedEffectsOLS`.
     """
+    if vce is not None and vce.startswith("cluster "):
+        cluster = vce.split(" ", 1)[1]
+        vce = "cluster"
+
     if kwargs:
         raise ValueError(f"Unsupported arguments: {list(kwargs.keys())}")
     if isinstance(cluster, list):
@@ -101,6 +110,10 @@ def areg(
     Maps to :class:`stataflow.estimators.AbsorbingOLS` with a single
     absorption variable.
     """
+    if vce is not None and vce.startswith("cluster "):
+        cluster = vce.split(" ", 1)[1]
+        vce = "cluster"
+
     if kwargs:
         raise ValueError(f"Unsupported arguments: {list(kwargs.keys())}")
     if isinstance(cluster, list):

@@ -24,13 +24,37 @@ from stataflow.compat.stata import regress, reghdfe, logit, ivreghdfe, ppmlhdfe
 # Parser unit tests
 # ---------------------------------------------------------------------------
 
+from stataflow.estimators._absorb_spec import AbsorbSpec
+
+
 def test_parse_absorb_list():
-    assert parse_absorb(["firm", "year"]) == ["firm", "year"]
+    result = parse_absorb(["firm", "year"])
+    assert [r.var for r in result] == ["firm", "year"]
+    assert all(not r.slopes for r in result)
 
 
 def test_parse_absorb_string():
-    assert parse_absorb("firm year") == ["firm", "year"]
-    assert parse_absorb("firm") == ["firm"]
+    result = parse_absorb("firm year")
+    assert [r.var for r in result] == ["firm", "year"]
+    result2 = parse_absorb("firm")
+    assert result2[0].var == "firm"
+
+
+def test_parse_absorb_slope():
+    r = parse_absorb("firm_id##c.time")[0]
+    assert r.var == "firm_id"
+    assert r.slopes == ["time"]
+    assert r.has_intercept is True
+
+    r = parse_absorb("firm_id#c.time")[0]
+    assert r.var == "firm_id"
+    assert r.slopes == ["time"]
+    assert r.has_intercept is False
+
+    r = parse_absorb("firm_id##c.(x1 x2)")[0]
+    assert r.var == "firm_id"
+    assert r.slopes == ["x1", "x2"]
+    assert r.has_intercept is True
 
 
 def test_expand_bare_and_continuous_equivalent():

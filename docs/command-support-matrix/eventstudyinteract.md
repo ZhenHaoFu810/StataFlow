@@ -2,7 +2,7 @@
 
 ## Completeness Status
 
-**Partial / IW Subset** — the Sun-Abraham interaction-weighted event-study estimator with auto dummy generation is implemented and verified, but `window`, `minn`, and full output/reporting options are missing.
+**Beta** — the Sun-Abraham interaction-weighted event-study estimator with auto dummy generation is implemented and verified, but `window`, `minn`, and full output/reporting options are missing.
 
 ## Command Target
 

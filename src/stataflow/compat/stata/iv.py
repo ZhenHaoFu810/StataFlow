@@ -25,6 +25,11 @@ def ivregress_2sls(
 
     Maps to :class:`stataflow.estimators.IV2SLS`.
     """
+    # Parse Stata-style vce(cluster var) syntax
+    if vce is not None and vce.startswith('cluster '):
+        cluster = vce.split(' ', 1)[1]
+        vce = 'cluster'
+
     if kwargs:
         raise ValueError(f"Unsupported arguments: {list(kwargs.keys())}")
 
@@ -52,10 +57,14 @@ def ivreghdfe(
     *,
     absorb: str | list[str],
     vce: str = "ols",
-    cluster: Optional[str] = None,
+    cluster: Optional[str | list[str]] = None,
     missing: str = "drop",
     keepsingletons: bool = False,
     noconstant: bool = False,
+    first: bool = False,
+    estimator: str = "2sls",
+    fuller: float = 0.0,
+    kclass: float | None = None,
     **kwargs,
 ) -> object:
     """
@@ -67,12 +76,21 @@ def ivreghdfe(
     ----------
     vce : str
         Variance estimator: "ols", "robust", or "cluster".
-    cluster : str, optional
-        Cluster variable (required when vce="cluster").
+    cluster : str | list[str], optional
+        Cluster variable(s) (required when vce="cluster").
+        Supports 1-way or 2-way clustering.
     keepsingletons : bool
         If True, do not drop singleton observations (Stata ``keepsingletons``).
     noconstant : bool
         If True, omit the constant term (Stata ``noconstant``).
+    first : bool
+        If True, compute and return first-stage diagnostics.
+    estimator : str
+        Estimator type: "2sls", "gmm2s", or "liml".
+    fuller : float
+        Fuller adjustment parameter for LIML (default 0).
+    kclass : float, optional
+        User-specified k-class parameter for LIML.
     """
     if kwargs:
         raise ValueError(f"Unsupported arguments: {list(kwargs.keys())}")
@@ -93,4 +111,11 @@ def ivreghdfe(
         missing=missing,
         drop_singletons=not keepsingletons,
     )
-    return model.fit(vce=vce, cluster=cluster)
+    return model.fit(
+        vce=vce,
+        cluster=cluster,
+        first=first,
+        estimator=estimator,
+        fuller=fuller,
+        kclass=kclass,
+    )

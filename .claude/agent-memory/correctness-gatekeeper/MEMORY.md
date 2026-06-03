@@ -1,0 +1,1 @@
+- [ivreghdfe GMM/LIML notation patterns](ivreghdfe-gmm-liml-notation.md) — Verified correct Q-matrix forms for LIML/GMM VCE to prevent scaled/unscaled drift

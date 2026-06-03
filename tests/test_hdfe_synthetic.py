@@ -421,6 +421,33 @@ def test_ivreghdfe_rejects_unsupported_vce():
 
 
 # ---------------------------------------------------------------------------
+# DK VCE error-path tests
+# ---------------------------------------------------------------------------
+
+def test_dkraay_missing_timevar():
+    """vce='dkraay' without timevar should raise ValueError."""
+    df = _make_reghdfe_data()
+    with pytest.raises(ValueError, match="timevar required"):
+        reghdfe(df, y="y", x=["x1"], absorb=["firm_id", "year_id"], vce="dkraay")
+
+
+def test_dkraay_with_cluster():
+    """vce='dkraay' with cluster should raise ValueError."""
+    df = _make_reghdfe_data()
+    with pytest.raises(ValueError, match="cluster is not compatible"):
+        reghdfe(df, y="y", x=["x1"], absorb=["firm_id", "year_id"],
+                vce="dkraay", timevar="year_id", cluster="firm_id")
+
+
+def test_dkraay_invalid_bw_suffix():
+    """vce='dkraay_abc' with non-integer bandwidth should raise ValueError."""
+    df = _make_reghdfe_data()
+    with pytest.raises(ValueError, match="dkraay bandwidth must be an integer"):
+        reghdfe(df, y="y", x=["x1"], absorb=["firm_id", "year_id"],
+                vce="dkraay_abc", timevar="year_id")
+
+
+# ---------------------------------------------------------------------------
 # Multi-FE (3+) support — Package B
 # ---------------------------------------------------------------------------
 

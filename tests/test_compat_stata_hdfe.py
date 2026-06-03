@@ -74,7 +74,7 @@ def test_ppmlhdfe_delegation():
 def test_ppmlhdfe_unsupported_kwargs():
     df = _make_ppml_data()
     with pytest.raises(ValueError, match="Unsupported arguments"):
-        ppmlhdfe(df, y="y", x=["x1"], absorb="g1", separation="fe")
+        ppmlhdfe(df, y="y", x=["x1"], absorb="g1", foo="bar")
 
 
 def test_ppmlhdfe_wrapper_has_no_postestimation_methods():
@@ -82,3 +82,23 @@ def test_ppmlhdfe_wrapper_has_no_postestimation_methods():
     res = ppmlhdfe(df, y="y", x=["x1", "x2"], absorb=["g1", "g2"])
     assert not hasattr(res, "predict")
     assert not hasattr(res, "margins")
+
+
+def test_ppmlhdfe_eform_preserves_raw_z_and_p_values():
+    df = _make_ppml_data(n=150, seed=123)
+    raw = PPMLHDFE(df, y="y", x=["x1", "x2"], absorb=["g1", "g2"]).fit(
+        vce="robust"
+    )
+    eform = PPMLHDFE(df, y="y", x=["x1", "x2"], absorb=["g1", "g2"]).fit(
+        vce="robust", eform=True
+    )
+
+    for raw_coef, eform_coef in zip(raw.coefficients, eform.coefficients):
+        assert np.isclose(eform_coef.beta, np.exp(raw_coef.beta), rtol=1e-10)
+        assert np.isclose(
+            eform_coef.std_err,
+            np.exp(raw_coef.beta) * raw_coef.std_err,
+            rtol=1e-10,
+        )
+        assert np.isclose(eform_coef.t_stat, raw_coef.t_stat, rtol=1e-10)
+        assert np.isclose(eform_coef.p_value, raw_coef.p_value, rtol=1e-10)

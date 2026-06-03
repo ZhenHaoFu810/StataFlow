@@ -193,3 +193,18 @@ def test_areg_rejects_multiway_cluster():
     df = _make_fe_data()
     with pytest.raises(ValueError, match="Multi-way clustering is only supported for regress"):
         areg(df, y="y", x=["x1"], absorb="id", vce="cluster", cluster=["id", "x2"])
+
+
+def test_regress_vce_cluster_string_syntax():
+    """regress should accept vce="cluster varname" Stata-style syntax."""
+    rng = np.random.default_rng(99)
+    n = 100
+    df = pd.DataFrame({
+        "y": rng.normal(size=n),
+        "x1": rng.normal(size=n),
+        "x2": rng.normal(size=n),
+        "group": rng.integers(0, 10, size=n),
+    })
+    res = regress(df, y="y", x=["x1", "x2"], vce="cluster group")
+    assert res.model.vcetype == "cluster"
+    assert res.model.cluster_var == "group"

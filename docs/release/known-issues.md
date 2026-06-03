@@ -1,51 +1,46 @@
 # Known Issues
 
-This document registers issues that are acknowledged but not treated as release-blocking for the current open-source Alpha.
+This document registers issues that are acknowledged but not treated as release-blocking for the current Stable release (v1.0.0).
 
 ---
 
-## 1. Historical `REPORT.md` stale fresh-run evidence
+## 1. Vendor command completeness — all are partial subsets
 
-### 1.1 Package 004 (`ivreghdfe` Phase B)
-
-- **Issue:** The `workspace/current-task/REPORT.md` from Package 004 contained stale fresh-run numbers (`5 passed` / `76 passed`) that did not match the actual test counts at the time of closure.
-- **Status:** Fixed in the Package 004 rework cycle. The actual counts were `75 passed` (ivreghdfe专项) / `676 passed` (全量).
-- **Current state:** The REPORT.md file was overwritten by subsequent task packages. The underlying code, tests, source maps, and support matrices for `ivreghdfe` are correct.
-- **Why not release-blocking:** This was a documentation-only artifact issue. No algorithm or test regression existed.
-
-### 1.2 Package 005 (DID community commands Phase B)
-
-- **Issue:** The `workspace/current-task/REPORT.md` from Package 005 initially contained fresh-run numbers that needed alignment verification.
-- **Status:** Verified and aligned. Actual counts: `35 passed` (DID专项) / `681 passed` (全量).
-- **Current state:** Fresh-run evidence in REPORT.md matches real rerun.
-- **Why not release-blocking:** Verification confirmed no test regression.
-
----
-
-## 2. Vendor command completeness — all are partial subsets
-
-All community commands in `stataflow.compat.stata` are implemented as **high-frequency-path subsets**, not full Stata command reproductions. This is by design for the Alpha phase, but users may misinterpret wrapper availability as full support.
+All community commands in `stataflow.compat.stata` are implemented as **high-frequency-path subsets**, not full Stata command reproductions. This is by design for the Beta phase, but users may misinterpret wrapper availability as full support.
 
 | Command | Status | Largest remaining gap |
 |---------|--------|----------------------|
-| `reghdfe` | Alpha / Partial | Slopes, mobility-group DoF, multi-way clustering, keepsingletons |
-| `ivreghdfe` | Alpha / Partial | First-stage diagnostics, weak-instrument tests, LIML/GMM |
-| `ppmlhdfe` | Alpha / Partial | Separation detection, multi-way clustering |
-| `did_imputation` | Alpha / Partial | Controls, window, minn, pretrends, repeated cross-section |
-| `eventstudyinteract` | Alpha / Partial | Covariates, window, minn, multi-way clustering |
-| `csdid` | Alpha / Partial | DR/IPW methods, other aggregations, wild bootstrap |
-| `rdrobust` | Alpha — Partial | Fuzzy RD, additional bandwidth selectors (`msetwo`, `cerrd`, etc.), clustering, weights |
+| `reghdfe` | Beta | 3-way+ clustering, mobility-group DoF adjustments, `group`/`individual` FE |
+| `ivreghdfe` | Beta | CUE estimator, HAC standard errors (`dkraay`), `partial`/`fwl`, `orthog`/`endogtest`/`redundant` |
+| `ppmlhdfe` | Beta | Full `separation` methods (`ir`, `simplex`, `mu`), 3-way+ clustering, `keepsingletons` |
+| `did_imputation` | Beta | `window`, `minn`, `hbalance`, `leaveout`, `avgeffectsby` |
+| `eventstudyinteract` | Beta | `covariates`, `window`, `minn`, complete matrix returns (`e(b_interact)`, etc.) |
+| `csdid` | Beta | `method="ipw"`, `gtcontrol`, `longdiff` |
+| `rdrobust` | Beta | `deriv > 0` (Kink RD), `rdplot` bin-selection algorithm alignment (2-3x difference vs Stata) |
 
 See individual support matrices in `docs/command-support-matrix/` for the exact supported/planned/unsupported split.
 
 ---
 
+## 2. Structural alignment residuals
+
+The following are known mathematical/algorithmic gaps where Python and Stata results differ within documented tolerances. These are **not fixable without architectural changes** and are governed by ADRs:
+
+| Area | Residual | Tolerance | ADR / Explanation |
+|------|----------|-----------|-------------------|
+| `reghdfe` / `ivreghdfe` _cons SE under 2-way cluster | ~2-16% | Documented | ADR-0003: LSDV vs iterative demeaning structural difference |
+| `ivreghdfe` cluster `stdp` when cluster nests all FEs | ~0.28% | `rtol=5e-3` | Known VCE small-sample factor difference |
+| `ppmlhdfe` residuals (pearson/deviance/working) | ~0.35% | `rtol=5e-3` | IRLS/HDFE convergence precision difference |
+| `reghdfe` MAP cluster slope SE when cluster nests FE (1-way) | ~0.5% | `rtol=5e-3` | MAP builds cluster meat on partialled-out data; LSDV builds on full design matrix. Constant SE and OLS/robust VCEs are exact. |
+
+---
+
 ## 3. Infrastructure limitations
 
-- **Multi-way clustering:** `regress` supports two-way clustering (Cameron-Gelbach-Miller 2011). All other commands use single-cluster robust inference only.
+- **Three-way and higher multi-way clustering:** Not yet supported. Only 2-way cluster is implemented for `reghdfe`, `ivreghdfe`, and `ppmlhdfe`.
 - **Weights beyond `aweight`:** `fweight`, `pweight`, `iweight` are not yet supported.
-- **Post-estimation on wrappers:** `predict` and `margins` are available on core estimator classes only; the `compat.stata` wrapper layer returns `ResultSchema` and does not expose `.predict()` / `.margins()` directly.
-- **CI/CD:** GitHub Actions pipeline is configured (`.github/workflows/ci.yml`) and runs on Python 3.10, 3.11, and 3.12.
+- **Post-estimation on wrappers:** The `compat.stata` wrapper layer returns `ResultSchema` and does not expose `.predict()` / `.margins()` directly. Use the core estimator layer for post-estimation.
+- **CI/CD:** GitHub Actions pipeline is configured (`.github/workflows/ci.yml`) and runs on Python 3.10, 3.11, and 3.12. Golden dual-run tests (which require local Stata 17) are excluded from CI.
 
 ---
 
@@ -59,4 +54,4 @@ See individual support matrices in `docs/command-support-matrix/` for the exact 
 ## Issue registration policy
 
 - New issues discovered during development are added here before being promoted to the backlog or a dedicated task card.
-- Issues marked as "known" in this file are explicitly **not** treated as release blockers for the Alpha, but they inform the roadmap for subsequent phases.
+- Issues marked as "known" in this file are explicitly **not** treated as release blockers for the Beta, but they inform the roadmap for subsequent phases.

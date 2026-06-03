@@ -195,41 +195,9 @@ class OLS:
     def _detect_collinearity(
         self, X: np.ndarray, names: list[str]
     ) -> tuple[np.ndarray, list[str]]:
-        """
-        Detect and drop collinear columns.
-
-        Uses rank check and QR decomposition with pivoting
-        to identify linearly dependent columns.
-        """
-        dropped = []
-
-        if X.shape[1] <= 1:
-            return X, dropped
-
-        # Check rank
-        rank = np.linalg.matrix_rank(X)
-
-        if rank == X.shape[1]:
-            return X, dropped
-
-        # Use QR with pivoting to identify independent columns
-        # np.linalg.qr returns (Q, R) - only 2 values, not 3
-        Q, R = np.linalg.qr(X, mode='complete')
-
-        # Columns corresponding to near-zero diagonal elements of R are collinear
-        tol = 1e-10
-        independent = []
-
-        for i in range(X.shape[1]):
-            if i < R.shape[0] and abs(R[i, i]) > tol:
-                independent.append(i)
-            else:
-                dropped.append(names[i])
-
-        # Keep only independent columns
-        X_indep = X[:, independent]
-        self._coef_names = [names[i] for i in independent]
-
+        from stataflow.estimators._vce_utils import detect_collinear_columns
+        X_indep, dropped, kept = detect_collinear_columns(X, names)
+        self._coef_names = [names[i] for i in kept]
         return X_indep, dropped
 
     def fit(
@@ -373,23 +341,18 @@ class OLS:
             XtX_inv = np.linalg.inv(XtX)
 
             n_adj = (n - 1) / (n - k) if n > k else 1.0
+            X_meat = X_w if w is not None else X
 
             if isinstance(cluster_arr, list):
                 # Multi-way clustering (Cameron-Gelbach-Miller 2011)
                 # V = V_1 + V_2 - V_12
+                from stataflow.estimators._vce_utils import compute_cluster_meat
+
                 cluster_counts = []
                 V_parts = []
                 for c_arr in cluster_arr:
-                    unique_clusters = np.unique(c_arr)
-                    G = len(unique_clusters)
+                    meat, G = compute_cluster_meat(X_meat, residuals, c_arr)
                     cluster_counts.append(G)
-                    meat = np.zeros((k, k))
-                    for g in unique_clusters:
-                        mask_g = c_arr == g
-                        X_g = X_w[mask_g] if w is not None else X[mask_g]
-                        e_g = residuals[mask_g]
-                        Xe_g = X_g.T @ e_g
-                        meat += np.outer(Xe_g, Xe_g)
                     g_adj = G / (G - 1) if G > 1 else 1.0
                     V_i = n_adj * g_adj * XtX_inv @ meat @ XtX_inv
                     V_parts.append(V_i)
@@ -403,15 +366,7 @@ class OLS:
                     if pair not in combo_to_id:
                         combo_to_id[pair] = len(combo_to_id)
                     combo_ids[i] = combo_to_id[pair]
-                unique_combos = np.unique(combo_ids)
-                G_12 = len(unique_combos)
-                meat_12 = np.zeros((k, k))
-                for combo in unique_combos:
-                    mask = combo_ids == combo
-                    X_g = X_w[mask] if w is not None else X[mask]
-                    e_g = residuals[mask]
-                    Xe_g = X_g.T @ e_g
-                    meat_12 += np.outer(Xe_g, Xe_g)
+                meat_12, G_12 = compute_cluster_meat(X_meat, residuals, combo_ids)
                 g_adj_12 = G_12 / (G_12 - 1) if G_12 > 1 else 1.0
                 V_12 = n_adj * g_adj_12 * XtX_inv @ meat_12 @ XtX_inv
 
@@ -419,17 +374,9 @@ class OLS:
                 cluster_count = min(cluster_counts)  # for df_resid
             else:
                 # One-way clustering
-                unique_clusters = np.unique(cluster_arr)
-                cluster_count = len(unique_clusters)
+                from stataflow.estimators._vce_utils import compute_cluster_meat
 
-                meat = np.zeros((k, k))
-                for g in unique_clusters:
-                    mask_g = cluster_arr == g
-                    X_g = X_w[mask_g] if w is not None else X[mask_g]
-                    e_g = residuals[mask_g]
-                    Xe_g = X_g.T @ e_g
-                    meat += np.outer(Xe_g, Xe_g)
-
+                meat, cluster_count = compute_cluster_meat(X_meat, residuals, cluster_arr)
                 g_adj = cluster_count / (cluster_count - 1) if cluster_count > 1 else 1.0
                 cov_beta = n_adj * g_adj * XtX_inv @ meat @ XtX_inv
 

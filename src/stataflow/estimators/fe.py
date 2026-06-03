@@ -253,17 +253,10 @@ class FixedEffectsOLS:
         elif vce == "cluster":
             # Cluster-robust VCE
             XtX_inv = np.linalg.inv(XtX)
-            unique_clusters = np.unique(cluster_arr)
-            cluster_count = len(unique_clusters)
 
-            # Compute clustered meat
-            meat = np.zeros((k, k))
-            for g in unique_clusters:
-                mask_g = cluster_arr == g
-                X_w_g = X_w[mask_g]
-                e_g = residuals_w[mask_g]
-                Xe_g = X_w_g.T @ e_g
-                meat += np.outer(Xe_g, Xe_g)
+            # Compute clustered meat (shared utility per ADR-0004)
+            from stataflow.estimators._vce_utils import compute_cluster_meat
+            meat, cluster_count = compute_cluster_meat(X_w, residuals_w, cluster_arr)
 
             # Small sample corrections for FE + cluster
             # Stata xtreg, fe vce(cluster) uses: G/(G-1) * (N-1)/(N-k-1)
@@ -359,16 +352,10 @@ class FixedEffectsOLS:
                 XtX_full = X_full.T @ X_full
                 XtX_inv_full = np.linalg.inv(XtX_full)
 
-                meat_full = np.zeros((k_full, k_full))
-                unique_clusters_arr = np.unique(cluster_arr)
-                cluster_count_for_lsdv = len(unique_clusters_arr)
-
-                for g in unique_clusters_arr:
-                    mask_g = cluster_arr == g
-                    X_g = X_full[mask_g]
-                    e_g = residuals_full[mask_g]
-                    Xe_g = X_g.T @ e_g
-                    meat_full += np.outer(Xe_g, Xe_g)
+                from stataflow.estimators._vce_utils import compute_cluster_meat
+                meat_full, cluster_count_for_lsdv = compute_cluster_meat(
+                    X_full, residuals_full, cluster_arr
+                )
 
                 n_adj_lsdv = (n - 1) / (n - k - 1) if n > k + 1 else 1.0
                 g_adj_lsdv = cluster_count_for_lsdv / (cluster_count_for_lsdv - 1) if cluster_count_for_lsdv > 1 else 1.0

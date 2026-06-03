@@ -37,6 +37,5 @@ result = ppmlhdfe(
     cluster="cluster_id",
 )
 
-print("=== ppmlhdfe: Poisson PML with two-way FE ===")
-for c in result.coefficients:
-    print(f"{c.name:12s}  beta={c.beta: .4f}  se={c.std_err:.4f}  z={c.t_stat:.4f}")
+print("ppmlhdfe: Poisson PML with two-way FE")
+result.display()

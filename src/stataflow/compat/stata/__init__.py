@@ -6,6 +6,7 @@ from .iv import ivregress_2sls, ivreghdfe
 from .glm import logit, probit, poisson
 from .did import did_imputation, eventstudyinteract, csdid
 from .rdrobust import rdrobust
+from .rdplot import rdplot
 
 __all__ = [
     "regress",
@@ -22,4 +23,5 @@ __all__ = [
     "eventstudyinteract",
     "csdid",
     "rdrobust",
+    "rdplot",
 ]

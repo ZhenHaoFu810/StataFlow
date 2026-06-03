@@ -1,0 +1,29 @@
+C:\ProgramData\anaconda3\Lib\site-packages\pandas\core\computation\expressions.py:22: UserWarning: Pandas requires version '2.10.2' or newer of 'numexpr' (version '2.8.7' currently installed).
+  from pandas.core.computation.check import NUMEXPR_INSTALLED
+C:\ProgramData\anaconda3\Lib\site-packages\pandas\core\arrays\masked.py:56: UserWarning: Pandas requires version '1.4.2' or newer of 'bottleneck' (version '1.3.7' currently installed).
+  from pandas.core import (
+============================================================
+Phase 2 IV Validation ¡ª Python vs Stata 17
+============================================================
+Running Python scenario 1: ivregress_2sls vce=ols
+Running Python scenario 2: ivregress_2sls vce=robust
+Running Python scenario 3: ivregress_2sls vce=cluster age
+Running Python scenario 4: ivregress_2sls vce=cluster south
+Running Python scenario 5: ivreghdfe absorb(age_group) cluster(age_group)
+Running Python scenario 6: ivreghdfe 2-way cluster
+Running Stata scenario: ivregress_ols
+Running Stata scenario: ivregress_robust
+Running Stata scenario: ivregress_cluster_age
+Running Stata scenario: ivregress_cluster_south
+Running Stata scenario: ivregress_first_ols
+Running Stata scenario: ivregress_first_robust
+Running Stata scenario: ivregress_first_cluster
+Running Stata scenario: ivreghdfe_cluster
+Running Stata scenario: ivreghdfe_2way
+
+============================================================
+Validation complete. Report written to:
+  D:\OneDrive - SAIF\PhD3\StataFlow\docs\audit\revalidation-v1.1\phase2-evidence\VAL-IV.md
+Raw results:
+  D:\OneDrive - SAIF\PhD3\StataFlow\stata\output\phase2\phase2_iv_python_results.json
+  D:\OneDrive - SAIF\PhD3\StataFlow\stata\output\phase2\phase2_iv_stata_results.json

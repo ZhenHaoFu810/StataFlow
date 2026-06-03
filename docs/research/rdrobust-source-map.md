@@ -113,20 +113,26 @@ rdrobust.ado
 - `scaleregul` (regularization scaling for bandwidth selectors)
 - Result packaging in `ResultSchema`
 
-### 4.2 Implemented but minimal / Phase B limitations
+### 4.2 Implemented — Wave 8 Round 2 (Beta)
 
-- **Bandwidth selectors:** Only `mserd` is supported. `msetwo`, `msesum`, `cerrd`, `certwo`, `cersum`, and `ik` / `cv` are not yet ported.
-- **Covariates:** Only sharp RD + covariates is supported. Fuzzy + covs, cluster + covs, and weights + covs are hard-rejected.
-- **No clustering / weights / fuzzy / kink:** Hard-rejected to prevent silent incorrect results.
+All Wave 8 features are now implemented:
 
-### 4.3 Not implemented or explicitly rejected
+- **Bandwidth selectors:** All 9 selectors supported: `mserd`, `msetwo`, `msesum`, `msecomb1`, `msecomb2`, `cerrd`, `certwo`, `cersum`, `cercomb1`, `cercomb2`.
+- **Fuzzy RD:** Wald ratio estimator with `fuzzy(var)`, `sharpbw`, and automatic perfect-compliance detection.
+- **Cluster VCE:** `vce="cluster"` and `vce="nncluster"` with cluster-robust sandwich meat.
+- **Frequency weights:** `weights(varname)` as multiplicative factor on kernel weights.
+- **Masspoints:** `masspoints="adjust"` (default), `"check"`, `"off"` with `bwcheck`.
+- **`rdplot` companion command:** IMSE-optimal binning (`es`/`qs` families) and local polynomial fit overlay.
 
-- `fuzzy` RD / kink RD (`deriv > 0`)
-- `weights`
-- `cluster` / `nncluster` VCE
-- `stdvars`, `all`, `detail`
-- `rdplot` and `rdbwselect` companion commands
-- Bandwidth selectors other than `mserd`
+### 4.3 Not implemented — beyond Wave 8
+
+| Feature | Research Archive | Status |
+|---------|-----------------|---------------------------|
+| `deriv > 0` (Kink RD) | — | Deferred |
+| `stdvars` | — | Deferred |
+| `all` / `detail` | — | Deferred |
+| `rdbwselect` standalone | — | Deferred |
+| `bwrestrict` | `rdrobust-bandwidth-selectors.md` | Planned for next release |
 
 ---
 
@@ -142,11 +148,21 @@ rdrobust.ado
 | `kernel(kernelfn)` | `kernel=str` | `triangular` (default), `epanechnikov`, `uniform` |
 | `vce(nn [nnmatch])` | `vce="nn"`, `nnmatch=int` | Supported (default `nnmatch=3`) |
 | `vce(hc0)` | `vce="hc0"` | Supported |
-| `bwselect(method)` | `bwselect=str` | `mserd` supported; others hard-rejected |
-| `covs(varlist)` | `covs=list[str]\|str` | Supported for sharp RD |
+| `vce(hc1\|hc2\|hc3)` | — | Not yet implemented |
+| `vce(cluster var)` | `cluster=str` | Supported |
+| `vce(nncluster var)` | `cluster=str` | Supported |
+| `bwselect(method)` | `bwselect=str` | All 9 selectors supported; see `rdrobust-bandwidth-selectors.md` |
+| `covs(varlist)` | `covs=list[str]\|str` | Supported for sharp and fuzzy RD |
 | `covsdrop` | `covs_drop=bool` | Supported (default `True`) |
 | `scaleregul(#)` | `scaleregul=float` | Supported (default `1.0`) |
-| `fuzzy(var)` | 鈥?| Hard-rejected via `ValueError` |
+| `fuzzy(var [sharpbw])` | `fuzzy=str`, `sharpbw=bool` | Supported |
+| `weights(varname)` | `weights=str` | Supported |
+| `masspoints(check\|adjust\|off)` | `masspoints=str` | Supported (default `adjust`) |
+| `bwcheck(#)` | `bwcheck=int` | Supported; interacts with masspoints |
+| `bwrestrict(on\|off)` | `bwrestrict=bool` | Planned for next release |
+| `stdvars(on\|off)` | — | Not yet implemented |
+| `all` / `detail` | — | Not yet implemented |
+| `deriv > 0` (Kink RD) | — | Deferred beyond Wave 8 |
 
 ---
 

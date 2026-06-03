@@ -2,7 +2,7 @@
 
 ## Completeness Status
 
-**Partial / Regression-Adjustment Subset** — the Callaway-Sant'Anna CSDID estimator with `method="reg"` and event-study aggregation (`estat_event`) is implemented and verified, but doubly-robust methods, IPW, other aggregation types, and wild bootstrap are missing. As of this round, `estat_event()` returns `ResultSchema` aligned with other DID commands.
+**Beta — Core Estimator** — the Callaway-Sant'Anna CSDID estimator with `method="reg"`, `method="drimp"` / `method="dripw"` (doubly robust), and all standard aggregation types (`estat_event`, `estat_simple`, `estat_group`, `estat_calendar`, `estat_pretrend`) is implemented and verified. IPW and wild bootstrap are missing.
 
 ## Command Target
 
@@ -28,32 +28,33 @@ result = csdid(
 | `id` | `str` | Unit identifier |
 | `time` | `str` | Time identifier |
 | `first_treat` | `str` | First treatment period variable |
-| `method` | `str` | `"reg"` only (regression adjustment) |
+| `method` | `str` | `"reg"`, `"drimp"`, or `"dripw"` |
+| `xvars` | `list[str]` | Covariates for doubly-robust estimation |
 | `vce` | `str` | `"cluster"` only |
 | `cluster` | `str` | Cluster variable (defaults to `id`) |
+| `aggtype` | `str` | `"event"`, `"simple"`, `"group"`, `"calendar"`, or `"pretrend"` (defaults to `"event"`) |
 
 ## Supported Result Fields
 
-ATT(g,t) estimates, event-study aggregation coefficients, standard errors, z-statistics, p-values, confidence intervals by relative time. Returned as `ResultSchema` via `estat_event()`.
+ATT(g,t) estimates, event-study / simple / group / calendar aggregation coefficients, standard errors, z-statistics, p-values, confidence intervals. `estat_pretrend()` returns a joint Wald test dict. Returned as `ResultSchema` via `estat()`.
 
 ## Planned Parameters
 
-- `method="dr"` (doubly robust)
 - `method="ipw"` (inverse probability weighting)
-- `aggtype` (aggregation type: simple, dynamic, group, calendar)
+- `aggtype="dynamic"` (already covered by `event`)
 - `gtcontrol` (control group strategy)
 - `longdiff` (long-difference pre-trends)
 
 ## Explicitly Unsupported Parameters
 
-`method="dr"`, `method="ipw"`, `aggtype`, `gtcontrol`, `longdiff`, `window`, `minn`, `save`, `replace`, `graph`, and all other csdid-specific options are hard-rejected via `ValueError`.
+`method="ipw"`, `gtcontrol`, `longdiff`, `window`, `minn`, `save`, `replace`, `graph`, and all other csdid-specific options are hard-rejected via `ValueError`.
 
 ## Alignment Evidence
 
 
-- Synthetic cases: `tests/golden/test_w4_csdid_basic.py`
-- Real-data cases: `tests/golden/test_w4_csdid_real_ezunem.py`
-- Stata 17 dual-run verified for `method="reg"` with event-study aggregation
+- Synthetic cases: `tests/golden/test_w4_csdid_basic.py` (reg), `tests/golden/test_w9_csdid_dr_basic.py` (drimp)
+- Real-data cases: `tests/golden/test_w4_csdid_real_ezunem.py` (reg), `tests/golden/test_w9_csdid_dr_real_ezunem.py` (drimp)
+- Stata 17 dual-run verified for `method="reg"` and `method="drimp"` with event-study aggregation
 
 ## Core Implementation
 
