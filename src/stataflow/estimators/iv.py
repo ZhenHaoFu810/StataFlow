@@ -282,19 +282,31 @@ class IV2SLS:
         diag_cov = np.maximum(diag_cov, 0)
         se = np.sqrt(diag_cov)
 
-        # z-statistics and p-values (normal distribution for all VCE in ivregress)
-        from scipy.stats import norm
-        z_stats = beta / se
-        p_values = 2 * (1 - norm.cdf(np.abs(z_stats)))
-        z_crit = norm.ppf(1 - alpha / 2)
+        # Statistics and inference
+        if vce == "ols":
+            from scipy.stats import t as t_dist, f as f_dist
+            df_resid = n - k_x
+            stats = beta / se
+            p_values = 2 * (1 - t_dist.cdf(np.abs(stats), df=df_resid))
+            crit = t_dist.ppf(1 - alpha / 2, df=df_resid)
+            # F-statistic for vce=ols
+            if self.add_constant and k_x > 1 and df_resid > 0 and rss > 0:
+                f_stat = (mss / df_model) / (rss / df_resid)
+                f_pvalue = float(1 - f_dist.cdf(f_stat, dfn=df_model, dfd=df_resid))
+            else:
+                f_stat = None
+                f_pvalue = None
+        else:
+            from scipy.stats import norm
+            stats = beta / se
+            p_values = 2 * (1 - norm.cdf(np.abs(stats)))
+            crit = norm.ppf(1 - alpha / 2)
+            f_stat = None
+            f_pvalue = None
 
         # Confidence intervals
-        ci_low = beta - z_crit * se
-        ci_high = beta + z_crit * se
-
-        # F-statistic: Stata ivregress reports Wald chi2, not F, for all VCE
-        f_stat = None
-        f_pvalue = None
+        ci_low = beta - crit * se
+        ci_high = beta + crit * se
 
         # Build result object
         result = ResultSchema()
@@ -328,7 +340,7 @@ class IV2SLS:
                 name=name,
                 beta=float(beta[i]),
                 std_err=float(se[i]),
-                t_stat=float(z_stats[i]),
+                t_stat=float(stats[i]),
                 p_value=float(p_values[i]),
                 ci_low=float(ci_low[i]),
                 ci_high=float(ci_high[i]),
