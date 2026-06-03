@@ -264,10 +264,17 @@ def test_reject_nonexistent_omitted_level():
         expand_factor_terms(df, ["o2.g"])
 
 
-def test_reject_three_way_interaction():
+def test_three_way_interaction():
     df = pd.DataFrame({"x1": [1.0, 2.0], "x2": [3.0, 4.0], "x3": [5.0, 6.0]})
-    with pytest.raises(ValueError, match="Unsupported factor term structure"):
-        expand_factor_terms(df, ["c.x1#c.x2#c.x3"])
+    # 3-way # (interaction only)
+    data, cols = expand_factor_terms(df.copy(), ["c.x1#c.x2#c.x3"])
+    assert len(cols) == 1
+    assert cols[0] == "x1#x2#x3"
+    assert np.allclose(data[cols[0]], df["x1"] * df["x2"] * df["x3"])
+    # 3-way ## (full factorial)
+    data2, cols2 = expand_factor_terms(df.copy(), ["c.x1##c.x2##c.x3"])
+    expected = ["x1", "x2", "x3", "x1#x2", "x1#x3", "x2#x3", "x1#x2#x3"]
+    assert cols2 == expected
 
 
 # ---------------------------------------------------------------------------
