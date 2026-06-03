@@ -13,7 +13,8 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-from scipy.stats import t as t_dist, f as f_dist
+import scipy.linalg
+from scipy.stats import t as t_dist, f as f_dist, chi2
 from typing import Optional
 from stataflow.results.result import (
     ResultSchema,
@@ -164,28 +165,8 @@ class IV2SLS:
     def _detect_collinearity(
         self, X: np.ndarray, names: list[str]
     ) -> tuple[np.ndarray, list[str], list[int]]:
-        """Detect and drop collinear columns."""
-        dropped = []
-
-        if X.shape[1] <= 1:
-            return X, dropped, list(range(X.shape[1]))
-
-        rank = np.linalg.matrix_rank(X)
-        if rank == X.shape[1]:
-            return X, dropped, list(range(X.shape[1]))
-
-        R = np.linalg.qr(X, mode='r')
-        tol = 1e-10
-        independent = []
-
-        for i in range(X.shape[1]):
-            if i < R.shape[0] and abs(R[i, i]) > tol:
-                independent.append(i)
-            else:
-                dropped.append(names[i])
-
-        X_indep = X[:, independent]
-        return X_indep, dropped, independent
+        from stataflow.estimators._vce_utils import detect_collinear_columns
+        return detect_collinear_columns(X, names)
 
     def fit(
         self,
@@ -415,7 +396,11 @@ class IVAbsorbingOLS:
         self.x_exog = list(x_exog)
         self.x_endog = list(x_endog)
         self.instruments = list(instruments)
-        self.absorb_vars = [absorb] if isinstance(absorb, str) else list(absorb)
+        from stataflow.estimators._absorb_spec import AbsorbSpec
+        if isinstance(absorb, list) and len(absorb) > 0 and isinstance(absorb[0], AbsorbSpec):
+            self.absorb_vars = [spec.var for spec in absorb]
+        else:
+            self.absorb_vars = [absorb] if isinstance(absorb, str) else list(absorb)
         self._reghdfe_mode = True  # ivreghdfe semantics regardless of absorb count
         self.add_constant = add_constant
         self.missing = missing
@@ -464,26 +449,30 @@ class IVAbsorbingOLS:
     def _detect_collinearity(
         self, X: np.ndarray, names: list[str]
     ) -> tuple[np.ndarray, list[str], list[int]]:
-        """Detect and drop collinear columns."""
-        dropped = []
-        if X.shape[1] <= 1:
-            return X, dropped, list(range(X.shape[1]))
-        rank = np.linalg.matrix_rank(X)
-        if rank == X.shape[1]:
-            return X, dropped, list(range(X.shape[1]))
-        R = np.linalg.qr(X, mode='r')
-        tol = 1e-10
-        independent = []
-        for i in range(X.shape[1]):
-            if i < R.shape[0] and abs(R[i, i]) > tol:
-                independent.append(i)
-            else:
-                dropped.append(names[i])
-        X_indep = X[:, independent]
-        return X_indep, dropped, independent
+        from stataflow.estimators._vce_utils import detect_collinear_columns
+        return detect_collinear_columns(X, names)
+
+    # _compute_cluster_meat, _fix_psd, _fix_psd_reghdfe: imported from _vce_utils (ADR-0004).
+
+    def _compute_multiway_cluster_vce(
+        self,
+        X_proj: np.ndarray,
+        residuals: np.ndarray,
+        M_inv: np.ndarray,
+        k_eff: int,
+        n: int,
+    ) -> tuple[np.ndarray, int]:
+        """Compute 2-way cluster-robust VCE via inclusion-exclusion.
+
+        Thin wrapper that passes pre-computed k_eff (k_x_reported + df_a).
+        """
+        from stataflow.estimators._vce_utils import compute_multiway_cluster_vce
+        return compute_multiway_cluster_vce(
+            X_proj, residuals, M_inv, self._cluster_arrs, k_eff, n,
+        )
 
     def _prepare_data(
-        self, cluster_var: Optional[str] = None
+        self, cluster_vars: Optional[list[str]] = None
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, list[bool], int]:
         """
         Prepare LSDV matrices for IV 2SLS.
@@ -492,8 +481,10 @@ class IVAbsorbingOLS:
         so that regressors and instruments are dropped if collinear with absorbed dummies.
         """
         all_vars = [self.y] + self.absorb_vars + self.x_exog + self.x_endog + self.instruments
-        if cluster_var is not None and cluster_var not in all_vars:
-            all_vars.append(cluster_var)
+        cluster_var_list = cluster_vars or []
+        for cv in cluster_var_list:
+            if cv not in all_vars:
+                all_vars.append(cv)
 
         df = self.data[all_vars].copy()
         self._n_input_rows = len(df)
@@ -518,11 +509,14 @@ class IVAbsorbingOLS:
         y = df[self.y].values.astype(np.float64)
         n = len(y)
 
-        # Extract cluster variable if provided
-        cluster_arr = None
-        if cluster_var is not None:
-            cluster_arr = df[cluster_var].values
-        self._cluster_arr = cluster_arr
+        # Extract cluster variables if provided
+        self._cluster_arrs = []
+        self._cluster_vars = []
+        for cv in cluster_var_list:
+            self._cluster_arrs.append(df[cv].values)
+            self._cluster_vars.append(cv)
+        # Backward compat
+        self._cluster_arr = self._cluster_arrs[0] if self._cluster_arrs else None
 
         # Build x_exog columns
         x_exog_cols = []
@@ -654,7 +648,7 @@ class IVAbsorbingOLS:
 
         effective_levels = []
         for i, var in enumerate(self.absorb_vars):
-            if cluster_var is not None and var == cluster_var:
+            if self._cluster_vars and var in self._cluster_vars:
                 continue
             if i < len(fe_levels_for_df_a):
                 effective_levels.append(fe_levels_for_df_a[i])
@@ -665,6 +659,7 @@ class IVAbsorbingOLS:
             if n_fes > 1:
                 self._df_a -= (n_fes - 1)
         # For areg/ivreghdfe with 1 FE, df_a = G (no -1)
+        self._df_a = max(0.0, self._df_a)
 
         self._dummy_info = dummy_info
 
@@ -693,21 +688,645 @@ class IVAbsorbingOLS:
 
         return X_full, Z_full, y, sample_mask, self._n_input_rows
 
+    def _compute_weakiv_stats(
+        self,
+        X_full: np.ndarray,
+        Z_full: np.ndarray,
+        y: np.ndarray,
+        vce: str,
+        n: int,
+        cluster_count: int | None,
+        estimator: str,
+        fuller: float = 0.0,
+    ) -> dict:
+        """
+        Compute weak instrument diagnostics.
+
+        Returns dict with keys: idstat, iddf, idp, widstat,
+        sy_10pct, sy_15pct, sy_20pct, sy_25pct.
+        """
+        from stataflow.estimators._stock_yogo import stock_yogo_critical_values
+
+        k_endog = len(self._x_endog_indices_in_full)
+        w_cols_count_in_z = (
+            (1 if self._constant_idx_reduced is not None else 0)
+            + sum(len(idx) for idx in self._fe_dummy_indices_reduced)
+            + len(self._x_exog_indices_in_full)
+        )
+        k_excl = Z_full.shape[1] - w_cols_count_in_z
+
+        if k_endog == 0 or k_excl == 0 or k_excl < k_endog:
+            return {}
+
+        # W = constant + FE dummies (all non-reported columns in X_full)
+        reported_indices = self._x_endog_indices_in_full + self._x_exog_indices_in_full
+        W_cols = [i for i in range(X_full.shape[1]) if i not in reported_indices]
+        W = X_full[:, W_cols] if W_cols else np.zeros((n, 0))
+
+        # Extract endogenous, included exogenous, excluded instruments
+        X_endog = X_full[:, self._x_endog_indices_in_full]
+        X_exog = X_full[:, self._x_exog_indices_in_full]
+        Z_excl = Z_full[:, w_cols_count_in_z:]
+
+        # Residualize by W
+        def _residize(A: np.ndarray) -> np.ndarray:
+            if W.shape[1] > 0:
+                gamma = np.linalg.solve(W.T @ W, W.T @ A)
+                return A - W @ gamma
+            return A.copy()
+
+        X_endog_r = _residize(X_endog)
+        X_exog_r = _residize(X_exog)
+        Z_excl_r = _residize(Z_excl)
+
+        # Partial out included exogenous from endogenous and excluded instruments
+        if X_exog_r.shape[1] > 0:
+            XeXe = X_exog_r.T @ X_exog_r
+            beta_endog = np.linalg.solve(XeXe, X_exog_r.T @ X_endog_r)
+            beta_excl = np.linalg.solve(XeXe, X_exog_r.T @ Z_excl_r)
+            X_endog_p = X_endog_r - X_exog_r @ beta_endog
+            Z_excl_p = Z_excl_r - X_exog_r @ beta_excl
+        else:
+            X_endog_p = X_endog_r
+            Z_excl_p = Z_excl_r
+
+        # Compute LM (underidentification test)
+        idstat: float = np.nan
+        if k_endog == 1:
+            x_p = X_endog_p[:, 0]
+            z_p = Z_excl_p
+
+            # Restricted model residual: x_p on included exogenous only
+            if X_exog_r.shape[1] > 0:
+                beta_u = np.linalg.lstsq(X_exog_r, x_p, rcond=None)[0]
+                u = x_p - X_exog_r @ beta_u
+            else:
+                u = x_p.copy()
+
+            if vce == "ols":
+                # OLS of x_p on z_p (no constant)
+                ZtZ = z_p.T @ z_p
+                Ztx = z_p.T @ x_p
+                beta_fs = np.linalg.solve(ZtZ, Ztx)
+                u_ols = x_p - z_p @ beta_fs
+                # Canonical correlation LM (uncentered)
+                tss = float(np.sum(x_p ** 2))
+                rss = float(np.sum(u_ols ** 2))
+                r_cc_sq = 1.0 - rss / tss if tss > 0 else 0.0
+                idstat = float(n * r_cc_sq)
+            elif vce == "robust":
+                zu = z_p * u[:, np.newaxis]
+                meat = zu.T @ zu
+                Zu = z_p.T @ u
+                try:
+                    idstat = float(Zu @ np.linalg.inv(meat) @ Zu)
+                except np.linalg.LinAlgError:
+                    idstat = np.nan
+            else:  # cluster
+                zu = z_p * u[:, np.newaxis]
+                if len(self._cluster_arrs) == 1:
+                    meat_cluster = np.zeros((k_excl, k_excl))
+                    for g in np.unique(self._cluster_arrs[0]):
+                        mask = self._cluster_arrs[0] == g
+                        zu_g = zu[mask].sum(axis=0)
+                        meat_cluster += np.outer(zu_g, zu_g)
+                else:
+                    from stataflow.estimators._vce_utils import compute_cluster_meat
+                    meats = []
+                    for ca in self._cluster_arrs:
+                        m, _ = compute_cluster_meat(z_p, u, ca)
+                        meats.append(m)
+                    interaction = np.array([
+                        f"{a}__{b}" for a, b in zip(self._cluster_arrs[0], self._cluster_arrs[1])
+                    ])
+                    m12, _ = compute_cluster_meat(z_p, u, interaction)
+                    meat_cluster = meats[0] + meats[1] - m12
+                Zu = z_p.T @ u
+                try:
+                    idstat = float(Zu @ np.linalg.inv(meat_cluster) @ Zu)
+                except np.linalg.LinAlgError:
+                    idstat = np.nan
+        else:
+            # Multiple endogenous: not yet fully implemented
+            idstat = np.nan
+
+        # Compute Wald F (weak identification test) via first-stage F-test
+        widstat: float = np.nan
+        if k_endog == 1:
+            x_j = X_endog[:, 0]
+            ZtZ = Z_full.T @ Z_full
+            Ztx = Z_full.T @ x_j
+            beta_fs_full = np.linalg.solve(ZtZ, Ztx)
+            resid_fs = x_j - Z_full @ beta_fs_full
+            q = k_excl
+
+            if vce == "ols":
+                RSS_full = float(np.sum(resid_fs ** 2))
+                TSS = float(np.sum((x_j - np.mean(x_j)) ** 2))
+                # Restricted model: x_j on W_z (included instruments only)
+                W_z = Z_full[:, :w_cols_count_in_z]
+                if W_z.shape[1] > 0:
+                    gamma = np.linalg.solve(W_z.T @ W_z, W_z.T @ x_j)
+                    resid_r = x_j - W_z @ gamma
+                else:
+                    resid_r = x_j
+                RSS_r = float(np.sum(resid_r ** 2))
+                if q > 0 and RSS_full > 0:
+                    widstat = float(((RSS_r - RSS_full) / q) / (RSS_full / (n - Z_full.shape[1])))
+            else:
+                delta = beta_fs_full[w_cols_count_in_z:]
+                ZtZ_inv = np.linalg.inv(ZtZ)
+                if vce == "robust":
+                    e_sq = resid_fs ** 2
+                    meat = (Z_full * e_sq[:, np.newaxis]).T @ Z_full
+                    VCE = ZtZ_inv @ meat @ ZtZ_inv
+                else:  # cluster
+                    k_z = Z_full.shape[1]
+                    if len(self._cluster_arrs) == 1:
+                        meat = np.zeros((k_z, k_z))
+                        for g in np.unique(self._cluster_arrs[0]):
+                            mask = self._cluster_arrs[0] == g
+                            Z_g = Z_full[mask]
+                            e_g = resid_fs[mask]
+                            Ze_g = Z_g.T @ e_g
+                            meat += np.outer(Ze_g, Ze_g)
+                        cc = len(np.unique(self._cluster_arrs[0]))
+                        g_adj = cc / (cc - 1) if cc > 1 else 1.0
+                        VCE = g_adj * ZtZ_inv @ meat @ ZtZ_inv
+                    else:
+                        from stataflow.estimators._vce_utils import (
+                            compute_cluster_meat,
+                            compute_multiway_cluster_vce,
+                        )
+                        meats_z = []
+                        for ca in self._cluster_arrs:
+                            m, _ = compute_cluster_meat(Z_full, resid_fs, ca)
+                            meats_z.append(m)
+                        interaction_z = np.array([
+                            f"{a}__{b}" for a, b in zip(self._cluster_arrs[0], self._cluster_arrs[1])
+                        ])
+                        m12, _ = compute_cluster_meat(Z_full, resid_fs, interaction_z)
+                        omega_z = meats_z[0] + meats_z[1] - m12
+                        G_min = min(len(np.unique(ca)) for ca in self._cluster_arrs)
+                        g_adj = G_min / (G_min - 1) if G_min > 1 else 1.0
+                        VCE = g_adj * ZtZ_inv @ omega_z @ ZtZ_inv
+
+                VCE_z = VCE[w_cols_count_in_z:, w_cols_count_in_z:]
+                delta_z = delta
+                try:
+                    VCE_z_inv = np.linalg.inv(VCE_z)
+                    wald = float(delta_z @ VCE_z_inv @ delta_z)
+                    if vce == "robust":
+                        iv1_ct = (
+                            (1 if self._constant_idx_reduced is not None else 0)
+                            + len(self._x_exog_indices_in_full)
+                            + k_excl
+                        )
+                        dofminus = (
+                            w_cols_count_in_z
+                            - (1 if self._constant_idx_reduced is not None else 0)
+                            - len(self._x_exog_indices_in_full)
+                        )
+                        widstat = wald / n * (n - iv1_ct - dofminus) / q
+                    else:  # cluster
+                        iv1_ct = (
+                            (1 if self._constant_idx_reduced is not None else 0)
+                            + len(self._x_exog_indices_in_full)
+                            + k_excl
+                        )
+                        widstat = wald / (n - 1) * (n - iv1_ct) / q
+                except np.linalg.LinAlgError:
+                    widstat = np.nan
+
+        # Stock-Yogo critical values
+        model_sy = "liml" if estimator == "liml" else "2sls"
+        sy = stock_yogo_critical_values(
+            model=model_sy,
+            nendog=k_endog,
+            k2=k_excl,
+            fuller=fuller,
+        )
+
+        iddf = max(1, k_excl - k_endog + 1)
+        idp = float(1 - chi2.cdf(idstat, df=iddf)) if not np.isnan(idstat) else np.nan
+
+        return {
+            "idstat": idstat,
+            "iddf": iddf,
+            "idp": idp,
+            "widstat": widstat,
+            "sy_10pct": sy["10%"],
+            "sy_15pct": sy["15%"],
+            "sy_20pct": sy["20%"],
+            "sy_25pct": sy["25%"],
+        }
+
+    def _fit_2sls(
+        self, X_full, Z_full, X_proj, y, y_resid, W, WtW,
+        reported_indices, vce, n, k_x_full, df_resid, k_eff,
+    ):
+        """Second-stage OLS on projected X (2SLS) with VCE."""
+        XtX_proj = X_proj.T @ X_proj
+        Xty_proj = X_proj.T @ y
+        beta_full = np.linalg.solve(XtX_proj, Xty_proj)
+        residuals = y - X_full @ beta_full
+        rss_struct = float(np.sum(residuals ** 2))
+
+        # Residualized projection for F-stat
+        beta_reported_for_f = beta_full[reported_indices]
+        X_proj_reported = X_proj[:, reported_indices]
+        if W.shape[1] > 0:
+            gamma_x = np.linalg.solve(WtW, W.T @ X_proj_reported)
+            X_tilde_proj = X_proj_reported - W @ gamma_x
+        else:
+            X_tilde_proj = X_proj_reported
+        rss_2s_resid = float(np.sum((y_resid - X_tilde_proj @ beta_reported_for_f) ** 2))
+
+        # VCE
+        M_inv = np.linalg.inv(XtX_proj)
+        cluster_count = None
+        if vce == "ols":
+            sigma2 = rss_struct / df_resid if df_resid > 0 else 0.0
+            cov_full = sigma2 * M_inv
+        elif vce == "robust":
+            e_sq = residuals ** 2
+            XtOmegaX = (X_proj * e_sq[:, np.newaxis]).T @ X_proj
+            cov_full = M_inv @ XtOmegaX @ M_inv
+            if n > k_x_full:
+                cov_full *= n / (n - k_x_full)
+        else:
+            if len(self._cluster_arrs) == 1:
+                from stataflow.estimators._vce_utils import compute_cluster_meat
+                meat, cluster_count = compute_cluster_meat(
+                    X_proj, residuals, self._cluster_arrs[0]
+                )
+                g_adj = cluster_count / (cluster_count - 1) if cluster_count > 1 else 1.0
+                n_adj = (n - 1) / (n - k_eff) if n > k_eff else 1.0
+                cov_full = n_adj * g_adj * M_inv @ meat @ M_inv
+            else:
+                cov_full, cluster_count = self._compute_multiway_cluster_vce(
+                    X_proj, residuals, M_inv, k_eff, n
+                )
+
+        return beta_full, residuals, cov_full, rss_struct, rss_2s_resid, cluster_count
+
+    def _fit_gmm2s(
+        self,
+        X_full: np.ndarray,
+        Z_full: np.ndarray,
+        y: np.ndarray,
+        vce: str,
+        n: int,
+        k_x_full: int,
+        k_x_reported: int,
+        df_resid: float,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
+        """Two-step efficient GMM estimator."""
+        N = n
+        ZtZ = Z_full.T @ Z_full
+        ZtX = Z_full.T @ X_full
+
+        # Step 1: Initial 2SLS for residuals
+        Pi = np.linalg.solve(ZtZ, ZtX)
+        X_proj = Z_full @ Pi
+        XtX_proj = X_proj.T @ X_proj
+        Xty_proj = X_proj.T @ y
+        beta_1s = np.linalg.solve(XtX_proj, Xty_proj)
+        e_1s = y - X_full @ beta_1s
+
+        # Step 2: Compute omega (moment condition covariance)
+        # Use uncorrected omega for GMM weights; apply small-sample corrections to V if needed
+        if vce == "ols":
+            sigmasq = np.sum(e_1s ** 2) / N
+            QZZ = ZtZ / N
+            omega = sigmasq * QZZ
+        elif vce == "robust":
+            Ze = Z_full * e_1s[:, np.newaxis]
+            omega = Ze.T @ Ze / N
+        else:  # cluster
+            if len(self._cluster_arrs) == 1:
+                from stataflow.estimators._vce_utils import compute_cluster_meat
+                meat, _ = compute_cluster_meat(Z_full, e_1s, self._cluster_arrs[0])
+                omega = meat / N
+            else:
+                from stataflow.estimators._vce_utils import compute_cluster_meat
+                meats = []
+                for ca in self._cluster_arrs:
+                    meat, _ = compute_cluster_meat(Z_full, e_1s, ca)
+                    meats.append(meat)
+                interaction = np.array([
+                    f"{a}__{b}" for a, b in zip(self._cluster_arrs[0], self._cluster_arrs[1])
+                ])
+                meat_12, _ = compute_cluster_meat(Z_full, e_1s, interaction)
+                omega_meat = meats[0] + meats[1] - meat_12
+                omega = omega_meat / N
+
+        # Force symmetry before inversion
+        omega = (omega + omega.T) / 2.0
+        try:
+            W = np.linalg.inv(omega)
+        except np.linalg.LinAlgError:
+            # Singular omega arises when Z_full includes FE dummies that are
+            # collinear with the cluster variable(s).  ivreghdfe residualizes
+            # FEs before ivreg2, so the moment conditions only involve
+            # structural instruments.  We replicate that by partialing out
+            # W = [constant, FE dummies] and running GMM on residualized data.
+            return self._fit_gmm2s_residualized(
+                X_full, Z_full, y, vce, n, k_x_full, k_x_reported, df_resid
+            )
+
+        # Step 3: Efficient GMM
+        QXZ = ZtX.T / N
+        QZy = Z_full.T @ y / N
+        Q = QXZ @ W @ QXZ.T
+        Q = (Q + Q.T) / 2.0
+        beta_gmm = np.linalg.solve(Q, QXZ @ W @ QZy)
+
+        # Step 4: VCE (efficient weights simplified form)
+        V = np.linalg.inv(Q) / N
+        V = (V + V.T) / 2.0
+
+        # Small-sample correction for ols VCE: Stata applies df_resid adjustment
+        if vce == "ols" and df_resid > 0:
+            V = V * (N / df_resid)
+            V = (V + V.T) / 2.0
+
+        # Step 5: Hansen J overidentification test (uses uncorrected omega)
+        e_2s = y - X_full @ beta_gmm
+        gbar = Z_full.T @ e_2s / N
+        J = float(N * gbar.T @ W @ gbar)
+        j_df = Z_full.shape[1] - k_x_full
+
+        return beta_gmm, e_2s, V, {"hansen_j": J, "hansen_j_df": j_df}
+
+    def _fit_gmm2s_residualized(
+        self,
+        X_full: np.ndarray,
+        Z_full: np.ndarray,
+        y: np.ndarray,
+        vce: str,
+        n: int,
+        k_x_full: int,
+        k_x_reported: int,
+        df_resid: float,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
+        """GMM on FE-residualized data; used as fallback when omega is singular."""
+        N = n
+
+        reported_indices = self._x_endog_indices_in_full + self._x_exog_indices_in_full
+        W_cols = [i for i in range(k_x_full) if i not in reported_indices]
+        W = X_full[:, W_cols] if W_cols else np.zeros((N, 0))
+        X_reported = X_full[:, reported_indices]
+
+        w_cols_count_in_z = (
+            (1 if self._constant_idx_reduced is not None else 0)
+            + sum(len(idx) for idx in self._fe_dummy_indices_reduced)
+            + len(self._x_exog_indices_in_full)
+        )
+        z_structural_start = w_cols_count_in_z - len(self._x_exog_indices_in_full)
+        if z_structural_start < Z_full.shape[1]:
+            Z_structural = Z_full[:, z_structural_start:]
+        else:
+            Z_structural = np.zeros((N, 0))
+
+        def _resid(M: np.ndarray) -> np.ndarray:
+            if W.shape[1] == 0:
+                return M
+            return M - W @ np.linalg.solve(W.T @ W, W.T @ M)
+
+        y_r = _resid(y.reshape(-1, 1)).flatten()
+        X_r = _resid(X_reported)
+        Z_r = _resid(Z_structural)
+
+        # Initial 2SLS on residualized data
+        ZtZ = Z_r.T @ Z_r
+        ZtX = Z_r.T @ X_r
+        Pi = np.linalg.solve(ZtZ, ZtX)
+        X_proj = Z_r @ Pi
+        beta_1s = np.linalg.solve(X_proj.T @ X_proj, X_proj.T @ y_r)
+        e_1s = y_r - X_r @ beta_1s
+
+        # Omega
+        if vce == "ols":
+            sigmasq = np.sum(e_1s ** 2) / N
+            omega = sigmasq * ZtZ / N
+        elif vce == "robust":
+            Ze = Z_r * e_1s[:, np.newaxis]
+            omega = Ze.T @ Ze / N
+        else:  # cluster
+            if len(self._cluster_arrs) == 1:
+                from stataflow.estimators._vce_utils import compute_cluster_meat
+                meat, _ = compute_cluster_meat(Z_r, e_1s, self._cluster_arrs[0])
+                omega = meat / N
+            else:
+                from stataflow.estimators._vce_utils import compute_cluster_meat
+                meats = []
+                for ca in self._cluster_arrs:
+                    meat, _ = compute_cluster_meat(Z_r, e_1s, ca)
+                    meats.append(meat)
+                interaction = np.array([
+                    f"{a}__{b}" for a, b in zip(self._cluster_arrs[0], self._cluster_arrs[1])
+                ])
+                meat_12, _ = compute_cluster_meat(Z_r, e_1s, interaction)
+                omega_meat = meats[0] + meats[1] - meat_12
+                omega = omega_meat / N
+
+        omega = (omega + omega.T) / 2.0
+        W_omega = np.linalg.inv(omega)
+
+        # Efficient GMM
+        QXZ = ZtX.T / N
+        QZy = Z_r.T @ y_r / N
+        Q = QXZ @ W_omega @ QXZ.T
+        Q = (Q + Q.T) / 2.0
+        beta_gmm_reported = np.linalg.solve(Q, QXZ @ W_omega @ QZy)
+
+        # VCE
+        V_reported = np.linalg.inv(Q) / N
+        V_reported = (V_reported + V_reported.T) / 2.0
+        if vce == "ols" and df_resid > 0:
+            V_reported = V_reported * (N / df_resid)
+            V_reported = (V_reported + V_reported.T) / 2.0
+        elif vce == "cluster":
+            # Small-sample adjustment matching Stata ivreg2 gmm2s cluster:
+            # G/(G-1) * (N-1)/(N-L) where L = number of instruments
+            if len(self._cluster_arrs) == 1:
+                G = len(np.unique(self._cluster_arrs[0]))
+            else:
+                G = min(len(np.unique(ca)) for ca in self._cluster_arrs)
+            L = Z_r.shape[1]
+            g_adj = G / (G - 1) if G > 1 else 1.0
+            n_adj = (N - 1) / (N - L) if N > L else 1.0
+            V_reported = V_reported * g_adj * n_adj
+            V_reported = (V_reported + V_reported.T) / 2.0
+
+        # Reconstruct full beta, full VCE, and full residuals
+        beta_gmm = np.zeros(k_x_full)
+        V_full = np.zeros((k_x_full, k_x_full))
+        for i, idx in enumerate(reported_indices):
+            beta_gmm[idx] = beta_gmm_reported[i]
+            for j, jdx in enumerate(reported_indices):
+                V_full[idx, jdx] = V_reported[i, j]
+        e_full = y - X_full @ beta_gmm
+
+        # Hansen J
+        gbar = Z_r.T @ e_full / N
+        J = float(N * gbar.T @ W_omega @ gbar)
+        j_df = Z_r.shape[1] - X_r.shape[1]
+
+        return beta_gmm, e_full, V_full, {"hansen_j": J, "hansen_j_df": j_df}
+
+    def _fit_liml(
+        self,
+        X_full: np.ndarray,
+        Z_full: np.ndarray,
+        y: np.ndarray,
+        vce: str,
+        n: int,
+        k_x_full: int,
+        k_x_reported: int,
+        fuller: float,
+        kclass: float | None,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
+        """LIML and k-class estimator."""
+        N = n
+        ZtZ = Z_full.T @ Z_full
+        ZtZ_inv = np.linalg.inv(ZtZ)
+
+        # Y matrix: [y, X_endo]
+        if self._x_endog_indices_in_full:
+            X_endo = X_full[:, self._x_endog_indices_in_full]
+            Y = np.column_stack([y, X_endo])
+        else:
+            Y = y.reshape(-1, 1)
+
+        # Z2 = included instruments (constant + dummies + x_exog)
+        w_cols_count_in_z = (
+            (1 if self._constant_idx_reduced is not None else 0)
+            + sum(len(idx) for idx in self._fe_dummy_indices_reduced)
+            + len(self._x_exog_indices_in_full)
+        )
+        Z2 = Z_full[:, :w_cols_count_in_z] if w_cols_count_in_z > 0 else None
+
+        # W and W1 (residual matrices)
+        W_mat = Y.T @ Y - Y.T @ Z_full @ ZtZ_inv @ Z_full.T @ Y
+
+        if Z2 is not None and Z2.shape[1] > 0:
+            Z2tZ2 = Z2.T @ Z2
+            Z2tZ2_inv = np.linalg.inv(Z2tZ2)
+            W1 = Y.T @ Y - Y.T @ Z2 @ Z2tZ2_inv @ Z2.T @ Y
+        else:
+            W1 = Y.T @ Y
+
+        # lambda = min eigenvalue of W^{-1/2} * W1 * W^{-1/2}
+        eigvals_w, eigvecs_w = np.linalg.eigh(W_mat)
+        eigvals_w = np.maximum(eigvals_w, 1e-15)
+        W_inv_sqrt = eigvecs_w @ np.diag(1.0 / np.sqrt(eigvals_w)) @ eigvecs_w.T
+        evals = scipy.linalg.eigvalsh(W_inv_sqrt @ W1 @ W_inv_sqrt)
+        lambda_ = float(np.min(evals))
+
+        # Exactly identified => lambda = 1
+        if Z_full.shape[1] == k_x_full:
+            lambda_ = 1.0
+
+        # k-class parameter
+        if kclass is not None:
+            k = float(kclass)
+        elif fuller > 0:
+            # ivreg2 Fuller adjustment uses N - L where L = number of
+            # structural instruments (x_exog + excluded instruments) in the
+            # residualized model, not the LSDV Z_full dimension.
+            L = (
+                len(self._x_exog_indices_in_full)
+                + (Z_full.shape[1] - w_cols_count_in_z)
+            )
+            k = lambda_ - fuller / (n - L)
+        else:
+            k = lambda_
+
+        # Estimate beta using Q-matrices
+        QXX = X_full.T @ X_full / N
+        QXZ = X_full.T @ Z_full / N
+        QXy = X_full.T @ y / N
+        QZy = Z_full.T @ y / N
+        QZZ = ZtZ / N
+        QZZ_inv = np.linalg.inv(QZZ)
+
+        aux = QXZ @ QZZ_inv @ QXZ.T
+        Qh = (1.0 - k) * QXX + k * aux
+        Qh = (Qh + Qh.T) / 2.0
+        aux2 = QXZ @ QZZ_inv @ QZy
+        beta_liml = np.linalg.solve(Qh, (1.0 - k) * QXy + k * aux2)
+
+        residuals = y - X_full @ beta_liml
+
+        # VCE
+        if vce == "ols":
+            rss = float(np.sum(residuals ** 2))
+            df_resid = n - k_x_full
+            sigma2 = rss / df_resid if df_resid > 0 else 0.0
+            V = sigma2 * np.linalg.inv(Qh) / N
+        else:
+            # Compute omega using LIML residuals
+            if vce == "robust":
+                Ze = Z_full * residuals[:, np.newaxis]
+                omega = Ze.T @ Ze / N
+            else:  # cluster
+                if len(self._cluster_arrs) == 1:
+                    from stataflow.estimators._vce_utils import compute_cluster_meat
+                    meat, _ = compute_cluster_meat(Z_full, residuals, self._cluster_arrs[0])
+                    omega = meat / N
+                else:
+                    from stataflow.estimators._vce_utils import compute_cluster_meat
+                    meats = []
+                    for ca in self._cluster_arrs:
+                        meat, _ = compute_cluster_meat(Z_full, residuals, ca)
+                        meats.append(meat)
+                    interaction = np.array([
+                        f"{a}__{b}" for a, b in zip(self._cluster_arrs[0], self._cluster_arrs[1])
+                    ])
+                    meat_12, _ = compute_cluster_meat(Z_full, residuals, interaction)
+                    omega_meat = meats[0] + meats[1] - meat_12
+                    omega = omega_meat / N
+
+            omega = (omega + omega.T) / 2.0
+
+            # coviv empty (default): V = 1/N * aux9' * omega * aux9
+            aux5 = np.linalg.solve(Qh, QXZ)   # K x L
+            aux9 = np.linalg.solve(QZZ, aux5.T)  # L x K
+            V = aux9.T @ omega @ aux9 / N
+            V = (V + V.T) / 2.0
+
+        return beta_liml, residuals, V, {"liml_lambda": lambda_, "liml_k": k}
+
     def fit(
         self,
         vce: str = "ols",
-        cluster: Optional[str] = None,
+        cluster: Optional[str | list[str]] = None,
         alpha: float = 0.05,
+        first: bool = False,
+        estimator: str = "2sls",
+        fuller: float = 0.0,
+        kclass: float | None = None,
     ) -> ResultSchema:
         """Fit IV absorbing OLS model."""
+        if estimator not in ("2sls", "gmm2s", "liml"):
+            raise ValueError(f"estimator='{estimator}' not supported. Use '2sls', 'gmm2s', or 'liml'.")
+        if fuller != 0 and estimator != "liml":
+            raise ValueError("fuller only valid with estimator='liml'.")
+        if kclass is not None and estimator != "liml":
+            raise ValueError("kclass only valid with estimator='liml'.")
         if vce not in ("ols", "robust", "cluster"):
             raise ValueError(f"vce='{vce}' not supported. Use 'ols', 'robust', or 'cluster'.")
         if vce == "cluster" and cluster is None:
             raise ValueError("cluster variable required when vce='cluster'.")
         if vce != "cluster" and cluster is not None:
             raise ValueError("cluster only used when vce='cluster'.")
+        if vce == "cluster" and isinstance(cluster, list) and len(cluster) > 2:
+            raise ValueError("Only 1-way and 2-way clustering are supported.")
 
-        X_full, Z_full, y, sample_mask, n_input_rows = self._prepare_data(cluster_var=cluster)
+        cluster_vars = [cluster] if isinstance(cluster, str) else cluster
+        X_full, Z_full, y, sample_mask, n_input_rows = self._prepare_data(cluster_vars=cluster_vars)
         n = len(y)
         k_x_full = X_full.shape[1]
         k_z_full = Z_full.shape[1]
@@ -715,20 +1334,11 @@ class IVAbsorbingOLS:
         if k_z_full < k_x_full:
             raise ValueError(f"Underidentified: need at least {k_x_full} instruments, have {k_z_full}")
 
-        # First stage: project X_full onto Z_full
+        # First stage: project X_full onto Z_full (needed for all estimators)
         ZtZ = Z_full.T @ Z_full
         ZtX = Z_full.T @ X_full
         Pi = np.linalg.solve(ZtZ, ZtX)
         X_proj = Z_full @ Pi
-
-        # Second stage: OLS of y on X_proj
-        XtX_proj = X_proj.T @ X_proj
-        Xty_proj = X_proj.T @ y
-        beta_full = np.linalg.solve(XtX_proj, Xty_proj)
-
-        # Structural residuals (using original X_full)
-        residuals = y - X_full @ beta_full
-        rss_struct = float(np.sum(residuals ** 2))
 
         # Reported coefficient indices
         reported_indices = self._x_endog_indices_in_full + self._x_exog_indices_in_full
@@ -747,63 +1357,80 @@ class IVAbsorbingOLS:
             y_resid = y
         tss_resid = float(np.sum((y_resid - np.mean(y_resid)) ** 2))
 
-        # Residualized 2SLS projection for F-stat
-        beta_reported_for_f = beta_full[reported_indices]
-        X_proj_reported = X_proj[:, reported_indices]
-        if W.shape[1] > 0:
-            gamma_x = np.linalg.solve(WtW, W.T @ X_proj_reported)
-            X_tilde_proj = X_proj_reported - W @ gamma_x
-        else:
-            X_tilde_proj = X_proj_reported
-        rss_2s_resid = float(np.sum((y_resid - X_tilde_proj @ beta_reported_for_f) ** 2))
-
-        # R-squared: Stata uses structural RSS and y_resid TSS
-        r2 = 1.0 - rss_struct / tss_resid if tss_resid > 0 else 0.0
-
-        # Degrees of freedom
+        # Degrees of freedom (estimator-independent)
         df_model = float(k_x_reported)
         df_a = self._df_a
-
         cluster_count = None
         if vce == "cluster":
-            unique_clusters = np.unique(self._cluster_arr)
-            cluster_count = len(unique_clusters)
+            if len(self._cluster_arrs) == 1:
+                unique_clusters = np.unique(self._cluster_arrs[0])
+                cluster_count = len(unique_clusters)
+            else:
+                cluster_count = min(len(np.unique(ca)) for ca in self._cluster_arrs)
             df_resid = float(cluster_count - 1)
         elif vce == "robust":
             df_resid = float(n - k_x_full)
         else:
             df_resid = float(n - k_x_full)
+        k_eff = k_x_reported + df_a
+
+        # Estimator-specific coefficient and VCE
+        extra_stats: dict = {}
+        if estimator == "2sls":
+            beta_full, residuals, cov_full, rss_struct, rss_2s_resid, cluster_count = \
+                self._fit_2sls(X_full, Z_full, X_proj, y, y_resid, W, WtW,
+                               reported_indices, vce, n, k_x_full, df_resid, k_eff)
+        elif estimator == "gmm2s":
+            beta_full, residuals, cov_full, extra_stats = self._fit_gmm2s(
+                X_full, Z_full, y, vce, n, k_x_full, k_x_reported, df_resid
+            )
+            rss_struct = float(np.sum(residuals ** 2))
+
+            # Residualized projection for F-stat (use 2SLS X_proj)
+            beta_reported_for_f = beta_full[reported_indices]
+            X_proj_reported = X_proj[:, reported_indices]
+            if W.shape[1] > 0:
+                gamma_x = np.linalg.solve(WtW, W.T @ X_proj_reported)
+                X_tilde_proj = X_proj_reported - W @ gamma_x
+            else:
+                X_tilde_proj = X_proj_reported
+            rss_2s_resid = float(np.sum((y_resid - X_tilde_proj @ beta_reported_for_f) ** 2))
+        else:  # liml
+            beta_full, residuals, cov_full, extra_stats = self._fit_liml(
+                X_full, Z_full, y, vce, n, k_x_full, k_x_reported, fuller, kclass
+            )
+            rss_struct = float(np.sum(residuals ** 2))
+
+            # Residualized projection for F-stat (use 2SLS X_proj)
+            beta_reported_for_f = beta_full[reported_indices]
+            X_proj_reported = X_proj[:, reported_indices]
+            if W.shape[1] > 0:
+                gamma_x = np.linalg.solve(WtW, W.T @ X_proj_reported)
+                X_tilde_proj = X_proj_reported - W @ gamma_x
+            else:
+                X_tilde_proj = X_proj_reported
+            rss_2s_resid = float(np.sum((y_resid - X_tilde_proj @ beta_reported_for_f) ** 2))
+
+        # Weak instrument diagnostics
+        weakiv_stats = self._compute_weakiv_stats(
+            X_full, Z_full, y, vce, n, cluster_count, estimator, fuller
+        )
+        extra_stats.update(weakiv_stats)
+
+        # R-squared: Stata uses structural RSS and y_resid TSS
+        r2 = 1.0 - rss_struct / tss_resid if tss_resid > 0 else 0.0
 
         # RMSE denominator: n - k_x_reported - df_a (matches Stata ivreghdfe)
-        rmse_df = float(n - k_x_reported - df_a)
+        # When cluster VCE and all FEs are nested (df_a=0), Stata still subtracts
+        # the partialled-out constant from the RMSE denominator.
+        if vce == "cluster" and df_a == 0 and self.add_constant:
+            rmse_df = float(n - k_x_reported - 1)
+        else:
+            rmse_df = float(n - k_x_reported - df_a)
         rmse = np.sqrt(rss_struct / rmse_df) if rmse_df > 0 else 0.0
 
         # Adjusted R-squared: ivreghdfe uses TSS_resid / n in denominator
         r2_adj = 1.0 - (rss_struct / rmse_df) / (tss_resid / n) if rmse_df > 0 and tss_resid > 0 else 0.0
-
-        # VCE on full LSDV coefficients
-        M_inv = np.linalg.inv(XtX_proj)
-        if vce == "ols":
-            sigma2 = rss_struct / df_resid if df_resid > 0 else 0.0
-            cov_full = sigma2 * M_inv
-        elif vce == "robust":
-            e_sq = residuals ** 2
-            XtOmegaX = (X_proj * e_sq[:, np.newaxis]).T @ X_proj
-            cov_full = M_inv @ XtOmegaX @ M_inv
-        else:
-            meat = np.zeros((k_x_full, k_x_full))
-            for g in np.unique(self._cluster_arr):
-                mask_g = self._cluster_arr == g
-                X_g = X_proj[mask_g]
-                e_g = residuals[mask_g]
-                Xe_g = X_g.T @ e_g
-                meat += np.outer(Xe_g, Xe_g)
-
-            # ivreghdfe small-sample adjustment uses k_eff = k_x_reported + df_a
-            k_eff = k_x_reported + df_a
-            n_adj = (n - 1) / (n - k_eff) if n > k_eff else 1.0
-            g_adj = cluster_count / (cluster_count - 1) if cluster_count > 1 else 1.0
-            cov_full = n_adj * g_adj * M_inv @ meat @ M_inv
 
         # T matrix: map full LSDV -> reported coefficients
         report_dim = k_x_reported + (1 if "_cons" in self._coef_names else 0)
@@ -831,6 +1458,18 @@ class IVAbsorbingOLS:
         beta_reported = T @ beta_full
         cov_reported = T @ cov_full @ T.T
 
+        # For multi-way clustering, cov_reported can be non-PSD due to
+        # inclusion-exclusion. Apply reghdfe-style PSD fix (preserve slopes).
+        if vce == "cluster" and len(self._cluster_arrs) > 1:
+            from stataflow.estimators._vce_utils import fix_psd_reghdfe
+            constant_index = (
+                self._coef_names.index("_cons") if "_cons" in self._coef_names else None
+            )
+            cov_reported = fix_psd_reghdfe(
+                cov_reported,
+                constant_index=constant_index,
+            )
+
         # Save internal state for post-estimation
         self._is_fitted = True
         self._beta_full = beta_full
@@ -842,6 +1481,110 @@ class IVAbsorbingOLS:
         self._y = y
         self._tss_resid = tss_resid
         self._rss_struct = rss_struct
+
+        # First stage diagnostics
+        first_stage: dict[str, dict] = {}
+        if first:
+            w_cols_count_in_z = (
+                (1 if self._constant_idx_reduced is not None else 0)
+                + sum(len(idx) for idx in self._fe_dummy_indices_reduced)
+                + len(self._x_exog_indices_in_full)
+            )
+            num_inst = k_z_full - w_cols_count_in_z
+            W_z = Z_full[:, :w_cols_count_in_z] if w_cols_count_in_z > 0 else np.zeros((n, 0))
+            endog_names = self._coef_names[:len(self._x_endog_indices_in_full)]
+
+            for j, j_idx in enumerate(self._x_endog_indices_in_full):
+                x_j = X_full[:, j_idx]
+                x_hat_j = X_proj[:, j_idx]
+                resid_fs = x_j - x_hat_j
+                RSS_full = float(np.sum(resid_fs ** 2))
+                TSS = float(np.sum((x_j - np.mean(x_j)) ** 2))
+                R2 = 1.0 - RSS_full / TSS if TSS > 0 else 0.0
+
+                # Restricted model: x_j on W (included exogenous only)
+                if W_z.shape[1] > 0:
+                    gamma = np.linalg.solve(W_z.T @ W_z, W_z.T @ x_j)
+                    resid_r = x_j - W_z @ gamma
+                else:
+                    resid_r = x_j
+                RSS_r = float(np.sum(resid_r ** 2))
+                R2_r = 1.0 - RSS_r / TSS if TSS > 0 else 0.0
+
+                partial_R2 = (R2 - R2_r) / (1.0 - R2_r) if R2_r < 1.0 else 0.0
+
+                # Shea partial R2: for single endogenous variable, Stata's ivreghdfe
+                # sets shea_r2 = partial_r2. For multiple endogenous variables, a more
+                # complex adjustment is needed (not yet implemented).
+                if len(self._x_endog_indices_in_full) == 1:
+                    shea_R2 = partial_R2
+                else:
+                    var_x_hat = np.var(x_hat_j, ddof=0)
+                    var_x = np.var(x_j, ddof=0)
+                    shea_R2 = (var_x_hat / var_x) * partial_R2 if var_x > 0 else 0.0
+
+                # F-statistic
+                q = num_inst
+                f_stat = None
+                f_pvalue = None
+                if q > 0 and RSS_full > 0:
+                    if vce == "ols":
+                        f_stat = ((RSS_r - RSS_full) / q) / (RSS_full / (n - k_z_full))
+                        f_pvalue = float(1 - f_dist.cdf(f_stat, dfn=q, dfd=n - k_z_full))
+                    else:
+                        delta = Pi[:, j_idx]
+                        ZtZ_inv = np.linalg.inv(ZtZ)
+                        if vce == "robust":
+                            e_sq = resid_fs ** 2
+                            meat = (Z_full * e_sq[:, np.newaxis]).T @ Z_full
+                            VCE = ZtZ_inv @ meat @ ZtZ_inv
+                        else:  # cluster
+                            if len(self._cluster_arrs) == 1:
+                                meat = np.zeros((k_z_full, k_z_full))
+                                for g in np.unique(self._cluster_arrs[0]):
+                                    mask_g = self._cluster_arrs[0] == g
+                                    Z_g = Z_full[mask_g]
+                                    e_g = resid_fs[mask_g]
+                                    Ze_g = Z_g.T @ e_g
+                                    meat += np.outer(Ze_g, Ze_g)
+                                cc = len(np.unique(self._cluster_arrs[0]))
+                                g_adj = cc / (cc - 1) if cc > 1 else 1.0
+                                VCE = g_adj * ZtZ_inv @ meat @ ZtZ_inv
+                            else:
+                                # 2-way clustering for first-stage
+                                meats_z = []
+                                for ca in self._cluster_arrs:
+                                    from stataflow.estimators._vce_utils import compute_cluster_meat
+                                    meat_z, _ = compute_cluster_meat(Z_full, resid_fs, ca)
+                                    meats_z.append(meat_z)
+                                interaction_z = np.array([
+                                    f"{a}__{b}" for a, b in zip(self._cluster_arrs[0], self._cluster_arrs[1])
+                                ])
+                                meat_z_12, _ = compute_cluster_meat(Z_full, resid_fs, interaction_z)
+                                omega_z = meats_z[0] + meats_z[1] - meat_z_12
+                                G_min = min(len(np.unique(ca)) for ca in self._cluster_arrs)
+                                g_adj = G_min / (G_min - 1) if G_min > 1 else 1.0
+                                VCE = g_adj * ZtZ_inv @ omega_z @ ZtZ_inv
+
+                        VCE_z = VCE[w_cols_count_in_z:, w_cols_count_in_z:]
+                        delta_z = delta[w_cols_count_in_z:]
+                        try:
+                            VCE_z_inv = np.linalg.inv(VCE_z)
+                            wald = float(delta_z @ VCE_z_inv @ delta_z)
+                            f_stat = wald / q
+                            f_pvalue = float(1 - chi2.cdf(wald, df=q))
+                        except np.linalg.LinAlgError:
+                            pass
+
+                first_stage[endog_names[j]] = {
+                    "r2": R2,
+                    "partial_r2": partial_R2,
+                    "shea_r2": shea_R2,
+                    "f_stat": f_stat,
+                    "f_pvalue": f_pvalue,
+                    "df": q,
+                    "df_r": n - k_z_full,
+                }
 
         diag_cov = np.diag(cov_reported)
         diag_cov = np.maximum(diag_cov, 0)
@@ -879,9 +1622,10 @@ class IVAbsorbingOLS:
 
         result = ResultSchema()
         absorb_var = self.absorb_vars[0] if len(self.absorb_vars) == 1 else None
+        estimator_family = f"iv_absorbing_ols_{estimator}"
         result.model = ModelInfo(
             command="ivreghdfe",
-            estimator_family="iv_absorbing_ols",
+            estimator_family=estimator_family,
             vcetype=vce,
             absorb_var=absorb_var,
             absorb_vars=self.absorb_vars,
@@ -937,11 +1681,27 @@ class IVAbsorbingOLS:
         endog_str = ' '.join(self.x_endog)
         exog_str = ' '.join(self.x_exog)
         inst_str = ' '.join(self.instruments)
+        opt_parts = [f"absorb({' '.join(self.absorb_vars)})"]
+        if estimator == "gmm2s":
+            opt_parts.append("gmm2s")
+        elif estimator == "liml":
+            opt_parts.append("liml")
+            if fuller > 0:
+                opt_parts.append(f"fuller({int(fuller)})")
+            if kclass is not None:
+                opt_parts.append(f"kclass({kclass})")
+        stata_cmd = f"{cmd_name} {self.y} {exog_str} ({endog_str} = {inst_str}), {' '.join(opt_parts)}"
         result.provenance = ProvenanceInfo(
             source="python",
             stata_version_target="17",
-            stata_command=f"{cmd_name} {self.y} {exog_str} ({endog_str} = {inst_str}), absorb({' '.join(self.absorb_vars)})",
+            stata_command=stata_cmd,
         )
+        if first:
+            result.first_stage = first_stage
+
+        # Attach estimator-specific diagnostics without changing ResultSchema
+        for key, value in extra_stats.items():
+            setattr(result, key, value)
 
         return result
 
@@ -949,10 +1709,10 @@ class IVAbsorbingOLS:
         """Generate predictions after fitting."""
         if not self._is_fitted:
             raise ValueError("Model has not been fitted yet. Call fit() first.")
-        if type not in ("xb", "residuals", "d", "xbd", "dresiduals"):
+        if type not in ("xb", "residuals", "d", "xbd", "dresiduals", "stdp"):
             raise ValueError(
                 f"type='{type}' not supported for IVAbsorbingOLS. "
-                "Use 'xb', 'residuals', 'd', 'xbd', or 'dresiduals'."
+                "Use 'xb', 'residuals', 'd', 'xbd', 'dresiduals', or 'stdp'."
             )
 
         n = len(self._y)
@@ -974,6 +1734,11 @@ class IVAbsorbingOLS:
         X_reported = np.column_stack(X_reported_cols) if X_reported_cols else np.zeros((n, 0))
         xb_reported = X_reported @ self._beta_reported
 
+        if type == "stdp":
+            if self._cov_reported is None:
+                raise ValueError("VCE matrix not available. Call fit() first.")
+            var = np.sum((X_reported @ self._cov_reported) * X_reported, axis=1)
+            return np.sqrt(np.maximum(var, 0))
         if type == "xb":
             return xb_reported
         if type == "d":
