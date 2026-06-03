@@ -1,13 +1,14 @@
-# Open-Source Export Manifest — v2.0.0
+# Open-Source Export Manifest — v2.1.0
 #
-# Minimal export: core source, examples, user docs, validation evidence.
-# No tests, research data, development docs, or Stata artifacts.
+# Clean user-facing export: core source, examples, tests, user docs,
+# public datasets, and validation evidence.
+# No development docs, scripts, Stata artifacts, or golden tests.
 # ---------------------------------------------------------------------------
 
 meta:
   source_repo: "StataFlow"
   target_repo: "StataFlow_open_source"
-  manifest_version: "2.0.0"
+  manifest_version: "2.1.0"
 
 whitelist:
   files:
@@ -21,6 +22,9 @@ whitelist:
   directories:
     - "src/stataflow/"
     - "examples/"
+    - "tests/"
+    - "research/data/public/"
+    - "research/results/validation/"
 
   specific_files:
     - "docs/USER_GUIDE.md"
@@ -42,3 +46,7 @@ blacklist:
     - "*token*"
     - "*secret*"
     - "*credential*"
+    - "tests/golden/**"
+    - "tests/test_validation_summary.py"
+    - "tests/test_export_safety.py"
+    - "workspace/**"
