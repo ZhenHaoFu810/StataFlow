@@ -147,12 +147,39 @@ class IV2SLS:
             z_names.append("_cons")
         Z = np.column_stack(Z_cols) if Z_cols else np.zeros((len(df), 0))
 
-        # Detect collinearity separately in X and Z
+        # Detect collinearity in X first, then in the combined [X, instruments] matrix
+        # to catch instruments that are collinear with X regressors (IV-04).
         X, dropped_x, kept_x = self._detect_collinearity(X, x_names)
-        Z, dropped_z, kept_z = self._detect_collinearity(Z, z_names)
-        self._collinear_dropped = dropped_x + dropped_z
-
         self._coef_names = [x_names[i] for i in kept_x]
+
+        # Build unique instrument columns (those not already in X)
+        inst_only_names = []
+        inst_only_cols = []
+        for var in self.instruments:
+            if var not in x_names:
+                inst_only_names.append(var)
+                inst_only_cols.append(df[var].values.astype(np.float64))
+        if inst_only_cols:
+            inst_only = np.column_stack(inst_only_cols)
+            xz = np.column_stack([X, inst_only])
+            xz_names = self._coef_names + inst_only_names
+            _, dropped_xz, kept_xz = self._detect_collinearity(xz, xz_names)
+            # Kept X columns are the ones in kept_xz that are < X.shape[1]
+            # Kept instruments are the ones in kept_xz that are >= X.shape[1]
+            kept_inst_names = [xz_names[i] for i in kept_xz if i >= X.shape[1]]
+        else:
+            kept_inst_names = []
+
+        # Z keeps: x_exog (same as X), constant (same as X), and kept instruments
+        kept_z = []
+        for i, name in enumerate(z_names):
+            if name in self._coef_names:
+                kept_z.append(i)
+            elif name in kept_inst_names:
+                kept_z.append(i)
+
+        dropped_z = [z_names[i] for i in range(len(z_names)) if i not in kept_z]
+        self._collinear_dropped = dropped_x + dropped_z
         self._inst_names = [z_names[i] for i in kept_z]
 
         self._design_matrix = X
