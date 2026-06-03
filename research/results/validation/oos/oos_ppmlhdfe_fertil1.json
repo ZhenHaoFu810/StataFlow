@@ -1,0 +1,67 @@
+{
+  "case_id": "oos_ppmlhdfe_fertil1",
+  "command": "ppmlhdfe",
+  "dataset_key": "fertil1",
+  "status": "passed",
+  "field_checks": [
+    {
+      "field": "nobs",
+      "python": 1129,
+      "stata": 1129.0,
+      "passed": true,
+      "message": "nobs: Python=1129.000000000000000, Stata=1129.000000000000000, abs_diff=0.00e+00, rel_diff=0.00e+00, PASS"
+    },
+    {
+      "field": "df_model",
+      "python": 4.0,
+      "stata": 4.0,
+      "passed": true,
+      "message": "df_model: Python=4.000000000000000, Stata=4.000000000000000, abs_diff=0.00e+00, rel_diff=0.00e+00, PASS"
+    },
+    {
+      "field": "df_a",
+      "python": 7.0,
+      "stata": 7.0,
+      "passed": true,
+      "message": "df_a: Python=7.000000000000000, Stata=7.000000000000000, abs_diff=0.00e+00, rel_diff=0.00e+00, PASS"
+    },
+    {
+      "field": "ll",
+      "python": -2077.4189793295486,
+      "stata": -2077.419,
+      "passed": true,
+      "message": "ll: Python=-2077.418979329548620, Stata=-2077.418999999999869, abs_diff=2.07e-05, rel_diff=9.95e-09, PASS"
+    }
+  ],
+  "coefficient_checks": [
+    {
+      "name": "educ",
+      "beta_passed": true,
+      "beta_message": "beta[educ]: Python=-0.042561765373920, Stata=-0.042561770000000, abs_diff=4.63e-09, rel_diff=1.09e-07, PASS",
+      "se_passed": true,
+      "se_message": "se[educ]: Python=0.007626054466114, Stata=0.007626050000000, abs_diff=4.47e-09, rel_diff=5.86e-07, PASS"
+    },
+    {
+      "name": "age",
+      "beta_passed": true,
+      "beta_message": "beta[age]: Python=0.203614920506999, Stata=0.203614920000000, abs_diff=5.07e-10, rel_diff=2.49e-09, PASS",
+      "se_passed": true,
+      "se_message": "se[age]: Python=0.052474079137596, Stata=0.052474080000000, abs_diff=8.62e-10, rel_diff=1.64e-08, PASS"
+    },
+    {
+      "name": "agesq",
+      "beta_passed": true,
+      "beta_message": "beta[agesq]: Python=-0.002217792192808, Stata=-0.002217790000000, abs_diff=2.19e-09, rel_diff=9.89e-07, PASS",
+      "se_passed": true,
+      "se_message": "se[agesq]: Python=0.000593487236773, Stata=0.000593490000000, abs_diff=2.76e-09, rel_diff=4.66e-06, PASS"
+    },
+    {
+      "name": "black",
+      "beta_passed": true,
+      "beta_message": "beta[black]: Python=0.322615168069497, Stata=0.322615170000000, abs_diff=1.93e-09, rel_diff=5.98e-09, PASS",
+      "se_passed": true,
+      "se_message": "se[black]: Python=0.058144950578971, Stata=0.058144950000000, abs_diff=5.79e-10, rel_diff=9.96e-09, PASS"
+    }
+  ],
+  "notes": ""
+}

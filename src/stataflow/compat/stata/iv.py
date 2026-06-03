@@ -25,6 +25,11 @@ def ivregress_2sls(
 
     Maps to :class:`stataflow.estimators.IV2SLS`.
     """
+    # Parse Stata-style vce(cluster var) syntax
+    if vce is not None and vce.startswith('cluster '):
+        cluster = vce.split(' ', 1)[1]
+        vce = 'cluster'
+
     if kwargs:
         raise ValueError(f"Unsupported arguments: {list(kwargs.keys())}")
 

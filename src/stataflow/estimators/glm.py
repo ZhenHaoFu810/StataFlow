@@ -55,6 +55,7 @@ class GLMBase:
         missing: str = "drop",
         max_iter: int = 100,
         tol: float = 1e-8,
+        weights: Optional[np.ndarray] = None,
     ):
         self.data = data
         self.y = y
@@ -63,6 +64,8 @@ class GLMBase:
         self.missing = missing
         self.max_iter = max_iter
         self.tol = tol
+        self._weights_input = weights
+        self._weights: Optional[np.ndarray] = None
 
         self._design_matrix: Optional[np.ndarray] = None
         self._dep_var: Optional[np.ndarray] = None
@@ -112,11 +115,31 @@ class GLMBase:
         df = self.data[all_vars].copy()
         n_input_rows = len(df)
 
+        # Handle weights: add weight column to missing check if provided
+        weight_arr = None
+        if self._weights_input is not None:
+            weight_arr = np.asarray(self._weights_input, dtype=np.float64)
+            if len(weight_arr) != n_input_rows:
+                raise ValueError(
+                    f"weights length ({len(weight_arr)}) must match data length ({n_input_rows})"
+                )
+            df["_stataflow_weights"] = weight_arr
+
         if self.missing == "drop":
             mask = df.notna().all(axis=1)
             df = df[mask]
         else:
             raise ValueError(f"missing='{self.missing}' not supported")
+
+        # Extract weights after missing drop
+        if weight_arr is not None:
+            weight_arr = df["_stataflow_weights"].values.astype(np.float64)
+            if np.any(weight_arr <= 0):
+                raise ValueError("aweight requires all weights > 0")
+            # Normalize weights so that sum(w) = N (Stata aweight convention)
+            n_after_drop = len(df)
+            weight_arr = weight_arr * n_after_drop / np.sum(weight_arr)
+            self._weights = weight_arr
 
         sample_mask = mask.tolist()
         y = df[self.y].values.astype(np.float64)
@@ -185,6 +208,11 @@ class GLMBase:
             w = 1.0 / (var * gprime ** 2)
             w = np.clip(w, 1e-12, 1e12)
 
+            # Multiply by prior weights if provided
+            if self._weights is not None:
+                w = w * self._weights
+                w = np.clip(w, 1e-12, 1e12)
+
             # Working response: z = eta + (y - mu) * g'(mu)
             z = eta + (y - mu) * gprime
 
@@ -233,6 +261,12 @@ class GLMBase:
         w = 1.0 / (var * gprime ** 2)
         w = np.clip(w, 1e-12, 1e12)
 
+        # Multiply by prior weights if provided
+        p = self._weights
+        if p is not None:
+            w = w * p
+            w = np.clip(w, 1e-12, 1e12)
+
         sqrt_w = np.sqrt(w)
         Xw = X * sqrt_w[:, np.newaxis]
         XtX_inv = np.linalg.inv(Xw.T @ Xw)
@@ -244,15 +278,32 @@ class GLMBase:
         elif vce == "robust":
             # Sandwich: meat = X' diag((y-mu)^2) X
             residuals = y - mu
-            meat = (X * residuals[:, np.newaxis]).T @ (X * residuals[:, np.newaxis])
-            cov_beta = XtX_inv @ meat @ XtX_inv
+            if p is not None:
+                sqrt_p = np.sqrt(p)
+                meat = (X * sqrt_p[:, np.newaxis] * residuals[:, np.newaxis]).T @ (
+                    X * sqrt_p[:, np.newaxis] * residuals[:, np.newaxis]
+                )
+            else:
+                meat = (X * residuals[:, np.newaxis]).T @ (X * residuals[:, np.newaxis])
+            n_adj = n / (n - 1) if n > 1 else 1.0
+            cov_beta = n_adj * XtX_inv @ meat @ XtX_inv
         elif vce == "cluster":
             residuals = y - mu
-            from stataflow.estimators._vce_utils import compute_cluster_meat
-            meat, cluster_count = compute_cluster_meat(X, residuals, cluster_arr)
-            n_adj = (n - 1) / (n - k) if n > k else 1.0
+            if p is not None:
+                # Weighted cluster meat
+                sqrt_p = np.sqrt(p)
+                unique_clusters = np.unique(cluster_arr)
+                meat = np.zeros((k, k))
+                for g_val in unique_clusters:
+                    mask = cluster_arr == g_val
+                    score_g = X[mask].T @ (sqrt_p[mask] * residuals[mask])
+                    meat += np.outer(score_g, score_g)
+                cluster_count = len(unique_clusters)
+            else:
+                from stataflow.estimators._vce_utils import compute_cluster_meat
+                meat, cluster_count = compute_cluster_meat(X, residuals, cluster_arr)
             g_adj = cluster_count / (cluster_count - 1) if cluster_count > 1 else 1.0
-            cov_beta = n_adj * g_adj * XtX_inv @ meat @ XtX_inv
+            cov_beta = g_adj * XtX_inv @ meat @ XtX_inv
         else:
             raise ValueError(f"vce='{vce}' not supported")
 
@@ -569,9 +620,8 @@ class Probit(GLMBase):
                 mu_g = mu_clip[mask_g]
                 score_g = X_g.T @ (phi_g * (y_g - mu_g) / (mu_g * (1 - mu_g)))
                 meat += np.outer(score_g, score_g)
-            n_adj = (n - 1) / (n - k) if n > k else 1.0
             g_adj = cluster_count / (cluster_count - 1) if cluster_count > 1 else 1.0
-            cov_beta = n_adj * g_adj * cov_bread @ meat @ cov_bread
+            cov_beta = g_adj * cov_bread @ meat @ cov_bread
         else:
             raise ValueError(f"vce='{vce}' not supported")
 

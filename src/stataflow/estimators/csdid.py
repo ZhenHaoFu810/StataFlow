@@ -41,7 +41,7 @@ class CSDID:
         self._nobs = 0
         self._n_clust = 0
 
-    def fit(self, method="reg", vce=None, cluster=None, xvars=None):
+    def fit(self, method="reg", vce=None, cluster=None, xvars=None, notyet=False):
         """Fit the CSDID estimator.
 
         Parameters
@@ -55,6 +55,9 @@ class CSDID:
             Cluster variable name. Defaults to ``self.id_name``.
         xvars : list[str], optional
             Covariate names for doubly-robust estimation.
+        notyet : bool, optional
+            If True, use not-yet-treated units as controls even when
+            never-treated units are available.
         """
         if xvars is not None:
             self.xvars = xvars
@@ -65,11 +68,12 @@ class CSDID:
             )
 
         self._method = method
+        self._notyet = bool(notyet)
         if method == "reg":
-            return self._fit_reg(vce=vce, cluster=cluster)
-        return self._fit_dr(method=method, vce=vce, cluster=cluster)
+            return self._fit_reg(vce=vce, cluster=cluster, notyet=notyet)
+        return self._fit_dr(method=method, vce=vce, cluster=cluster, notyet=notyet)
 
-    def _fit_reg(self, vce=None, cluster=None):
+    def _fit_reg(self, vce=None, cluster=None, notyet=False):
         """Regression-adjustment (method='reg') implementation."""
         df = self.data.copy()
         y = self.y_name
@@ -95,8 +99,9 @@ class CSDID:
         att_gt = {}
         if_gt = {}  # dict of dicts: {(g,t): {unit_id: if_value}}
 
-        # Determine control group strategy: Stata default is never-treated if available
-        has_never_treated = (df[ft] == 0).any()
+        # Determine control group strategy: Stata default is never-treated if
+        # available, unless notyet=True forces not-yet-treated controls.
+        has_never_treated = (df[ft] == 0).any() and not notyet
 
         for g in cohorts:
             for t in years:
@@ -124,10 +129,24 @@ class CSDID:
                 N_g = len(treat_ids)
                 N_c = len(ctrl_ids)
 
-                mu_g_t = df.loc[treated_mask & (df[time] == t), y].mean()
-                mu_c_t = df.loc[control_mask & (df[time] == t), y].mean()
-                mu_g_base = df.loc[treated_mask & (df[time] == base), y].mean()
-                mu_c_base = df.loc[control_mask & (df[time] == base), y].mean()
+                treated_t = treated_mask & (df[time] == t)
+                control_t = control_mask & (df[time] == t)
+                treated_base = treated_mask & (df[time] == base)
+                control_base = control_mask & (df[time] == base)
+                if (
+                    treated_t.sum() == 0
+                    or control_t.sum() == 0
+                    or treated_base.sum() == 0
+                    or control_base.sum() == 0
+                ):
+                    continue
+
+                mu_g_t = df.loc[treated_t, y].mean()
+                mu_c_t = df.loc[control_t, y].mean()
+                mu_g_base = df.loc[treated_base, y].mean()
+                mu_c_base = df.loc[control_base, y].mean()
+                if not np.all(np.isfinite([mu_g_t, mu_c_t, mu_g_base, mu_c_base])):
+                    continue
 
                 att = (mu_g_t - mu_c_t) - (mu_g_base - mu_c_base)
                 # Store as tuple (att, N_g) for weighted aggregation
@@ -181,7 +200,9 @@ class CSDID:
                     used_rows.add((u, base))
 
         self._nobs = len(used_rows)
-        self._n_clust = n_units
+        cluster_col = cluster if cluster is not None else uid
+        self._n_clust = int(df[cluster_col].nunique()) if cluster_col in df.columns else n_units
+        self._cluster_var = cluster_col
         return self._finalize_fit(att_gt, if_gt, df, units, cohort_map, has_never_treated)
 
     def _finalize_fit(self, att_gt, if_gt, df, units, cohort_map, has_never_treated):
@@ -276,7 +297,7 @@ class CSDID:
 
         return self
 
-    def _fit_dr(self, method="drimp", vce=None, cluster=None):
+    def _fit_dr(self, method="drimp", vce=None, cluster=None, notyet=False):
         """Doubly-robust implementation (drimp / dripw)."""
         from sklearn.linear_model import LogisticRegression, LinearRegression
 
@@ -309,17 +330,18 @@ class CSDID:
         # Covariates in wide format (unit-level, first observation)
         X_wide = df.groupby(uid)[xvars].first()
 
-        # DR requires never-treated units
-        has_never_treated = (df[ft] == 0).any()
-        if not has_never_treated:
-            raise ValueError("method='drimp' requires never-treated units")
+        # Control group strategy: never-treated by default; fall back to not-yet-treated
+        has_never_treated = (df[ft] == 0).any() and not notyet
 
         att_gt = {}
         if_gt = {}
 
         for g in cohorts:
             for t in years:
-                control_mask = df[ft] == 0
+                if has_never_treated:
+                    control_mask = df[ft] == 0
+                else:
+                    control_mask = df[ft] > max(g, t)
                 treated_mask = df[ft] == g
 
                 if control_mask.sum() == 0:
@@ -333,7 +355,7 @@ class CSDID:
                 if base < min_year:
                     continue
 
-                # Fit PS: G=g vs G=0 at unit level
+                # Fit PS: G=g vs control at unit level
                 ps_units = df.loc[treated_mask | control_mask, uid].unique()
                 ps_y = (cohort_map.loc[ps_units] == g).astype(int).values
                 ps_X = X_wide.loc[ps_units]
@@ -429,7 +451,10 @@ class CSDID:
         # Effective observations
         used_rows = set()
         for (g, t), (att, N_g) in att_gt.items():
-            ctrl_ids = df.loc[df[ft] == 0, uid].unique()
+            if has_never_treated:
+                ctrl_ids = df.loc[df[ft] == 0, uid].unique()
+            else:
+                ctrl_ids = df.loc[df[ft] > max(g, t), uid].unique()
             treat_ids = df.loc[df[ft] == g, uid].unique()
             for u in treat_ids:
                 used_rows.add((u, t))
@@ -443,7 +468,9 @@ class CSDID:
                     used_rows.add((u, base))
 
         self._nobs = len(used_rows)
-        self._n_clust = n_units
+        cluster_col = cluster if cluster is not None else uid
+        self._n_clust = int(df[cluster_col].nunique()) if cluster_col in df.columns else n_units
+        self._cluster_var = cluster_col
         return self._finalize_fit(
             att_gt, if_gt, df, units, cohort_map, has_never_treated
         )
@@ -530,7 +557,7 @@ class CSDID:
                 command="csdid",
                 estimator_family="csdid",
                 vcetype="cluster",
-                cluster_var=None,
+                cluster_var=getattr(self, "_cluster_var", None),
             ),
             sample=SampleInfo(
                 nobs=self._nobs,
@@ -701,9 +728,16 @@ class CSDID:
 
     def estat_pretrend(self):
         """Joint Wald test of pre-trends."""
-        pre_events = sorted([e for e in self._event_est if isinstance(e, int) and e < 0])
+        pre_events = sorted([
+            e for e in self._event_est
+            if isinstance(e, (int, np.integer)) and e < 0
+        ])
         if not pre_events:
-            return {"f_stat": float("nan"), "p_value": float("nan"), "df": 0}
+            return self._make_pretrend_result(
+                stat=float("nan"),
+                p_value=float("nan"),
+                df=0,
+            )
 
         n = self._n_clust
         pre_est = np.array([self._event_est[e] for e in pre_events])
@@ -725,12 +759,45 @@ class CSDID:
             wald = float(pre_est @ inv_cov @ pre_est)
 
         df = len(pre_events)
-        f_stat = wald / df if df > 0 else float("nan")
 
-        from scipy.stats import f as f_dist
-        p_value = float(1 - f_dist.cdf(f_stat, df, n - df)) if (n > df and not np.isnan(f_stat)) else float("nan")
+        from scipy.stats import chi2
+        p_value = float(chi2.sf(wald, df)) if df > 0 and not np.isnan(wald) else float("nan")
 
-        return {"f_stat": f_stat, "p_value": p_value, "df": df}
+        return self._make_pretrend_result(
+            stat=wald,
+            p_value=p_value,
+            df=df,
+        )
+
+    def _make_pretrend_result(self, stat, p_value, df):
+        """Build a ResultSchema for the pretrend joint Wald test."""
+        return ResultSchema(
+            model=ModelInfo(
+                command="csdid",
+                estimator_family="csdid",
+                vcetype="cluster",
+                cluster_var=getattr(self, "_cluster_var", None),
+            ),
+            sample=SampleInfo(
+                nobs=self._nobs,
+                n_input_rows=self._nobs,
+            ),
+            fit=FitInfo(
+                df_model=float(df),
+                df_resid=float(self._n_clust - df) if self._n_clust > df else 0.0,
+                f_stat=float(stat),
+                f_pvalue=float(p_value),
+            ),
+            coefficients=[],
+            variance=VarianceInfo(row_names=[], values=[]),
+            diagnostics=DiagnosticsInfo(
+                cluster_count=self._n_clust,
+                warnings=[f"Pretrend joint Wald test with df={df}"],
+            ),
+            provenance=ProvenanceInfo(
+                stata_command="csdid_estat pretrend",
+            ),
+        )
 
     def _make_result_schema(self, names, coefs, ses, command):
         """Build a ResultSchema from coefficient names, values, and SEs."""
@@ -764,7 +831,7 @@ class CSDID:
                 command="csdid",
                 estimator_family="csdid",
                 vcetype="cluster",
-                cluster_var=None,
+                cluster_var=getattr(self, "_cluster_var", None),
             ),
             sample=SampleInfo(
                 nobs=self._nobs,

@@ -1,0 +1,24 @@
+{
+  "family": "linear",
+  "command": [
+    "C:\\ProgramData\\anaconda3\\python.exe",
+    "-m",
+    "pytest",
+    "tests/golden/test_p1_ols_basic.py",
+    "tests/golden/test_v1_regress_real_grunfeld.py",
+    "tests/golden/test_p2_fe_basic.py",
+    "tests/golden/test_v1_xtreg_fe_real_grunfeld.py",
+    "tests/golden/test_p3_areg_basic.py",
+    "tests/golden/test_p3_areg_real_panel.py",
+    "-v"
+  ],
+  "returncode": 0,
+  "tests": [
+    "tests/golden/test_p1_ols_basic.py",
+    "tests/golden/test_v1_regress_real_grunfeld.py",
+    "tests/golden/test_p2_fe_basic.py",
+    "tests/golden/test_v1_xtreg_fe_real_grunfeld.py",
+    "tests/golden/test_p3_areg_basic.py",
+    "tests/golden/test_p3_areg_real_panel.py"
+  ]
+}

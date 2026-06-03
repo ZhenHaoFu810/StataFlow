@@ -170,15 +170,21 @@ def _rdrobust_vce_multi(s: np.ndarray, RX: np.ndarray, res: np.ndarray, cluster_
     if cluster_ids is None:
         return scores.T @ scores
     meat = np.zeros((RX.shape[1], RX.shape[1]), dtype=float)
-    for g in np.unique(cluster_ids):
+    clusters = np.unique(cluster_ids)
+    for g in clusters:
         mask = cluster_ids == g
         score_g = scores[mask].sum(axis=0)
         meat += np.outer(score_g, score_g)
-    return meat
+    n, k = RX.shape
+    if len(clusters) <= 1 or n <= k:
+        return meat
+    scale = ((n - 1) / (n - k)) * (len(clusters) / (len(clusters) - 1))
+    return scale * meat
 
 
 def _rdrobust_bw(Y, X, c, o, nu, o_B, h_V, h_B, scale,
-                 vce, nnmatch, kernel, covs=None, covs_drop_coll=True):
+                 vce, nnmatch, kernel, covs=None, covs_drop_coll=True,
+                 cluster_ids=None):
     """
     Single-side bandwidth component computation.
 
@@ -189,6 +195,7 @@ def _rdrobust_bw(Y, X, c, o, nu, o_B, h_V, h_B, scale,
     eY = Y[ind]
     eX = X[ind]
     eW = w[ind]
+    eC = cluster_ids[ind] if cluster_ids is not None else None
     n_V = len(eY)
 
     R_V = np.zeros((n_V, o + 1), dtype=float)
@@ -246,7 +253,7 @@ def _rdrobust_bw(Y, X, c, o, nu, o_B, h_V, h_B, scale,
 
     # V_V
     RX = R_V * eW[:, None]
-    M = _rdrobust_vce_multi(s, RX, res_V)
+    M = _rdrobust_vce_multi(s, RX, res_V, eC)
     V_V = (invG_V @ M @ invG_V)[nu, nu]
 
     # BConst
@@ -262,6 +269,7 @@ def _rdrobust_bw(Y, X, c, o, nu, o_B, h_V, h_B, scale,
     eY_B = Y[ind_B]
     eX_B = X[ind_B]
     eW_B = w_B[ind_B]
+    eC_B = cluster_ids[ind_B] if cluster_ids is not None else None
     n_B = len(eY_B)
 
     R_B = np.zeros((n_B, o_B + 1), dtype=float)
@@ -294,7 +302,7 @@ def _rdrobust_bw(Y, X, c, o, nu, o_B, h_V, h_B, scale,
                 res_B = np.column_stack((res_B, Z_B - predicts_B[:, 1:]))
 
         RX_B = R_B * eW_B[:, None]
-        M_B = _rdrobust_vce_multi(s, RX_B, res_B)
+        M_B = _rdrobust_vce_multi(s, RX_B, res_B, eC_B)
         V_B = (invG_B @ M_B @ invG_B)[-1, -1]
         BWreg = 3 * BConst ** 2 * V_B
 
@@ -365,21 +373,21 @@ def _compute_pilot_bw(X_l, X_r, c, kernel, masspoints="adjust", bwcheck=0, bwres
             bw_min_r = np.abs(X_uniq_r - c)[bwcheck_r - 1] + 1e-8
             c_bw = max(c_bw, bw_min_l, bw_min_r)
 
-    range_l = np.abs(np.max(X_l) - np.min(X_l))
-    range_r = np.abs(np.max(X_r) - np.min(X_r))
+    range_l = abs(c - np.min(X_l))
+    range_r = abs(c - np.max(X_r))
 
     return c_bw, bw_max, range_l, range_r, M_l, M_r, masspoints_found, effective_bwcheck
 
 
 def _three_step_bw_rd(Y_l, X_l, Y_r, X_r, c, p, q, deriv, kernel, vce, nnmatch,
                       covs_l, covs_r, covs_drop_coll, scaleregul, c_bw, bw_max,
-                      range_l, range_r, bwrestrict):
+                      range_l, range_r, bwrestrict, cluster_l=None, cluster_r=None):
     """Three-step plug-in for MSE-RD branch (difference criterion). Returns (h, b)."""
     # Step 1: pilot d_bw
     C_d_l = _rdrobust_bw(Y_l, X_l, c, q + 1, q + 1, q + 2, c_bw, range_l, 0,
-                         vce, nnmatch, kernel, covs_l, covs_drop_coll)
+                         vce, nnmatch, kernel, covs_l, covs_drop_coll, cluster_l)
     C_d_r = _rdrobust_bw(Y_r, X_r, c, q + 1, q + 1, q + 2, c_bw, range_r, 0,
-                         vce, nnmatch, kernel, covs_r, covs_drop_coll)
+                         vce, nnmatch, kernel, covs_r, covs_drop_coll, cluster_r)
     V_d_l, B_d_l, R_d_l, rate_d = C_d_l
     V_d_r, B_d_r, R_d_r, _ = C_d_r
 
@@ -389,9 +397,9 @@ def _three_step_bw_rd(Y_l, X_l, Y_r, X_r, c, p, q, deriv, kernel, vce, nnmatch,
 
     # Step 2: b_bw
     C_b_l = _rdrobust_bw(Y_l, X_l, c, q, p + 1, q + 1, c_bw, d_bw, scaleregul,
-                         vce, nnmatch, kernel, covs_l, covs_drop_coll)
+                         vce, nnmatch, kernel, covs_l, covs_drop_coll, cluster_l)
     C_b_r = _rdrobust_bw(Y_r, X_r, c, q, p + 1, q + 1, c_bw, d_bw, scaleregul,
-                         vce, nnmatch, kernel, covs_r, covs_drop_coll)
+                         vce, nnmatch, kernel, covs_r, covs_drop_coll, cluster_r)
     V_b_l, B_b_l, R_b_l, rate_b = C_b_l
     V_b_r, B_b_r, R_b_r, _ = C_b_r
 
@@ -402,9 +410,9 @@ def _three_step_bw_rd(Y_l, X_l, Y_r, X_r, c, p, q, deriv, kernel, vce, nnmatch,
 
     # Step 3: h_bw
     C_h_l = _rdrobust_bw(Y_l, X_l, c, p, deriv, q, c_bw, b_bw, scaleregul,
-                         vce, nnmatch, kernel, covs_l, covs_drop_coll)
+                         vce, nnmatch, kernel, covs_l, covs_drop_coll, cluster_l)
     C_h_r = _rdrobust_bw(Y_r, X_r, c, p, deriv, q, c_bw, b_bw, scaleregul,
-                         vce, nnmatch, kernel, covs_r, covs_drop_coll)
+                         vce, nnmatch, kernel, covs_r, covs_drop_coll, cluster_r)
     V_h_l, B_h_l, R_h_l, rate_h = C_h_l
     V_h_r, B_h_r, R_h_r, _ = C_h_r
 
@@ -418,13 +426,13 @@ def _three_step_bw_rd(Y_l, X_l, Y_r, X_r, c, p, q, deriv, kernel, vce, nnmatch,
 
 def _three_step_bw_sum(Y_l, X_l, Y_r, X_r, c, p, q, deriv, kernel, vce, nnmatch,
                        covs_l, covs_r, covs_drop_coll, scaleregul, c_bw, bw_max,
-                       range_l, range_r, bwrestrict):
+                       range_l, range_r, bwrestrict, cluster_l=None, cluster_r=None):
     """Three-step plug-in for MSE-SUM branch (sum criterion). Returns (h, b)."""
     # Step 1: pilot d_bw
     C_d_l = _rdrobust_bw(Y_l, X_l, c, q + 1, q + 1, q + 2, c_bw, range_l, 0,
-                         vce, nnmatch, kernel, covs_l, covs_drop_coll)
+                         vce, nnmatch, kernel, covs_l, covs_drop_coll, cluster_l)
     C_d_r = _rdrobust_bw(Y_r, X_r, c, q + 1, q + 1, q + 2, c_bw, range_r, 0,
-                         vce, nnmatch, kernel, covs_r, covs_drop_coll)
+                         vce, nnmatch, kernel, covs_r, covs_drop_coll, cluster_r)
     V_d_l, B_d_l, R_d_l, rate_d = C_d_l
     V_d_r, B_d_r, R_d_r, _ = C_d_r
 
@@ -434,9 +442,9 @@ def _three_step_bw_sum(Y_l, X_l, Y_r, X_r, c, p, q, deriv, kernel, vce, nnmatch,
 
     # Step 2: b_bw
     C_b_l = _rdrobust_bw(Y_l, X_l, c, q, p + 1, q + 1, c_bw, d_bw, scaleregul,
-                         vce, nnmatch, kernel, covs_l, covs_drop_coll)
+                         vce, nnmatch, kernel, covs_l, covs_drop_coll, cluster_l)
     C_b_r = _rdrobust_bw(Y_r, X_r, c, q, p + 1, q + 1, c_bw, d_bw, scaleregul,
-                         vce, nnmatch, kernel, covs_r, covs_drop_coll)
+                         vce, nnmatch, kernel, covs_r, covs_drop_coll, cluster_r)
     V_b_l, B_b_l, R_b_l, rate_b = C_b_l
     V_b_r, B_b_r, R_b_r, _ = C_b_r
 
@@ -447,9 +455,9 @@ def _three_step_bw_sum(Y_l, X_l, Y_r, X_r, c, p, q, deriv, kernel, vce, nnmatch,
 
     # Step 3: h_bw
     C_h_l = _rdrobust_bw(Y_l, X_l, c, p, deriv, q, c_bw, b_bw, scaleregul,
-                         vce, nnmatch, kernel, covs_l, covs_drop_coll)
+                         vce, nnmatch, kernel, covs_l, covs_drop_coll, cluster_l)
     C_h_r = _rdrobust_bw(Y_r, X_r, c, p, deriv, q, c_bw, b_bw, scaleregul,
-                         vce, nnmatch, kernel, covs_r, covs_drop_coll)
+                         vce, nnmatch, kernel, covs_r, covs_drop_coll, cluster_r)
     V_h_l, B_h_l, R_h_l, rate_h = C_h_l
     V_h_r, B_h_r, R_h_r, _ = C_h_r
 
@@ -463,13 +471,13 @@ def _three_step_bw_sum(Y_l, X_l, Y_r, X_r, c, p, q, deriv, kernel, vce, nnmatch,
 
 def _three_step_bw_two(Y_l, X_l, Y_r, X_r, c, p, q, deriv, kernel, vce, nnmatch,
                        covs_l, covs_r, covs_drop_coll, scaleregul, c_bw, bw_max,
-                       range_l, range_r, bwrestrict):
+                       range_l, range_r, bwrestrict, cluster_l=None, cluster_r=None):
     """Three-step plug-in for MSE-TWO branch (per-side independent). Returns (h_l, h_r, b_l, b_r)."""
     # Step 1: pilot d_bw per side
     C_d_l = _rdrobust_bw(Y_l, X_l, c, q + 1, q + 1, q + 2, c_bw, range_l, 0,
-                         vce, nnmatch, kernel, covs_l, covs_drop_coll)
+                         vce, nnmatch, kernel, covs_l, covs_drop_coll, cluster_l)
     C_d_r = _rdrobust_bw(Y_r, X_r, c, q + 1, q + 1, q + 2, c_bw, range_r, 0,
-                         vce, nnmatch, kernel, covs_r, covs_drop_coll)
+                         vce, nnmatch, kernel, covs_r, covs_drop_coll, cluster_r)
     V_d_l, B_d_l, R_d_l, rate_d = C_d_l
     V_d_r, B_d_r, R_d_r, _ = C_d_r
 
@@ -481,9 +489,9 @@ def _three_step_bw_two(Y_l, X_l, Y_r, X_r, c, p, q, deriv, kernel, vce, nnmatch,
 
     # Step 2: b_bw per side
     C_b_l = _rdrobust_bw(Y_l, X_l, c, q, p + 1, q + 1, c_bw, d_bw_l, scaleregul,
-                         vce, nnmatch, kernel, covs_l, covs_drop_coll)
+                         vce, nnmatch, kernel, covs_l, covs_drop_coll, cluster_l)
     C_b_r = _rdrobust_bw(Y_r, X_r, c, q, p + 1, q + 1, c_bw, d_bw_r, scaleregul,
-                         vce, nnmatch, kernel, covs_r, covs_drop_coll)
+                         vce, nnmatch, kernel, covs_r, covs_drop_coll, cluster_r)
     V_b_l, B_b_l, R_b_l, rate_b = C_b_l
     V_b_r, B_b_r, R_b_r, _ = C_b_r
 
@@ -497,9 +505,9 @@ def _three_step_bw_two(Y_l, X_l, Y_r, X_r, c, p, q, deriv, kernel, vce, nnmatch,
 
     # Step 3: h_bw per side
     C_h_l = _rdrobust_bw(Y_l, X_l, c, p, deriv, q, c_bw, b_bw_l, scaleregul,
-                         vce, nnmatch, kernel, covs_l, covs_drop_coll)
+                         vce, nnmatch, kernel, covs_l, covs_drop_coll, cluster_l)
     C_h_r = _rdrobust_bw(Y_r, X_r, c, p, deriv, q, c_bw, b_bw_r, scaleregul,
-                         vce, nnmatch, kernel, covs_r, covs_drop_coll)
+                         vce, nnmatch, kernel, covs_r, covs_drop_coll, cluster_r)
     V_h_l, B_h_l, R_h_l, rate_h = C_h_l
     V_h_r, B_h_r, R_h_r, _ = C_h_r
 
@@ -527,7 +535,7 @@ def _cer_scale(N, p, g_l=0, g_r=0):
 def _rdbwselect(Y_l, X_l, Y_r, X_r, c, p, q, deriv, kernel, vce, nnmatch,
                 covs_l=None, covs_r=None, covs_drop_coll=True,
                 scaleregul=1, bwrestrict=True, masspoints="adjust", bwcheck=0,
-                cluster_l=0, cluster_r=0):
+                cluster_l=0, cluster_r=0, cluster_ids_l=None, cluster_ids_r=None):
     """
     Unified bandwidth selector supporting all 9 rdrobust selectors.
 
@@ -554,17 +562,17 @@ def _rdbwselect(Y_l, X_l, Y_r, X_r, c, p, q, deriv, kernel, vce, nnmatch,
     h_mserd, b_mserd = _three_step_bw_rd(
         Y_l, X_l, Y_r, X_r, c, p, q, deriv, kernel, vce, nnmatch,
         covs_l, covs_r, covs_drop_coll, scaleregul, c_bw, bw_max,
-        range_l, range_r, bwrestrict,
+        range_l, range_r, bwrestrict, cluster_ids_l, cluster_ids_r,
     )
     h_msesum, b_msesum = _three_step_bw_sum(
         Y_l, X_l, Y_r, X_r, c, p, q, deriv, kernel, vce, nnmatch,
         covs_l, covs_r, covs_drop_coll, scaleregul, c_bw, bw_max,
-        range_l, range_r, bwrestrict,
+        range_l, range_r, bwrestrict, cluster_ids_l, cluster_ids_r,
     )
     h_msetwo_l, h_msetwo_r, b_msetwo_l, b_msetwo_r = _three_step_bw_two(
         Y_l, X_l, Y_r, X_r, c, p, q, deriv, kernel, vce, nnmatch,
         covs_l, covs_r, covs_drop_coll, scaleregul, c_bw, bw_max,
-        range_l, range_r, bwrestrict,
+        range_l, range_r, bwrestrict, cluster_ids_l, cluster_ids_r,
     )
 
     # CER scaling
@@ -716,7 +724,7 @@ class RDRobust:
         self.vce = vce.lower()
         self.nnmatch = int(nnmatch)
         self.level = float(level)
-        self.bwselect = bwselect.lower() if bwselect is not None else None
+        self.bwselect = bwselect.lower() if bwselect is not None else "mserd"
         self.covs = covs
         self.covs_drop = bool(covs_drop)
         self.scaleregul = float(scaleregul)
@@ -735,7 +743,7 @@ class RDRobust:
             raise NotImplementedError(
                 "Only vce='nn', 'hc0', 'cluster', and 'nncluster' are supported in this subset."
             )
-        if self.bwselect is not None and self.bwselect not in self._VALID_BWSELECT:
+        if self.bwselect not in self._VALID_BWSELECT:
             raise NotImplementedError(
                 f"bwselect='{self.bwselect}' is not supported. "
                 f"Supported: {sorted(self._VALID_BWSELECT)} or provide h explicitly."
@@ -762,8 +770,6 @@ class RDRobust:
         else:
             self.h_l = self.h_r = None
             self.b_l = self.b_r = None
-            if self.bwselect is None:
-                raise ValueError("Either h or bwselect must be provided.")
 
     def fit(self) -> ResultSchema:
         # Covariate extraction and missing-value handling
@@ -818,6 +824,9 @@ class RDRobust:
                     T_all = T_all[valid]
                 if C_all is not None:
                     C_all = C_all[valid]
+            # aweight normalization: sum(w) = N after missing drop
+            if fw is not None and fw.sum() > 0:
+                fw = fw / fw.sum() * len(fw)
 
         n_input = len(self.data)
         nobs = len(y)
@@ -899,6 +908,8 @@ class RDRobust:
                 bwcheck=self.bwcheck,
                 cluster_l=g_l_full,
                 cluster_r=g_r_full,
+                cluster_ids_l=C_l,
+                cluster_ids_r=C_r,
             )
             sel = self.bwselect or "mserd"
             self.h_l, self.h_r, self.b_l, self.b_r = bw_dict[sel]

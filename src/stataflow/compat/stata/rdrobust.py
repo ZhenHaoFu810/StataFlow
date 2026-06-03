@@ -106,12 +106,6 @@ def rdrobust(
             f"Unsupported arguments for rdrobust wrapper: {sorted(unsupported)}"
         )
 
-    if h is None and bwselect is None:
-        raise NotImplementedError(
-            "Automatic bandwidth selection is required when h is not provided. "
-            "Use bwselect='mserd' or provide h explicitly."
-        )
-
     model = RDRobust(
         data=data,
         y=y,

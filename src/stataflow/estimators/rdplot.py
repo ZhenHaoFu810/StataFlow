@@ -304,11 +304,6 @@ class RDPlot:
             edges_l = _quantile_spaced_bins(x_l, J_l) if N_l > 0 else np.array([self.c - 1, self.c])
             edges_r = _quantile_spaced_bins(x_r, J_r) if N_r > 0 else np.array([self.c, self.c + 1])
 
-        # Collapse
-        bins_l = _collapse_bins(x_l, y_l, edges_l)
-        bins_r = _collapse_bins(x_r, y_r, edges_r)
-        bins = pd.concat([bins_l, bins_r], ignore_index=True)
-
         # Local polynomial fit
         nplot = 500
         x_plot_l = np.linspace(self.c - self.h_l, self.c, nplot)
@@ -327,6 +322,11 @@ class RDPlot:
         else:
             y_l_adj = y_l
             y_r_adj = y_r
+
+        # Collapse (use adjusted y for consistency with fit line)
+        bins_l = _collapse_bins(x_l, y_l_adj, edges_l)
+        bins_r = _collapse_bins(x_r, y_r_adj, edges_r)
+        bins = pd.concat([bins_l, bins_r], ignore_index=True)
 
         w_l = _kernel_weight(x_l, self.c, self.h_l, self.kernel)
         w_r = _kernel_weight(x_r, self.c, self.h_r, self.kernel)

@@ -56,6 +56,8 @@ class AbsorbingOLS:
         missing: str = "drop",
         drop_singletons: bool = True,
         technique: str = "auto",
+        weights: Optional[np.ndarray] = None,
+        weight_type: Optional[str] = None,
     ):
         self.data = data
         self.y = y
@@ -91,6 +93,9 @@ class AbsorbingOLS:
         self.missing = missing
         self.drop_singletons = drop_singletons
         self.technique = technique
+        self._weights_input = weights
+        self._weight_type = weight_type
+        self._weights: Optional[np.ndarray] = None
 
         # Internal state
         self._design_matrix: Optional[np.ndarray] = None
@@ -396,7 +401,13 @@ class AbsorbingOLS:
                     v_prev1 = v_old
             else:
                 # max_iter reached without convergence – warn but continue
-                pass
+                warnings.warn(
+                    f"MAP partial-out did not converge within {max_iter} iterations "
+                    f"(max_diff={max_diff:.2e} > tol={tol:.2e}). "
+                    "Results may be numerically unstable.",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
 
             variables[:, j] = v
 
@@ -710,6 +721,16 @@ class AbsorbingOLS:
         df = self.data[all_vars].copy()
         self._n_input_rows = len(df)
 
+        # Handle weights: add weight column to missing check if provided
+        weight_arr = None
+        if self._weights_input is not None:
+            weight_arr = np.asarray(self._weights_input, dtype=np.float64)
+            if len(weight_arr) != self._n_input_rows:
+                raise ValueError(
+                    f"weights length ({len(weight_arr)}) must match data length ({self._n_input_rows})"
+                )
+            df["_stataflow_weights"] = weight_arr
+
         # Drop missing values
         if self.missing == "drop":
             mask = df.notna().all(axis=1)
@@ -723,6 +744,16 @@ class AbsorbingOLS:
             self._num_singletons = num_singletons
         else:
             self._num_singletons = 0
+
+        # Extract weights after missing/singleton drop
+        if weight_arr is not None:
+            weight_arr = df["_stataflow_weights"].values.astype(np.float64)
+            if np.any(weight_arr <= 0):
+                raise ValueError("aweight requires all weights > 0")
+            # Normalize weights so that sum(w) = N (Stata aweight convention)
+            n_after_drop = len(df)
+            weight_arr = weight_arr * n_after_drop / np.sum(weight_arr)
+            self._weights = weight_arr
 
         # Save filtered dataframe for postestimation
         self._df = df.copy()
@@ -1066,7 +1097,8 @@ class AbsorbingOLS:
 
         if vce_core == "cluster" and len(self._cluster_arrs) > 1:
             from stataflow.estimators._vce_utils import fix_psd_reghdfe
-            cov_reported = fix_psd_reghdfe(cov_reported)
+            constant_index = k_x if self.add_constant else None
+            cov_reported = fix_psd_reghdfe(cov_reported, constant_index=constant_index)
             if self.add_constant:
                 sigma2_psd = rss / df_resid if df_resid > 0 else 0.0
                 cons_var = self._compute_map_cons_variance(
@@ -1084,6 +1116,7 @@ class AbsorbingOLS:
         self._design_matrix = X_ols
         self._dep_var = y_partial
         self._beta_full = beta_full
+        self._map_residuals = residuals
         self._cov_full = cov_slopes
         self._T = np.eye(report_dim)
         self._x_indices_in_full = list(range(int(self.add_constant), int(self.add_constant) + k_x))
@@ -1092,14 +1125,11 @@ class AbsorbingOLS:
         self._constant_idx_reduced = 0 if self.add_constant else None
         self._orig_to_reduced = {i: i for i in range(report_dim)}
 
-        if savefe:
-            raise NotImplementedError("savefe not supported with technique='map'.")
-
         diag_cov = np.maximum(np.diag(cov_reported), 0)
         se = np.sqrt(diag_cov)
         t_stats = beta_reported / se
-        p_values = 2 * (1 - stats.t.cdf(np.abs(t_stats), df=df_resid))
-        t_crit = stats.t.ppf(1 - alpha / 2, df=df_resid)
+        p_values = 2 * (1 - t_dist.cdf(np.abs(t_stats), df=df_resid))
+        t_crit = t_dist.ppf(1 - alpha / 2, df=df_resid)
         ci_low = beta_reported - t_crit * se
         ci_high = beta_reported + t_crit * se
 
@@ -1110,7 +1140,7 @@ class AbsorbingOLS:
             if vce_core == "ols":
                 rss_r = float(np.sum(y_partial ** 2))
                 f_stat = ((rss_r - rss) / df_model) / (rss / rmse_df)
-                f_pvalue = 1 - stats.f.cdf(f_stat, dfn=df_model, dfd=rmse_df)
+                f_pvalue = 1 - f_dist.cdf(f_stat, dfn=df_model, dfd=rmse_df)
             else:
                 slope_idx = list(range(k_x))
                 beta_s = beta_reported[slope_idx]
@@ -1119,7 +1149,7 @@ class AbsorbingOLS:
                     cov_inv = np.linalg.inv(cov_s)
                     wald_stat = float(beta_s @ cov_inv @ beta_s)
                     f_stat = wald_stat / df_model
-                    f_pvalue = 1 - stats.f.cdf(f_stat, dfn=df_model, dfd=df_resid)
+                    f_pvalue = 1 - f_dist.cdf(f_stat, dfn=df_model, dfd=df_resid)
                 except np.linalg.LinAlgError:
                     pass
 
@@ -1210,6 +1240,16 @@ class AbsorbingOLS:
                     "(absorb(...##c.var) / absorb(...#c.var)). "
                     "Use technique='lsdv' for slope absorption models."
                 )
+            if savefe:
+                raise NotImplementedError(
+                    "savefe not supported with technique='map'. "
+                    "Use technique='lsdv' for savefe."
+                )
+            if self._weights is not None:
+                raise NotImplementedError(
+                    "aweight not supported with technique='map'. "
+                    "Use technique='lsdv' for weighted models."
+                )
 
             # -------- MAP path --------
             mr = self._fit_map(vce_core, cluster_vars, bw, timevar, alpha, savefe)
@@ -1238,15 +1278,25 @@ class AbsorbingOLS:
             cluster_count = mr["cluster_count"]
             vce_core = mr["vce_core"]
 
+            # Ensure local variables exist for postestimation assignment at end of fit()
+            beta_full = self._beta_full
+            cov_full = self._cov_full
+            T = self._T
+
         else:
             # -------- LSDV path --------
             X_full, y, sample_mask, n_input_rows, _ = self._prepare_data(cluster_vars=cluster_vars)
             n = len(y)
             k_full = X_full.shape[1]
+            w = self._weights
 
-            # LSDV estimation
-            XtX = X_full.T @ X_full
-            Xty = X_full.T @ y
+            # LSDV estimation (weighted if aweight provided)
+            if w is not None:
+                XtX = (X_full * w[:, None]).T @ X_full
+                Xty = X_full.T @ (w * y)
+            else:
+                XtX = X_full.T @ X_full
+                Xty = X_full.T @ y
             beta_full = np.linalg.solve(XtX, Xty)
 
             # Residuals
@@ -1254,9 +1304,14 @@ class AbsorbingOLS:
             residuals = y - y_hat
 
             # Sum of squares
-            rss = float(np.sum(residuals ** 2))
-            y_mean = np.mean(y)
-            tss = float(np.sum((y - y_mean) ** 2))
+            if w is not None:
+                rss = float(np.sum(w * residuals ** 2))
+                y_mean = float(np.sum(w * y) / n)
+                tss = float(np.sum(w * (y - y_mean) ** 2))
+            else:
+                rss = float(np.sum(residuals ** 2))
+                y_mean = np.mean(y)
+                tss = float(np.sum((y - y_mean) ** 2))
 
             # R-squared
             r2 = 1.0 - rss / tss if tss > 0 else 0.0
@@ -1305,7 +1360,10 @@ class AbsorbingOLS:
             elif vce_core == "robust":
                 # HC1 robust sandwich on full LSDV coefficients
                 XtX_inv = np.linalg.inv(XtX)
-                meat = X_full.T @ (X_full * (residuals ** 2)[:, np.newaxis])
+                if w is not None:
+                    meat = (X_full * w[:, None] * (residuals ** 2)[:, np.newaxis]).T @ X_full
+                else:
+                    meat = X_full.T @ (X_full * (residuals ** 2)[:, np.newaxis])
                 cov_full = XtX_inv @ meat @ XtX_inv
                 if n > k_full:
                     cov_full *= n / (n - k_full)
@@ -1314,10 +1372,21 @@ class AbsorbingOLS:
                 XtX_inv = np.linalg.inv(XtX)
                 if len(self._cluster_arrs) == 1:
                     # Single-way clustering
-                    from stataflow.estimators._vce_utils import compute_cluster_meat
-                    meat, cluster_count = compute_cluster_meat(
-                        X_full, residuals, self._cluster_arrs[0]
-                    )
+                    if w is not None:
+                        # Weighted cluster meat
+                        k = X_full.shape[1]
+                        unique_clusters = np.unique(self._cluster_arrs[0])
+                        meat = np.zeros((k, k))
+                        for g_val in unique_clusters:
+                            mask = self._cluster_arrs[0] == g_val
+                            score_g = X_full[mask].T @ (w[mask] * residuals[mask])
+                            meat += np.outer(score_g, score_g)
+                        cluster_count = len(unique_clusters)
+                    else:
+                        from stataflow.estimators._vce_utils import compute_cluster_meat
+                        meat, cluster_count = compute_cluster_meat(
+                            X_full, residuals, self._cluster_arrs[0]
+                        )
 
                     # Small-sample adjustment: exclude parameters from FEs nested in cluster
                     nested_params = 0
@@ -1403,7 +1472,10 @@ class AbsorbingOLS:
             # inclusion-exclusion. Apply reghdfe-style PSD fix (preserve slopes).
             if vce_core == "cluster" and len(self._cluster_arrs) > 1:
                 from stataflow.estimators._vce_utils import fix_psd_reghdfe
-                cov_reported = fix_psd_reghdfe(cov_reported)
+                constant_index = (
+                    self._coef_names.index("_cons") if "_cons" in self._coef_names else None
+                )
+                cov_reported = fix_psd_reghdfe(cov_reported, constant_index=constant_index)
 
                 # For reghdfe with multi-way clustering, the LSDV-based _cons
                 # variance can diverge from reghdfe's demeaning-based computation.
@@ -1565,6 +1637,10 @@ class AbsorbingOLS:
         xbd = self._design_matrix @ self._beta_full
 
         if type == "xbd":
+            # MAP path: _design_matrix does not contain FE dummies,
+            # so xbd must be reconstructed from y - residuals (PANEL-09).
+            if hasattr(self, "_map_residuals") and self._map_residuals is not None:
+                return self._dep_var - self._map_residuals
             return xbd
         if type == "residuals":
             return self._dep_var - xbd
@@ -1620,6 +1696,7 @@ class AbsorbingOLS:
         if self._beta_full is None:
             raise ValueError("No fitted coefficients available.")
 
+        import warnings
         reduced_to_orig = {v: k for k, v in self._orig_to_reduced.items()}
         result: dict[str, pd.Series] = {}
 
@@ -1629,15 +1706,21 @@ class AbsorbingOLS:
             num_levels = info["num_levels"]
             start = info["start"]
             kept_reduced = self._fe_dummy_indices_reduced[fe_idx]
+            column_types = info.get("column_types", [])
 
             alphas = np.zeros(num_levels)
+            has_slopes = False
             # If add_constant or not the first FE, the first level is the reference
             # and dummy columns correspond to levels[1:].
             # Otherwise (no constant, first FE), all levels have dummies.
             if self.add_constant or fe_idx > 0:
                 for r in kept_reduced:
                     o = reduced_to_orig[r]
-                    j = o - start  # j=0 corresponds to levels[1]
+                    j = o - start
+                    ctype = column_types[j] if j < len(column_types) else ("intercept",)
+                    if ctype[0] == "slope":
+                        has_slopes = True
+                        continue
                     level_idx = 1 + j
                     if 0 <= level_idx < num_levels:
                         alphas[level_idx] = self._beta_full[r]
@@ -1645,8 +1728,20 @@ class AbsorbingOLS:
                 for r in kept_reduced:
                     o = reduced_to_orig[r]
                     j = o - start
+                    ctype = column_types[j] if j < len(column_types) else ("intercept",)
+                    if ctype[0] == "slope":
+                        has_slopes = True
+                        continue
                     if 0 <= j < num_levels:
                         alphas[j] = self._beta_full[r]
+
+            if has_slopes:
+                warnings.warn(
+                    f"save_fixed_effects() for '{var}' currently saves only intercepts; "
+                    "slope coefficients are not yet recovered.",
+                    UserWarning,
+                    stacklevel=2,
+                )
 
             result[var] = pd.Series(alphas, index=levels)
 

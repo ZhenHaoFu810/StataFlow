@@ -15,6 +15,7 @@ def logit(
     *,
     vce: str = "ols",
     cluster: Optional[str] = None,
+    aweight: Optional[str] = None,
     noconstant: bool = False,
     missing: str = "drop",
     **kwargs,
@@ -29,14 +30,17 @@ def logit(
 
     data_expanded, x_expanded = expand_factor_terms(data, x)
 
+    weights = data[aweight].values if aweight is not None else None
     model = Logit(
         data=data_expanded,
         y=y,
         x=x_expanded,
         add_constant=not noconstant,
         missing=missing,
+        weights=weights,
     )
-    return model.fit(vce=vce, cluster=cluster)
+    model.fit(vce=vce, cluster=cluster)
+    return model
 
 
 def probit(
@@ -46,6 +50,7 @@ def probit(
     *,
     vce: str = "ols",
     cluster: Optional[str] = None,
+    aweight: Optional[str] = None,
     noconstant: bool = False,
     missing: str = "drop",
     **kwargs,
@@ -60,14 +65,17 @@ def probit(
 
     data_expanded, x_expanded = expand_factor_terms(data, x)
 
+    weights = data[aweight].values if aweight is not None else None
     model = Probit(
         data=data_expanded,
         y=y,
         x=x_expanded,
         add_constant=not noconstant,
         missing=missing,
+        weights=weights,
     )
-    return model.fit(vce=vce, cluster=cluster)
+    model.fit(vce=vce, cluster=cluster)
+    return model
 
 
 def poisson(
@@ -77,6 +85,7 @@ def poisson(
     *,
     vce: str = "ols",
     cluster: Optional[str] = None,
+    aweight: Optional[str] = None,
     noconstant: bool = False,
     exposure: Optional[str] = None,
     offset: Optional[str] = None,
@@ -98,11 +107,14 @@ def poisson(
 
     data_expanded, x_expanded = expand_factor_terms(data, x)
 
+    weights = data[aweight].values if aweight is not None else None
     model = Poisson(
         data=data_expanded,
         y=y,
         x=x_expanded,
         add_constant=not noconstant,
         missing=missing,
+        weights=weights,
     )
-    return model.fit(vce=vce, cluster=cluster)
+    model.fit(vce=vce, cluster=cluster)
+    return model

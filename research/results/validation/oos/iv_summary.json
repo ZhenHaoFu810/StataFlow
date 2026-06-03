@@ -1,0 +1,156 @@
+{
+  "family": "iv",
+  "cases": 2,
+  "passed": 2,
+  "blocked": 0,
+  "reports": [
+    {
+      "case_id": "oos_ivregress_card",
+      "command": "ivregress 2sls",
+      "dataset_key": "card",
+      "status": "passed",
+      "field_checks": [
+        {
+          "field": "nobs",
+          "python": 3010,
+          "stata": 3010.0,
+          "passed": true,
+          "message": "nobs: Python=3010.000000000000000, Stata=3010.000000000000000, abs_diff=0.00e+00, rel_diff=0.00e+00, PASS"
+        },
+        {
+          "field": "df_model",
+          "python": 5.0,
+          "stata": 5.0,
+          "passed": true,
+          "message": "df_model: Python=5.000000000000000, Stata=5.000000000000000, abs_diff=0.00e+00, rel_diff=0.00e+00, PASS"
+        },
+        {
+          "field": "df_resid",
+          "python": null,
+          "stata": null,
+          "passed": true,
+          "message": "df_resid: Python=None, Stata=None"
+        },
+        {
+          "field": "f_stat",
+          "python": null,
+          "stata": null,
+          "passed": true,
+          "message": "f_stat: Python=None, Stata=None"
+        }
+      ],
+      "coefficient_checks": [
+        {
+          "name": "educ",
+          "beta_passed": true,
+          "beta_message": "beta[educ]: Python=0.149413803067534, Stata=0.149413800000000, abs_diff=3.07e-09, rel_diff=2.05e-08, PASS",
+          "se_passed": true,
+          "se_message": "se[educ]: Python=0.048544628450426, Stata=0.048544630000000, abs_diff=1.55e-09, rel_diff=3.19e-08, PASS"
+        },
+        {
+          "name": "exper",
+          "beta_passed": true,
+          "beta_message": "beta[exper]: Python=0.112734296418794, Stata=0.112734300000000, abs_diff=3.58e-09, rel_diff=3.18e-08, PASS",
+          "se_passed": true,
+          "se_message": "se[exper]: Python=0.021834000764356, Stata=0.021834000000000, abs_diff=7.64e-10, rel_diff=3.50e-08, PASS"
+        },
+        {
+          "name": "expersq",
+          "beta_passed": true,
+          "beta_message": "beta[expersq]: Python=-0.002269080429111, Stata=-0.002269080000000, abs_diff=4.29e-10, rel_diff=1.89e-07, PASS",
+          "se_passed": true,
+          "se_message": "se[expersq]: Python=0.000346461861022, Stata=0.000346460000000, abs_diff=1.86e-09, rel_diff=5.37e-06, PASS"
+        },
+        {
+          "name": "smsa",
+          "beta_passed": true,
+          "beta_message": "beta[smsa]: Python=0.118292433249903, Stata=0.118292430000000, abs_diff=3.25e-09, rel_diff=2.75e-08, PASS",
+          "se_passed": true,
+          "se_message": "se[smsa]: Python=0.028629526743692, Stata=0.028629530000000, abs_diff=3.26e-09, rel_diff=1.14e-07, PASS"
+        },
+        {
+          "name": "south",
+          "beta_passed": true,
+          "beta_message": "beta[south]: Python=-0.132036126377953, Stata=-0.132036130000000, abs_diff=3.62e-09, rel_diff=2.74e-08, PASS",
+          "se_passed": true,
+          "se_message": "se[south]: Python=0.034474677561476, Stata=0.034474680000000, abs_diff=2.44e-09, rel_diff=7.07e-08, PASS"
+        },
+        {
+          "name": "_cons",
+          "beta_passed": true,
+          "beta_message": "beta[_cons]: Python=3.467533446351944, Stata=3.467533400000000, abs_diff=4.64e-08, rel_diff=1.34e-08, PASS",
+          "se_passed": true,
+          "se_message": "se[_cons]: Python=0.819093365161058, Stata=0.819093370000000, abs_diff=4.84e-09, rel_diff=5.91e-09, PASS"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "oos_ivreghdfe_wagepan",
+      "command": "ivreghdfe",
+      "dataset_key": "wagepan",
+      "status": "passed",
+      "field_checks": [
+        {
+          "field": "nobs",
+          "python": 4360,
+          "stata": 4360.0,
+          "passed": true,
+          "message": "nobs: Python=4360.000000000000000, Stata=4360.000000000000000, abs_diff=0.00e+00, rel_diff=0.00e+00, PASS"
+        },
+        {
+          "field": "df_model",
+          "python": 3.0,
+          "stata": 3.0,
+          "passed": true,
+          "message": "df_model: Python=3.000000000000000, Stata=3.000000000000000, abs_diff=0.00e+00, rel_diff=0.00e+00, PASS"
+        },
+        {
+          "field": "df_resid",
+          "python": 544.0,
+          "stata": 544.0,
+          "passed": true,
+          "message": "df_resid: Python=544.000000000000000, Stata=544.000000000000000, abs_diff=0.00e+00, rel_diff=0.00e+00, PASS"
+        },
+        {
+          "field": "df_a",
+          "python": 7.0,
+          "stata": 7.0,
+          "passed": true,
+          "message": "df_a: Python=7.000000000000000, Stata=7.000000000000000, abs_diff=0.00e+00, rel_diff=0.00e+00, PASS"
+        },
+        {
+          "field": "f_stat",
+          "python": 5.326811079450586,
+          "stata": 5.3268111,
+          "passed": true,
+          "message": "f_stat: Python=5.326811079450586, Stata=5.326811100000000, abs_diff=2.05e-08, rel_diff=3.86e-09, PASS"
+        }
+      ],
+      "coefficient_checks": [
+        {
+          "name": "union",
+          "beta_passed": true,
+          "beta_message": "beta[union]: Python=2.181147700469311, Stata=2.181147700000000, abs_diff=4.69e-10, rel_diff=2.15e-10, PASS",
+          "se_passed": true,
+          "se_message": "se[union]: Python=1.436984206937514, Stata=1.436984200000000, abs_diff=6.94e-09, rel_diff=4.83e-09, PASS"
+        },
+        {
+          "name": "hours",
+          "beta_passed": true,
+          "beta_message": "beta[hours]: Python=-0.000069316037593, Stata=-0.000069320000000, abs_diff=3.96e-09, rel_diff=5.72e-05, PASS",
+          "se_passed": true,
+          "se_message": "se[hours]: Python=0.000047539219261, Stata=0.000047540000000, abs_diff=7.81e-10, rel_diff=1.64e-05, PASS"
+        },
+        {
+          "name": "fin",
+          "beta_passed": true,
+          "beta_message": "beta[fin]: Python=0.512891412829510, Stata=0.512891410000000, abs_diff=2.83e-09, rel_diff=5.52e-09, PASS",
+          "se_passed": true,
+          "se_message": "se[fin]: Python=0.246678460465481, Stata=0.246678460000000, abs_diff=4.65e-10, rel_diff=1.89e-09, PASS"
+        }
+      ],
+      "notes": ""
+    }
+  ]
+}

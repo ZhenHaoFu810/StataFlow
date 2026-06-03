@@ -309,8 +309,72 @@ def _expand_single_term(data: pd.DataFrame, term: str) -> List[str]:
                     out_cols = [lvar]
             return out_cols
 
+    # Multi-way interaction (3+ atoms)
+    if len(parts) >= 5:
+        # Extract atoms and operators
+        atoms = []
+        ops = []
+        for i, part in enumerate(parts):
+            if i % 2 == 0:
+                kind, var, base_spec, omitted = _parse_atom(part)
+                if kind == "bare":
+                    kind = "c"
+                atoms.append((kind, var, base_spec, omitted))
+            else:
+                ops.append(part)
+        if not all(op == ops[0] for op in ops):
+            raise ValueError("Mixed # and ## operators not supported for >2 way interactions")
+        is_double = ops[0] == "##"
+        return _expand_multiway_interaction(data, atoms, is_double)
+
     # Any other structure is unsupported
     raise ValueError(f"Unsupported factor term structure: {term}")
+
+
+def _interaction_of_atoms(data: pd.DataFrame, atoms: list) -> list[str]:
+    """Generate interaction columns for a list of atoms (cartesian product of expansions)."""
+    from itertools import product
+    atom_cols = []
+    for kind, var, base_spec, omitted in atoms:
+        if kind in ("c", "bare"):
+            if var not in data.columns:
+                raise ValueError(f"Variable '{var}' not found in data")
+            atom_cols.append([var])
+        elif kind == "i":
+            levels, base, omitted_set = _levels_for_indicator(data[var], base_spec, omitted)
+            nonbase = [ll for ll in levels if ll != base and ll not in omitted_set]
+            cols = []
+            for lvl in nonbase:
+                col_name = f"{_col_name_safe(lvl)}.{var}"
+                data[col_name] = _make_dummy(data[var], lvl)
+                cols.append(col_name)
+            atom_cols.append(cols)
+        else:
+            raise ValueError(f"Unsupported atom kind in interaction: {kind}")
+    
+    result = []
+    for combo in product(*atom_cols):
+        if len(combo) == 1:
+            result.append(combo[0])
+        else:
+            inter_name = "#".join(combo)
+            if inter_name not in data.columns:
+                data[inter_name] = data[combo[0]].astype(float)
+                for c in combo[1:]:
+                    data[inter_name] *= data[c].astype(float)
+            result.append(inter_name)
+    return result
+
+
+def _expand_multiway_interaction(data: pd.DataFrame, atoms: list, is_double: bool) -> list[str]:
+    """Expand 3+ way factor interactions."""
+    from itertools import combinations
+    out_cols: list[str] = []
+    for r in range(1, len(atoms) + 1):
+        for subset in combinations(atoms, r):
+            if is_double or r == len(atoms):
+                out_cols.extend(_interaction_of_atoms(data, subset))
+    return out_cols
 
 
 def expand_factor_terms(data: pd.DataFrame, terms: List[str]) -> Tuple[pd.DataFrame, List[str]]:

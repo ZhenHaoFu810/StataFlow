@@ -6,22 +6,36 @@ Centralized per ADR-0004 to avoid code duplication.
 """
 
 import numpy as np
+from typing import Optional
 
 
 def compute_cluster_meat(
     X: np.ndarray, residuals: np.ndarray, cluster_arr: np.ndarray,
+    weights: Optional[np.ndarray] = None,
 ) -> tuple[np.ndarray, int]:
     """Compute cluster-robust meat matrix for a single cluster dimension.
+
+    If ``weights`` is provided, each observation's score contribution is
+    multiplied by ``sqrt(weights)``, matching the aweight convention used
+    in Stata's cluster-robust sandwich.
 
     Returns (meat, n_clusters).
     """
     k = X.shape[1]
     unique_clusters = np.unique(cluster_arr)
     meat = np.zeros((k, k))
-    for g in unique_clusters:
-        mask = cluster_arr == g
-        score_g = X[mask].T @ residuals[mask]
-        meat += np.outer(score_g, score_g)
+    if weights is not None:
+        sqrt_w = np.sqrt(weights)
+        r_w = residuals * sqrt_w
+        for g in unique_clusters:
+            mask = cluster_arr == g
+            score_g = X[mask].T @ r_w[mask]
+            meat += np.outer(score_g, score_g)
+    else:
+        for g in unique_clusters:
+            mask = cluster_arr == g
+            score_g = X[mask].T @ residuals[mask]
+            meat += np.outer(score_g, score_g)
     return meat, len(unique_clusters)
 
 
@@ -32,7 +46,7 @@ def fix_psd(mat: np.ndarray) -> np.ndarray:
     return eigvecs @ np.diag(eigvals) @ eigvecs.T
 
 
-def fix_psd_reghdfe(mat: np.ndarray) -> np.ndarray:
+def fix_psd_reghdfe(mat: np.ndarray, constant_index: int | None = -1) -> np.ndarray:
     """
     Reghdfe-style PSD fix on the reported VCV matrix.
 
@@ -40,13 +54,21 @@ def fix_psd_reghdfe(mat: np.ndarray) -> np.ndarray:
     from the original (preserving slope SEs exactly). This matches
     reghdfe_fix_psd in Regression.mata. Governed by ADR-0004.
 
-    Assumes _cons is the last row/col of the matrix.
+    By default assumes _cons is the last row/col of the matrix. Pass
+    ``constant_index=None`` when the reported matrix has no constant row.
     """
     k = mat.shape[0]
     if k <= 1:
         return fix_psd(mat)
+    if constant_index is None:
+        return fix_psd(mat)
 
-    index = list(range(k - 1))
+    if constant_index < 0:
+        constant_index = k + constant_index
+    if constant_index < 0 or constant_index >= k:
+        raise ValueError("constant_index is out of bounds for covariance matrix")
+
+    index = [i for i in range(k) if i != constant_index]
     V_backup = mat[np.ix_(index, index)].copy()
 
     eigvals, eigvecs = np.linalg.eigh(mat)
@@ -65,6 +87,7 @@ def compute_multiway_cluster_vce(
     k_eff: int,
     n: int,
     small_sample_adjust: bool = True,
+    weights: Optional[np.ndarray] = None,
 ) -> tuple[np.ndarray, int]:
     """
     Compute 2-way cluster-robust VCE using Cameron-Gelbach-Miller inclusion-exclusion.
@@ -88,6 +111,8 @@ def compute_multiway_cluster_vce(
         Number of observations.
     small_sample_adjust : bool
         If True, apply (n-1)/(n-k_eff) adjustment. PPMLHDFE sets False.
+    weights : ndarray, optional
+        Prior weights (aweight). If provided, scores are weighted by sqrt(weights).
 
     Returns
     -------
@@ -99,14 +124,22 @@ def compute_multiway_cluster_vce(
     meats = []
     Gs = []
     for ca in cluster_arrs:
-        meat, G = compute_cluster_meat(X, residuals, ca)
+        meat, G = compute_cluster_meat(X, residuals, ca, weights=weights)
         meats.append(meat)
         Gs.append(G)
 
-    interaction = np.array([
-        f"{a}__{b}" for a, b in zip(cluster_arrs[0], cluster_arrs[1])
-    ])
-    meat_12, G_12 = compute_cluster_meat(X, residuals, interaction)
+    # Safe interaction encoding using integer labels to avoid separator
+    # collision (e.g. cluster values that naturally contain "__").
+    seen = {}
+    interaction = np.empty(len(cluster_arrs[0]), dtype=int)
+    idx = 0
+    for i, (a, b) in enumerate(zip(cluster_arrs[0], cluster_arrs[1])):
+        key = (a, b)
+        if key not in seen:
+            seen[key] = idx
+            idx += 1
+        interaction[i] = seen[key]
+    meat_12, G_12 = compute_cluster_meat(X, residuals, interaction, weights=weights)
 
     omega_meat = meats[0] + meats[1] - meat_12
 
@@ -125,7 +158,7 @@ def compute_multiway_cluster_vce(
 def detect_collinear_columns(
     X: np.ndarray, names: list[str], tol: float = 1e-10,
 ) -> tuple[np.ndarray, list[str], list[int]]:
-    """Detect and drop collinear columns via QR decomposition.
+    """Detect and drop collinear columns by rank-increment screening.
 
     Returns (X_indep, dropped_names, kept_indices).
     Used by all estimators for pre-OLS collinearity screening (ADR-0004).
@@ -137,12 +170,15 @@ def detect_collinear_columns(
     if rank == X.shape[1]:
         return X, [], list(range(X.shape[1]))
 
-    R = np.linalg.qr(X, mode='r')
     independent = []
     dropped = []
+    current_rank = 0
     for i in range(X.shape[1]):
-        if i < R.shape[0] and abs(R[i, i]) > tol:
+        candidate_cols = independent + [i]
+        candidate_rank = np.linalg.matrix_rank(X[:, candidate_cols], tol=tol)
+        if candidate_rank > current_rank:
             independent.append(i)
+            current_rank = candidate_rank
         else:
             dropped.append(names[i])
     return X[:, independent], dropped, independent
