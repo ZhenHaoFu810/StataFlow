@@ -235,6 +235,16 @@ stata/output/phase2/
 
 ---
 
-*报告完成时间: 2026-06-03*  
-*总投入: 6 个并行 Agent + 人工验证 + 手动修复*  
-*问题总数: 108（已修复 13，待修复 95）*
+### 2026-06-03 — v1.1.0 P1 修复（批次 2，3 项）
+
+| # | 问题 | 命令族 | 修复内容 | 验证 |
+|---|------|--------|----------|------|
+| 16 | **IV-01**: GMM2S cluster VCE 主/fallback 路径不一致 | IV | `_fit_gmm2s` 主路径添加 `g_adj*n_adj` cluster 小样本修正；同步修复主路径 2-way cluster `__` 字符串拼接冲突 | 9 项 IV 测试通过 |
+| 17 | **LINEAR-05**: `regress` wrapper 硬拒绝 `level()/beta/eform` | Linear | `regress`/`xtreg_fe`/`areg` 支持 `level` 参数（转 alpha）；`beta`/`eform` 抛出明确 `NotImplementedError` | 19 项 Linear 测试通过 |
+| 18 | **PANEL-03**: savefe/slopes 错位 | Panel | `save_fixed_effects` 使用 `column_types` 过滤 slope columns，避免 intercept 错位；存在 slopes 时发出 `UserWarning` | 49 项 HDFE 测试通过 |
+
+---
+
+*报告完成时间: 2026-06-03*
+*总投入: 6 个并行 Agent + 人工验证 + 手动修复*
+*问题总数: 108（已修复 18，待修复 90）*

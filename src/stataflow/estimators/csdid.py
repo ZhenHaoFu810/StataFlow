@@ -200,7 +200,9 @@ class CSDID:
                     used_rows.add((u, base))
 
         self._nobs = len(used_rows)
-        self._n_clust = n_units
+        cluster_col = cluster if cluster is not None else uid
+        self._n_clust = int(df[cluster_col].nunique()) if cluster_col in df.columns else n_units
+        self._cluster_var = cluster_col
         return self._finalize_fit(att_gt, if_gt, df, units, cohort_map, has_never_treated)
 
     def _finalize_fit(self, att_gt, if_gt, df, units, cohort_map, has_never_treated):
@@ -466,7 +468,9 @@ class CSDID:
                     used_rows.add((u, base))
 
         self._nobs = len(used_rows)
-        self._n_clust = n_units
+        cluster_col = cluster if cluster is not None else uid
+        self._n_clust = int(df[cluster_col].nunique()) if cluster_col in df.columns else n_units
+        self._cluster_var = cluster_col
         return self._finalize_fit(
             att_gt, if_gt, df, units, cohort_map, has_never_treated
         )
@@ -553,7 +557,7 @@ class CSDID:
                 command="csdid",
                 estimator_family="csdid",
                 vcetype="cluster",
-                cluster_var=None,
+                cluster_var=getattr(self, "_cluster_var", None),
             ),
             sample=SampleInfo(
                 nobs=self._nobs,
@@ -772,7 +776,7 @@ class CSDID:
                 command="csdid",
                 estimator_family="csdid",
                 vcetype="cluster",
-                cluster_var=None,
+                cluster_var=getattr(self, "_cluster_var", None),
             ),
             sample=SampleInfo(
                 nobs=self._nobs,
@@ -827,7 +831,7 @@ class CSDID:
                 command="csdid",
                 estimator_family="csdid",
                 vcetype="cluster",
-                cluster_var=None,
+                cluster_var=getattr(self, "_cluster_var", None),
             ),
             sample=SampleInfo(
                 nobs=self._nobs,
