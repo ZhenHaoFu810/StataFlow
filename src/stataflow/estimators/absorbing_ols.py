@@ -1066,7 +1066,8 @@ class AbsorbingOLS:
 
         if vce_core == "cluster" and len(self._cluster_arrs) > 1:
             from stataflow.estimators._vce_utils import fix_psd_reghdfe
-            cov_reported = fix_psd_reghdfe(cov_reported)
+            constant_index = k_x if self.add_constant else None
+            cov_reported = fix_psd_reghdfe(cov_reported, constant_index=constant_index)
             if self.add_constant:
                 sigma2_psd = rss / df_resid if df_resid > 0 else 0.0
                 cons_var = self._compute_map_cons_variance(
@@ -1408,7 +1409,10 @@ class AbsorbingOLS:
             # inclusion-exclusion. Apply reghdfe-style PSD fix (preserve slopes).
             if vce_core == "cluster" and len(self._cluster_arrs) > 1:
                 from stataflow.estimators._vce_utils import fix_psd_reghdfe
-                cov_reported = fix_psd_reghdfe(cov_reported)
+                constant_index = (
+                    self._coef_names.index("_cons") if "_cons" in self._coef_names else None
+                )
+                cov_reported = fix_psd_reghdfe(cov_reported, constant_index=constant_index)
 
                 # For reghdfe with multi-way clustering, the LSDV-based _cons
                 # variance can diverge from reghdfe's demeaning-based computation.

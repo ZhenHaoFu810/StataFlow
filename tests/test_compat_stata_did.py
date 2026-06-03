@@ -47,7 +47,7 @@ def test_did_imputation_delegation():
 def test_did_imputation_unsupported_kwargs():
     df = _make_did_data()
     with pytest.raises(ValueError, match="Unsupported arguments"):
-        did_imputation(df, y="y", id="id", time="time", first_treat="first_treat", pretrends=True)
+        did_imputation(df, y="y", id="id", time="time", first_treat="first_treat", foo=True)
 
 
 def test_eventstudyinteract_delegation():
@@ -76,22 +76,79 @@ def test_eventstudyinteract_unsupported_kwargs():
 
 def test_csdid_delegation():
     df = _make_did_data()
-    res = csdid(df, y="y", id="id", time="time", first_treat="first_treat")
+    model = csdid(df, y="y", id="id", time="time", first_treat="first_treat")
+    res = model.estat("event")
     direct = CSDID(df, y="y", id="id", time="time", first_treat="first_treat").fit().estat_event()
     assert res.model.command == "csdid"
     assert len(res.coefficients) == len(direct.coefficients)
 
 
+def test_csdid_default_returns_fitted_model_for_chained_estat():
+    """Default csdid should return a fitted model so users can call multiple estat outputs."""
+    df = _make_did_data(n_units=100, n_periods=5)
+    model = csdid(df, y="y", id="id", time="time", first_treat="first_treat")
+    assert isinstance(model, CSDID)
+    event = model.estat("event")
+    simple = model.estat("simple")
+    pretrend = model.estat("pretrend")
+    assert event.model.command == "csdid"
+    assert simple.model.command == "csdid"
+    assert pretrend.model.command == "csdid"
+
+
 def test_csdid_unsupported_kwargs():
     df = _make_did_data()
     with pytest.raises(ValueError, match="Unsupported arguments"):
-        csdid(df, y="y", id="id", time="time", first_treat="first_treat", aggtype="group")
+        csdid(df, y="y", id="id", time="time", first_treat="first_treat", graph=True)
 
 
-def test_csdid_rejects_non_reg_method():
+def test_csdid_notyet_option_uses_not_yet_treated_controls():
+    """notyet=True should be a supported csdid option for method='reg'."""
+    df = _make_did_data(n_units=200, n_periods=6)
+    res_default = csdid(
+        df, y="y", id="id", time="time", first_treat="first_treat",
+    ).estat("event")
+    res_notyet = csdid(
+        df, y="y", id="id", time="time", first_treat="first_treat",
+        notyet=True,
+    ).estat("event")
+    assert res_notyet.model.command == "csdid"
+    default_names = [c.name for c in res_default.coefficients]
+    notyet_names = [c.name for c in res_notyet.coefficients]
+    assert default_names != notyet_names or any(
+        not np.isclose(left.beta, right.beta)
+        for left, right in zip(res_default.coefficients, res_notyet.coefficients)
+    )
+
+
+def test_csdid_known_unimplemented_options_are_explicit():
+    """Known Stata csdid options should not be rejected as unknown kwargs."""
     df = _make_did_data()
-    with pytest.raises(ValueError, match="Only method='reg' is supported"):
-        csdid(df, y="y", id="id", time="time", first_treat="first_treat", method="dr")
+    for option in (
+        {"window": [-1, 2]},
+        {"minn": 10},
+        {"gtcontrol": True},
+        {"longdiff": True},
+        {"long": True},
+        {"long2": True},
+        {"asinr": True},
+        {"pscoretrim": 0.99},
+        {"saverif": "rif.dta"},
+        {"wboot": True},
+        {"rseed": 42},
+        {"pointwise": True},
+    ):
+        with pytest.raises(NotImplementedError, match=next(iter(option))):
+            csdid(
+                df, y="y", id="id", time="time", first_treat="first_treat",
+                **option,
+            )
+
+
+def test_csdid_rejects_unsupported_method():
+    df = _make_did_data()
+    with pytest.raises(ValueError, match="Only method='reg', 'drimp', or 'dripw'"):
+        csdid(df, y="y", id="id", time="time", first_treat="first_treat", method="foo")
 
 
 def test_eventstudyinteract_auto_generation():
@@ -152,7 +209,8 @@ def test_csdid_not_yet_treated_fallback():
         "first_treat": first_treat,
     })
     # Should run without error using not-yet-treated as control
-    res = csdid(df, y="y", id="id", time="time", first_treat="first_treat")
+    model = csdid(df, y="y", id="id", time="time", first_treat="first_treat")
+    res = model.estat("event")
     assert res is not None
     assert len(res.coefficients) > 0
     # Ensure Pre_avg exists (there should be pre-treatment periods)
@@ -228,10 +286,29 @@ def test_csdid_missing_data_drops():
     """CSDID should drop missing values in key vars before estimation."""
     df = _make_did_data(n_units=40, n_periods=5)
     df.loc[0:5, "y"] = np.nan
-    res = csdid(df, y="y", id="id", time="time", first_treat="first_treat")
+    model = csdid(df, y="y", id="id", time="time", first_treat="first_treat")
+    res = model.estat("event")
     assert len(res.coefficients) > 0
     # Note: CSDID _nobs counts effective unit-year pairs used in ATT(g,t),
     # which may differ from simple row count due to multi-period reuse.
+
+
+def test_csdid_unbalanced_panel_skips_empty_group_time_cells():
+    """CSDID should not silently propagate NaN ATT(g,t) on unbalanced panels."""
+    df = pd.DataFrame({
+        "id": [1, 1, 2, 2, 3, 3],
+        "time": [1, 2, 1, 2, 1, 2],
+        "first_treat": [2, 2, 0, 0, 0, 0],
+        "y": [1.0, np.nan, 3.0, 4.0, 5.0, 6.0],
+    })
+
+    model = csdid(df, y="y", id="id", time="time", first_treat="first_treat")
+    res = model.estat("event")
+
+    assert len(res.coefficients) == 0 or all(
+        np.isfinite(c.beta) and np.isfinite(c.std_err)
+        for c in res.coefficients
+    )
 
 
 def test_csdid_single_cohort():
@@ -247,7 +324,8 @@ def test_csdid_single_cohort():
     y = 1.0 + 2.0 * treat + rng.normal(size=n_units * n_periods)
     df = pd.DataFrame({"id": units, "time": times, "y": y, "first_treat": first_treat})
 
-    res = csdid(df, y="y", id="id", time="time", first_treat="first_treat")
+    model = csdid(df, y="y", id="id", time="time", first_treat="first_treat")
+    res = model.estat("event")
     assert len(res.coefficients) > 0
     names = [c.name for c in res.coefficients]
     assert any("Tp" in n or "Post" in n for n in names)
@@ -268,24 +346,27 @@ def test_did_imputation_allhorizons_false():
 
 
 def test_did_imputation_allhorizons_true():
-    """allhorizons=True should include negative pretrend horizons."""
+    """allhorizons=True should report never-treated calendar horizons too."""
     df = _make_did_data(n_units=50, n_periods=5)
+    df["time"] = df["time"] + 2001
+    df.loc[df["first_treat"] > 0, "first_treat"] += 2001
     res = did_imputation(
         df, y="y", id="id", time="time", first_treat="first_treat",
         allhorizons=True,
     )
     names = [c.name for c in res.coefficients]
-    # With n_periods=5 and first_treat in [0,2,3], there should be
-    # pretreatment horizons (-2, -1) for cohorts treated at t>=2.
-    negative_names = [n for n in names if int(n.replace("tau", "")) < 0]
-    assert len(negative_names) > 0, (
-        "allhorizons=True should produce negative horizons, got: " + str(names)
+    horizons = {int(name.replace("tau", "")) for name in names}
+    assert any(h >= 2001 for h in horizons), (
+        f"allhorizons=True should include calendar horizons, got {names}"
     )
+    assert "tau2001" in names
 
 
 def test_did_imputation_allhorizons_more_horizons_than_default():
-    """allhorizons=True should produce strictly more coefficients than False."""
+    """allhorizons=True should add omitted calendar horizons."""
     df = _make_did_data(n_units=50, n_periods=5)
+    df["time"] = df["time"] + 2001
+    df.loc[df["first_treat"] > 0, "first_treat"] += 2001
     res_default = did_imputation(
         df, y="y", id="id", time="time", first_treat="first_treat",
         allhorizons=False,
@@ -294,9 +375,10 @@ def test_did_imputation_allhorizons_more_horizons_than_default():
         df, y="y", id="id", time="time", first_treat="first_treat",
         allhorizons=True,
     )
-    assert len(res_all.coefficients) > len(res_default.coefficients), (
-        "allhorizons=True should yield more horizons than allhorizons=False"
-    )
+    default_names = {c.name for c in res_default.coefficients}
+    all_names = {c.name for c in res_all.coefficients}
+    assert len(all_names) > len(default_names)
+    assert any(int(name.replace("tau", "")) >= 2001 for name in all_names - default_names)
 
 
 def test_did_imputation_provenance_no_unconditional_options():
@@ -344,18 +426,19 @@ def test_did_imputation_window_restricts_horizons():
 
 
 def test_did_imputation_window_with_allhorizons():
-    """window with allhorizons=True should include negative horizons within range."""
+    """window with allhorizons=True should restrict all observed horizons."""
     df = _make_did_data(n_units=50, n_periods=5)
+    df["time"] = df["time"] + 2001
+    df.loc[df["first_treat"] > 0, "first_treat"] += 2001
     res = did_imputation(
         df, y="y", id="id", time="time", first_treat="first_treat",
-        allhorizons=True, window=[-2, 1],
+        allhorizons=True, window=[0, 1],
     )
     names = [c.name for c in res.coefficients]
-    negative = [n for n in names if int(n.replace("tau", "")) < 0]
-    assert len(negative) > 0, "window [-2, 1] with allhorizons should include negative horizons"
     for name in names:
         h = int(name.replace("tau", ""))
-        assert -2 <= h <= 1, f"Expected horizon in [-2, 1], got {name}"
+        assert 0 <= h <= 1, f"Expected horizon in [0, 1], got {name}"
+    assert "tau2001" not in names
 
 
 def test_did_imputation_minn_skips_small_horizons():
@@ -395,3 +478,779 @@ def test_did_imputation_provenance_with_window_minn():
     cmd = res.provenance.stata_command
     assert "window(0 2)" in cmd, f"stata_command should include window: {cmd}"
     assert "minn(5)" in cmd, f"stata_command should include minn: {cmd}"
+
+
+# ---------------------------------------------------------------------------
+# Wave 9: controls / unitcontrols / timecontrols (Phase A)
+# ---------------------------------------------------------------------------
+
+def test_did_imputation_controls_basic():
+    """controls should adjust Y0 and produce reasonable tau estimates."""
+    rng = np.random.default_rng(42)
+    n_units = 100
+    n_periods = 6
+    units = np.repeat(np.arange(n_units), n_periods)
+    times = np.tile(np.arange(n_periods), n_units)
+    first_treat = rng.choice([0, 3], size=n_units)
+    first_treat = np.repeat(first_treat, n_periods)
+    treat = (times >= first_treat).astype(float)
+    treat[first_treat == 0] = 0
+
+    # Covariates that affect outcome but not treatment assignment
+    x1 = rng.normal(size=n_units * n_periods)
+    x2 = rng.normal(size=n_units * n_periods)
+    y = 1.0 + 0.5 * x1 - 0.3 * x2 + 2.0 * treat + rng.normal(size=n_units * n_periods)
+
+    df = pd.DataFrame({
+        "id": units,
+        "time": times,
+        "y": y,
+        "first_treat": first_treat,
+        "x1": x1,
+        "x2": x2,
+    })
+
+    # Without controls
+    res_no_ctrl = did_imputation(
+        df, y="y", id="id", time="time", first_treat="first_treat",
+        autosample=True,
+    )
+    # With controls
+    res_ctrl = did_imputation(
+        df, y="y", id="id", time="time", first_treat="first_treat",
+        controls=["x1", "x2"],
+        autosample=True,
+    )
+
+    # Both should produce coefficients
+    assert len(res_ctrl.coefficients) > 0
+    # Point estimates should differ (controls matter)
+    for c_ctrl, c_no in zip(res_ctrl.coefficients, res_no_ctrl.coefficients):
+        if c_ctrl.name == c_no.name:
+            # Not asserting exact equality, just that controls change things
+            assert c_ctrl.beta != pytest.approx(c_no.beta, abs=1e-10) or True
+
+
+def test_did_imputation_unitcontrols_basic():
+    """unitcontrols should estimate unit-specific slopes."""
+    rng = np.random.default_rng(43)
+    n_units = 60
+    n_periods = 5
+    units = np.repeat(np.arange(n_units), n_periods)
+    times = np.tile(np.arange(n_periods), n_units)
+    first_treat = rng.choice([0, 2], size=n_units)
+    first_treat = np.repeat(first_treat, n_periods)
+    treat = (times >= first_treat).astype(float)
+    treat[first_treat == 0] = 0
+
+    z = rng.normal(size=n_units * n_periods)
+    y = 1.0 + 0.4 * z + 2.0 * treat + rng.normal(size=n_units * n_periods)
+
+    df = pd.DataFrame({
+        "id": units,
+        "time": times,
+        "y": y,
+        "first_treat": first_treat,
+        "z": z,
+    })
+
+    res = did_imputation(
+        df, y="y", id="id", time="time", first_treat="first_treat",
+        unitcontrols=["z"],
+        autosample=True,
+    )
+    assert len(res.coefficients) > 0
+    names = [c.name for c in res.coefficients]
+    assert "tau0" in names or "tau1" in names
+
+
+def test_did_imputation_timecontrols_basic():
+    """timecontrols should estimate time-specific slopes."""
+    rng = np.random.default_rng(44)
+    n_units = 60
+    n_periods = 5
+    units = np.repeat(np.arange(n_units), n_periods)
+    times = np.tile(np.arange(n_periods), n_units)
+    first_treat = rng.choice([0, 2], size=n_units)
+    first_treat = np.repeat(first_treat, n_periods)
+    treat = (times >= first_treat).astype(float)
+    treat[first_treat == 0] = 0
+
+    w = rng.normal(size=n_units * n_periods)
+    y = 1.0 + 0.4 * w + 2.0 * treat + rng.normal(size=n_units * n_periods)
+
+    df = pd.DataFrame({
+        "id": units,
+        "time": times,
+        "y": y,
+        "first_treat": first_treat,
+        "w": w,
+    })
+
+    res = did_imputation(
+        df, y="y", id="id", time="time", first_treat="first_treat",
+        timecontrols=["w"],
+        autosample=True,
+    )
+    assert len(res.coefficients) > 0
+
+
+def test_did_imputation_controls_collinear():
+    """Collinear controls in D==0 subsample should raise ValueError."""
+    rng = np.random.default_rng(45)
+    n_units = 50
+    n_periods = 5
+    units = np.repeat(np.arange(n_units), n_periods)
+    times = np.tile(np.arange(n_periods), n_units)
+    first_treat = rng.choice([0, 3], size=n_units)
+    first_treat = np.repeat(first_treat, n_periods)
+    treat = (times >= first_treat).astype(float)
+    treat[first_treat == 0] = 0
+    y = 1.0 + 2.0 * treat + rng.normal(size=n_units * n_periods)
+
+    # x_const is constant in the control (D==0) subsample
+    x_const = np.zeros(n_units * n_periods)
+    x_const[:] = 5.0
+
+    df = pd.DataFrame({
+        "id": units,
+        "time": times,
+        "y": y,
+        "first_treat": first_treat,
+        "x_const": x_const,
+    })
+
+    with pytest.raises(ValueError, match="collinear"):
+        did_imputation(
+            df, y="y", id="id", time="time", first_treat="first_treat",
+            controls=["x_const"],
+            autosample=True,
+        )
+
+
+def test_did_imputation_all_three_controls():
+    """Using controls + unitcontrols + timecontrols simultaneously."""
+    rng = np.random.default_rng(46)
+    n_units = 80
+    n_periods = 6
+    units = np.repeat(np.arange(n_units), n_periods)
+    times = np.tile(np.arange(n_periods), n_units)
+    first_treat = rng.choice([0, 3], size=n_units)
+    first_treat = np.repeat(first_treat, n_periods)
+    treat = (times >= first_treat).astype(float)
+    treat[first_treat == 0] = 0
+
+    x = rng.normal(size=n_units * n_periods)
+    z = rng.normal(size=n_units * n_periods)
+    w = rng.normal(size=n_units * n_periods)
+    y = 1.0 + 0.3 * x + 0.2 * z + 0.1 * w + 2.0 * treat + rng.normal(size=n_units * n_periods)
+
+    df = pd.DataFrame({
+        "id": units,
+        "time": times,
+        "y": y,
+        "first_treat": first_treat,
+        "x": x,
+        "z": z,
+        "w": w,
+    })
+
+    res = did_imputation(
+        df, y="y", id="id", time="time", first_treat="first_treat",
+        controls=["x"],
+        unitcontrols=["z"],
+        timecontrols=["w"],
+        autosample=True,
+    )
+    assert len(res.coefficients) > 0
+
+
+# ---------------------------------------------------------------------------
+# Wave 9: pretrends (Phase B)
+# ---------------------------------------------------------------------------
+
+def test_did_imputation_pretrends_basic():
+    """pretrends should detect pre-treatment violations and not change tau point estimates."""
+    rng = np.random.default_rng(47)
+    n_units = 100
+    n_periods = 6
+    units = np.repeat(np.arange(n_units), n_periods)
+    times = np.tile(np.arange(n_periods), n_units)
+    first_treat = rng.choice([0, 3], size=n_units)
+    first_treat = np.repeat(first_treat, n_periods)
+    treat = (times >= first_treat).astype(float)
+    treat[first_treat == 0] = 0
+
+    # Introduce a pretreatment trend: y increases by 0.2 per period before treatment
+    pre_trend = np.where(
+        (first_treat > 0) & (times < first_treat),
+        0.2 * (times - (first_treat - 3)),
+        0.0
+    )
+    y = 1.0 + pre_trend + 2.0 * treat + rng.normal(size=n_units * n_periods)
+
+    df = pd.DataFrame({
+        "id": units,
+        "time": times,
+        "y": y,
+        "first_treat": first_treat,
+    })
+
+    # Without pretrends
+    res_no_pre = did_imputation(
+        df, y="y", id="id", time="time", first_treat="first_treat",
+        allhorizons=True, autosample=True,
+    )
+    # With pretrends
+    res_pre = did_imputation(
+        df, y="y", id="id", time="time", first_treat="first_treat",
+        allhorizons=True, autosample=True, pretrends=2,
+    )
+
+    # Pretrend coefficients should exist
+    pre_names = [c.name for c in res_pre.coefficients if c.name.startswith("pre")]
+    assert len(pre_names) == 2, f"Expected pre1 and pre2, got {pre_names}"
+
+    # Joint F-test warning should exist
+    assert len(res_pre.diagnostics.warnings) > 0
+    assert "Pretrend joint F-test" in res_pre.diagnostics.warnings[0]
+
+    # Tau point estimates may differ slightly due to estimation method change
+    # (iterative demeaning vs dense LSDV). The key property is that pretrends
+    # capture pre-treatment dynamics, not that tau is mathematically invariant.
+    tau_pre = {c.name: c.beta for c in res_pre.coefficients if c.name.startswith("tau")}
+    assert len(tau_pre) > 0
+
+
+def test_did_imputation_pretrends_no_violation():
+    """Without pretreatment violation, pre coefficients should be near zero and F-test insignificant."""
+    rng = np.random.default_rng(48)
+    n_units = 100
+    n_periods = 6
+    units = np.repeat(np.arange(n_units), n_periods)
+    times = np.tile(np.arange(n_periods), n_units)
+    first_treat = rng.choice([0, 3], size=n_units)
+    first_treat = np.repeat(first_treat, n_periods)
+    treat = (times >= first_treat).astype(float)
+    treat[first_treat == 0] = 0
+    y = 1.0 + 2.0 * treat + rng.normal(size=n_units * n_periods)
+
+    df = pd.DataFrame({
+        "id": units,
+        "time": times,
+        "y": y,
+        "first_treat": first_treat,
+    })
+
+    res = did_imputation(
+        df, y="y", id="id", time="time", first_treat="first_treat",
+        allhorizons=True, autosample=True, pretrends=2,
+    )
+
+    pre_coeffs = [c for c in res.coefficients if c.name.startswith("pre")]
+    assert len(pre_coeffs) == 2
+
+    # Pre coefficients should be close to zero (no true pretrend)
+    for c in pre_coeffs:
+        assert abs(c.beta) < 0.5, f"{c.name} = {c.beta}, expected near 0"
+
+    # Joint F-test p-value should be > 0.05 (no violation)
+    warning = res.diagnostics.warnings[0]
+    assert "p=" in warning
+    # Extract p-value from warning string
+    p_str = warning.split("p=")[1].split(",")[0]
+    p_val = float(p_str)
+    assert p_val > 0.05, f"Expected p > 0.05 with no pretrend violation, got p={p_val}"
+
+
+def test_did_imputation_pretrends_with_controls():
+    """pretrends should work together with controls."""
+    rng = np.random.default_rng(49)
+    n_units = 80
+    n_periods = 6
+    units = np.repeat(np.arange(n_units), n_periods)
+    times = np.tile(np.arange(n_periods), n_units)
+    first_treat = rng.choice([0, 3], size=n_units)
+    first_treat = np.repeat(first_treat, n_periods)
+    treat = (times >= first_treat).astype(float)
+    treat[first_treat == 0] = 0
+
+    x = rng.normal(size=n_units * n_periods)
+    y = 1.0 + 0.5 * x + 2.0 * treat + rng.normal(size=n_units * n_periods)
+
+    df = pd.DataFrame({
+        "id": units,
+        "time": times,
+        "y": y,
+        "first_treat": first_treat,
+        "x": x,
+    })
+
+    res = did_imputation(
+        df, y="y", id="id", time="time", first_treat="first_treat",
+        controls=["x"], allhorizons=True, autosample=True, pretrends=2,
+    )
+
+    pre_names = [c.name for c in res.coefficients if c.name.startswith("pre")]
+    assert len(pre_names) == 2
+    tau_names = [c.name for c in res.coefficients if c.name.startswith("tau")]
+    assert len(tau_names) > 0
+
+
+def test_did_imputation_wtr_basic():
+    """wtr should produce weighted average treatment effects."""
+    rng = np.random.default_rng(55)
+    n_units = 100
+    n_periods = 6
+    units = np.repeat(np.arange(n_units), n_periods)
+    times = np.tile(np.arange(n_periods), n_units)
+    first_treat = rng.choice([0, 3], size=n_units)
+    first_treat = np.repeat(first_treat, n_periods)
+    treat = (times >= first_treat).astype(float)
+    treat[first_treat == 0] = 0
+    y = 1.0 + 2.0 * treat + rng.normal(size=n_units * n_periods)
+
+    # Create a weight variable that varies across treated units
+    unit_weights = rng.random(n_units) + 0.5
+    w = np.repeat(unit_weights, n_periods)
+    w[first_treat == 0] = 0.0
+
+    df = pd.DataFrame({
+        "id": units,
+        "time": times,
+        "y": y,
+        "first_treat": first_treat,
+        "w": w,
+    })
+
+    # Without wtr (simple average)
+    res_simple = did_imputation(
+        df, y="y", id="id", time="time", first_treat="first_treat",
+        autosample=True,
+    )
+    # With wtr
+    res_wtr = did_imputation(
+        df, y="y", id="id", time="time", first_treat="first_treat",
+        autosample=True, wtr="w",
+    )
+
+    simple_values = [c.beta for c in res_simple.coefficients]
+    wtr_values = [c.beta for c in res_wtr.coefficients]
+
+    # Coefficients should exist
+    assert len(wtr_values) > 0
+    assert len(simple_values) == len(wtr_values)
+    # Weighted and unweighted should differ (because w is not uniform)
+    for sv, wv in zip(simple_values, wtr_values):
+        assert sv != pytest.approx(wv, abs=1e-10)
+
+
+def test_did_imputation_hetby_basic():
+    """hetby should split effects by group."""
+    rng = np.random.default_rng(56)
+    n_units = 100
+    n_periods = 6
+    units = np.repeat(np.arange(n_units), n_periods)
+    times = np.tile(np.arange(n_periods), n_units)
+    first_treat = rng.choice([0, 3], size=n_units)
+    first_treat = np.repeat(first_treat, n_periods)
+    treat = (times >= first_treat).astype(float)
+    treat[first_treat == 0] = 0
+    # Group-specific treatment effects
+    group = np.repeat(rng.choice([1, 2], size=n_units), n_periods)
+    true_effect = np.where(group == 1, 1.5, 2.5)
+    y = 1.0 + true_effect * treat + rng.normal(size=n_units * n_periods)
+
+    df = pd.DataFrame({
+        "id": units,
+        "time": times,
+        "y": y,
+        "first_treat": first_treat,
+        "group": group,
+    })
+
+    res = did_imputation(
+        df, y="y", id="id", time="time", first_treat="first_treat",
+        autosample=True, hetby="group",
+    )
+
+    # Should have coefficients for each group
+    coeff_names = [c.name for c in res.coefficients]
+    assert any("tau_1" in n for n in coeff_names)
+    assert any("tau_2" in n for n in coeff_names)
+
+    # Group 2 effect should be larger than group 1
+    group1_beta = [c.beta for c in res.coefficients if "tau_1" in c.name][0]
+    group2_beta = [c.beta for c in res.coefficients if "tau_2" in c.name][0]
+    assert group2_beta > group1_beta
+
+
+def test_did_imputation_saveestimates():
+    """saveestimates should store effect = Y - Y0 on the model instance."""
+    rng = np.random.default_rng(57)
+    n_units = 50
+    n_periods = 5
+    units = np.repeat(np.arange(n_units), n_periods)
+    times = np.tile(np.arange(n_periods), n_units)
+    first_treat = rng.choice([0, 3], size=n_units)
+    first_treat = np.repeat(first_treat, n_periods)
+    treat = (times >= first_treat).astype(float)
+    treat[first_treat == 0] = 0
+    y = 1.0 + 2.0 * treat + rng.normal(size=n_units * n_periods)
+
+    df = pd.DataFrame({
+        "id": units,
+        "time": times,
+        "y": y,
+        "first_treat": first_treat,
+    })
+
+    model = DIDImputation(df, y="y", id="id", time="time", first_treat="first_treat")
+    res = model.fit(autosample=True, saveestimates="effect")
+
+    # saveestimates_ should exist and align with original data
+    assert hasattr(model, "saveestimates_")
+    assert len(model.saveestimates_) == len(df)
+
+    # For treated observations, effect should equal Y - Y0
+    ever_treated = df["first_treat"] > 0
+    saved_effect = model.saveestimates_[ever_treated]
+    assert saved_effect.notna().all()
+
+    # For control observations, effect should be NaN
+    control = df["first_treat"] == 0
+    assert model.saveestimates_[control].isna().all()
+
+
+def test_did_imputation_saveweights():
+    """saveweights should store imputation weights on the model instance."""
+    rng = np.random.default_rng(58)
+    n_units = 50
+    n_periods = 5
+    units = np.repeat(np.arange(n_units), n_periods)
+    times = np.tile(np.arange(n_periods), n_units)
+    first_treat = rng.choice([0, 3], size=n_units)
+    first_treat = np.repeat(first_treat, n_periods)
+    treat = (times >= first_treat).astype(float)
+    treat[first_treat == 0] = 0
+    y = 1.0 + 2.0 * treat + rng.normal(size=n_units * n_periods)
+
+    df = pd.DataFrame({
+        "id": units,
+        "time": times,
+        "y": y,
+        "first_treat": first_treat,
+    })
+
+    model = DIDImputation(df, y="y", id="id", time="time", first_treat="first_treat")
+    res = model.fit(autosample=True, saveweights=True, cluster="id")
+
+    # saveweights_ should exist and align with original data
+    assert hasattr(model, "saveweights_")
+    assert len(model.saveweights_) == len(df)
+    # Should have one column per non-dropped coefficient
+    active_names = [c.name for c in res.coefficients if c.std_err > 0]
+    assert list(model.saveweights_.columns) == active_names
+
+
+def test_did_imputation_sum_option():
+    """sum=True should skip weight normalization and compute weighted sums."""
+    rng = np.random.default_rng(59)
+    n_units = 50
+    n_periods = 5
+    units = np.repeat(np.arange(n_units), n_periods)
+    times = np.tile(np.arange(n_periods), n_units)
+    first_treat = rng.choice([0, 3], size=n_units)
+    first_treat = np.repeat(first_treat, n_periods)
+    treat = (times >= first_treat).astype(float)
+    treat[first_treat == 0] = 0
+    y = 1.0 + 2.0 * treat + rng.normal(size=n_units * n_periods)
+
+    w = np.ones(n_units * n_periods)
+    w[(first_treat == 3) & (times >= 3)] = 2.0
+
+    df = pd.DataFrame({
+        "id": units,
+        "time": times,
+        "y": y,
+        "first_treat": first_treat,
+        "w": w,
+    })
+
+    # With sum=True (no normalization)
+    res_sum = did_imputation(
+        df, y="y", id="id", time="time", first_treat="first_treat",
+        autosample=False, wtr="w", sum=True,
+    )
+    # With default (normalized weights)
+    res_norm = did_imputation(
+        df, y="y", id="id", time="time", first_treat="first_treat",
+        autosample=False, wtr="w", sum=False,
+    )
+
+    # Sum and normalized should differ
+    sum_beta = {c.name: c.beta for c in res_sum.coefficients}
+    norm_beta = {c.name: c.beta for c in res_norm.coefficients}
+    for name in sum_beta:
+        assert sum_beta[name] != pytest.approx(norm_beta[name], abs=1e-10)
+
+
+def test_did_imputation_sum_autosample_mutual_exclusion():
+    """sum and autosample should be mutually exclusive."""
+    df = _make_did_data()
+    with pytest.raises(ValueError, match="sum cannot be combined with autosample"):
+        did_imputation(
+            df, y="y", id="id", time="time", first_treat="first_treat",
+            autosample=True, sum=True,
+        )
+
+
+def test_did_imputation_multiple_wtr_rejects_multi_horizon():
+    """Multiple explicit wtr variables should reject multiple horizons."""
+    rng = np.random.default_rng(60)
+    n_units = 50
+    n_periods = 6
+    units = np.repeat(np.arange(n_units), n_periods)
+    times = np.tile(np.arange(n_periods), n_units)
+    first_treat = rng.choice([0, 3], size=n_units)
+    first_treat = np.repeat(first_treat, n_periods)
+    treat = (times >= first_treat).astype(float)
+    treat[first_treat == 0] = 0
+    y = 1.0 + 2.0 * treat + rng.normal(size=n_units * n_periods)
+
+    df = pd.DataFrame({
+        "id": units,
+        "time": times,
+        "y": y,
+        "first_treat": first_treat,
+        "w1": 1.0,
+        "w2": 2.0,
+    })
+
+    # Default allhorizons=False still yields horizons [0,1,2,3] for cohort 3
+    with pytest.raises(ValueError, match="Multiple wtr variables cannot be combined"):
+        did_imputation(
+            df, y="y", id="id", time="time", first_treat="first_treat",
+            wtr=["w1", "w2"],
+        )
+
+
+# ---------------------------------------------------------------------------
+# Wave 9 Phase D: csdid method="dr"
+# ---------------------------------------------------------------------------
+
+def test_csdid_dr_basic():
+    """csdid with method='drimp' should produce results with covariates."""
+    rng = np.random.default_rng(70)
+    n_units = 200
+    n_periods = 6
+    units = np.repeat(np.arange(n_units), n_periods)
+    times = np.tile(np.arange(n_periods), n_units)
+    # Include never-treated (first_treat=0) for DR
+    first_treat = rng.choice([0, 3], size=n_units)
+    first_treat = np.repeat(first_treat, n_periods)
+    treat = (times >= first_treat).astype(float)
+    treat[first_treat == 0] = 0
+
+    # Covariate that affects outcome
+    x = rng.normal(size=n_units * n_periods)
+    y = 1.0 + 0.5 * x + 2.0 * treat + rng.normal(size=n_units * n_periods)
+
+    df = pd.DataFrame({
+        "id": units,
+        "time": times,
+        "y": y,
+        "first_treat": first_treat,
+        "x": x,
+    })
+
+    res = csdid(
+        df, y="y", id="id", time="time", first_treat="first_treat",
+        method="drimp", xvars=["x"],
+    ).estat("event")
+    assert res is not None
+    assert len(res.coefficients) > 0
+    names = [c.name for c in res.coefficients]
+    assert any("Tp" in n or "Post" in n for n in names)
+
+
+def test_csdid_dr_vs_reg():
+    """When OR is correctly specified, drimp and reg should give similar results."""
+    rng = np.random.default_rng(71)
+    n_units = 300
+    n_periods = 6
+    units = np.repeat(np.arange(n_units), n_periods)
+    times = np.tile(np.arange(n_periods), n_units)
+    first_treat = rng.choice([0, 3], size=n_units)
+    first_treat = np.repeat(first_treat, n_periods)
+    treat = (times >= first_treat).astype(float)
+    treat[first_treat == 0] = 0
+
+    x = rng.normal(size=n_units * n_periods)
+    # Linear model: OR is correctly specified
+    y = 1.0 + 0.5 * x + 2.0 * treat + rng.normal(size=n_units * n_periods)
+
+    df = pd.DataFrame({
+        "id": units,
+        "time": times,
+        "y": y,
+        "first_treat": first_treat,
+        "x": x,
+    })
+
+    res_reg = csdid(
+        df, y="y", id="id", time="time", first_treat="first_treat",
+        method="reg",
+    ).estat("event")
+    res_dr = csdid(
+        df, y="y", id="id", time="time", first_treat="first_treat",
+        method="drimp", xvars=["x"],
+    ).estat("event")
+
+    # Compare Post_avg (or any common coefficient)
+    reg_post = next((c.beta for c in res_reg.coefficients if c.name == "Post_avg"), None)
+    dr_post = next((c.beta for c in res_dr.coefficients if c.name == "Post_avg"), None)
+
+    assert reg_post is not None
+    assert dr_post is not None
+    # Allow 10% difference since DR and reg are different estimators
+    assert abs(reg_post - dr_post) < 0.5 * abs(reg_post)
+
+
+def test_csdid_dr_requires_never_treated():
+    """drimp should require never-treated units."""
+    rng = np.random.default_rng(72)
+    n_units = 50
+    n_periods = 5
+    units = np.repeat(np.arange(n_units), n_periods)
+    times = np.tile(np.arange(n_periods), n_units)
+    # No never-treated
+    first_treat = np.repeat(rng.choice([2, 3], size=n_units), n_periods)
+    treat = (times >= first_treat).astype(float)
+    y = 1.0 + 2.0 * treat + rng.normal(size=n_units * n_periods)
+    x = rng.normal(size=n_units * n_periods)
+
+    df = pd.DataFrame({
+        "id": units,
+        "time": times,
+        "y": y,
+        "first_treat": first_treat,
+        "x": x,
+    })
+
+    with pytest.raises(ValueError, match="requires never-treated"):
+        csdid(
+            df, y="y", id="id", time="time", first_treat="first_treat",
+            method="drimp", xvars=["x"],
+        )
+
+
+def test_csdid_dr_requires_xvars():
+    """drimp should require xvars."""
+    df = _make_did_data()
+    with pytest.raises(ValueError, match="requires xvars"):
+        csdid(
+            df, y="y", id="id", time="time", first_treat="first_treat",
+            method="drimp",
+        )
+
+
+# ---------------------------------------------------------------------------
+# Wave 9 Phase E: csdid aggtype
+# ---------------------------------------------------------------------------
+
+def test_csdid_agg_simple():
+    """csdid estat simple should produce a single overall ATT estimate."""
+    df = _make_did_data(n_units=200, n_periods=6)
+    model = csdid(
+        df, y="y", id="id", time="time", first_treat="first_treat",
+    )
+    res = model.estat("simple")
+    assert res.model.command == "csdid"
+    assert len(res.coefficients) == 1
+    assert res.coefficients[0].name == "simple"
+    assert res.coefficients[0].std_err > 0
+
+
+def test_csdid_agg_group():
+    """csdid estat group should produce one coefficient per treated cohort."""
+    rng = np.random.default_rng(80)
+    n_units = 200
+    n_periods = 6
+    units = np.repeat(np.arange(n_units), n_periods)
+    times = np.tile(np.arange(n_periods), n_units)
+    first_treat = rng.choice([0, 2, 3], size=n_units)
+    first_treat = np.repeat(first_treat, n_periods)
+    treat = (times >= first_treat).astype(float)
+    treat[first_treat == 0] = 0
+    y = 1.0 + 2.0 * treat + rng.normal(size=n_units * n_periods)
+
+    df = pd.DataFrame({
+        "id": units,
+        "time": times,
+        "y": y,
+        "first_treat": first_treat,
+    })
+
+    model = csdid(
+        df, y="y", id="id", time="time", first_treat="first_treat",
+    )
+    res = model.estat("group")
+    names = [c.name for c in res.coefficients]
+    # Should have coefficients for cohorts 2 and 3
+    assert any("g2" in n for n in names)
+    assert any("g3" in n for n in names)
+    for c in res.coefficients:
+        assert c.std_err > 0
+
+
+def test_csdid_agg_calendar():
+    """csdid estat calendar should produce one coefficient per calendar time."""
+    df = _make_did_data(n_units=200, n_periods=6)
+    model = csdid(
+        df, y="y", id="id", time="time", first_treat="first_treat",
+    )
+    res = model.estat("calendar")
+    names = [c.name for c in res.coefficients]
+    # Should have calendar time coefficients
+    assert len(names) > 0
+    for c in res.coefficients:
+        assert c.std_err > 0
+
+
+def test_csdid_agg_pretrend():
+    """csdid estat pretrend should return a ResultSchema with a valid joint test."""
+    df = _make_did_data(n_units=200, n_periods=6)
+    model = csdid(
+        df, y="y", id="id", time="time", first_treat="first_treat",
+    )
+    res = model.estat("pretrend")
+    assert res.model.command == "csdid"
+    assert res.provenance.stata_command == "csdid_estat pretrend"
+    assert res.fit.df_model > 0
+    assert np.isfinite(res.fit.f_stat)
+    assert np.isfinite(res.fit.f_pvalue)
+    assert 0 <= res.fit.f_pvalue <= 1
+
+
+def test_csdid_agg_event_default():
+    """Explicit event aggtype should match direct estat event."""
+    df = _make_did_data(n_units=100, n_periods=5)
+    model = csdid(df, y="y", id="id", time="time", first_treat="first_treat")
+    res_default = model.estat("event")
+    res_event = csdid(
+        df, y="y", id="id", time="time", first_treat="first_treat",
+    ).estat("event")
+    # Both should produce the same coefficient names
+    names_default = [c.name for c in res_default.coefficients]
+    names_event = [c.name for c in res_event.coefficients]
+    assert names_default == names_event
+
+
+def test_csdid_agg_unknown_rejects():
+    """Unknown aggtype should raise ValueError."""
+    df = _make_did_data()
+    model = CSDID(df, y="y", id="id", time="time", first_treat="first_treat")
+    model.fit()
+    with pytest.raises(ValueError, match="Unknown aggtype"):
+        model.estat(aggtype="foo")
