@@ -1635,6 +1635,7 @@ class AbsorbingOLS:
         if self._beta_full is None:
             raise ValueError("No fitted coefficients available.")
 
+        import warnings
         reduced_to_orig = {v: k for k, v in self._orig_to_reduced.items()}
         result: dict[str, pd.Series] = {}
 
@@ -1644,15 +1645,21 @@ class AbsorbingOLS:
             num_levels = info["num_levels"]
             start = info["start"]
             kept_reduced = self._fe_dummy_indices_reduced[fe_idx]
+            column_types = info.get("column_types", [])
 
             alphas = np.zeros(num_levels)
+            has_slopes = False
             # If add_constant or not the first FE, the first level is the reference
             # and dummy columns correspond to levels[1:].
             # Otherwise (no constant, first FE), all levels have dummies.
             if self.add_constant or fe_idx > 0:
                 for r in kept_reduced:
                     o = reduced_to_orig[r]
-                    j = o - start  # j=0 corresponds to levels[1]
+                    j = o - start
+                    ctype = column_types[j] if j < len(column_types) else ("intercept",)
+                    if ctype[0] == "slope":
+                        has_slopes = True
+                        continue
                     level_idx = 1 + j
                     if 0 <= level_idx < num_levels:
                         alphas[level_idx] = self._beta_full[r]
@@ -1660,8 +1667,20 @@ class AbsorbingOLS:
                 for r in kept_reduced:
                     o = reduced_to_orig[r]
                     j = o - start
+                    ctype = column_types[j] if j < len(column_types) else ("intercept",)
+                    if ctype[0] == "slope":
+                        has_slopes = True
+                        continue
                     if 0 <= j < num_levels:
                         alphas[j] = self._beta_full[r]
+
+            if has_slopes:
+                warnings.warn(
+                    f"save_fixed_effects() for '{var}' currently saves only intercepts; "
+                    "slope coefficients are not yet recovered.",
+                    UserWarning,
+                    stacklevel=2,
+                )
 
             result[var] = pd.Series(alphas, index=levels)
 

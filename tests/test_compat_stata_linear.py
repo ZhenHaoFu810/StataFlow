@@ -57,10 +57,21 @@ def test_regress_aweight():
         assert np.isclose(c.beta, d.beta, rtol=1e-10)
 
 
+def test_regress_level():
+    df = _make_ols_data()
+    res = regress(df, y="y", x=["x1"], level=90)
+    direct = OLS(df, y="y", x=["x1"]).fit(alpha=0.10)
+    for c in res.coefficients:
+        d = next(dc for dc in direct.coefficients if dc.name == c.name)
+        assert np.isclose(c.beta, d.beta, rtol=1e-10)
+        assert np.isclose(c.ci_low, d.ci_low, rtol=1e-10)
+        assert np.isclose(c.ci_high, d.ci_high, rtol=1e-10)
+
+
 def test_regress_unsupported_kwargs():
     df = _make_ols_data()
     with pytest.raises(ValueError, match="Unsupported arguments"):
-        regress(df, y="y", x=["x1"], beta=True)
+        regress(df, y="y", x=["x1"], unknown_opt=True)
 
 
 def test_xtreg_fe_delegation():
@@ -71,6 +82,17 @@ def test_xtreg_fe_delegation():
     for c in res.coefficients:
         d = next(dc for dc in direct.coefficients if dc.name == c.name)
         assert np.isclose(c.beta, d.beta, rtol=1e-10)
+
+
+def test_xtreg_fe_level():
+    df = _make_fe_data()
+    res = xtreg_fe(df, y="y", x=["x1"], fe="id", level=90)
+    direct = FixedEffectsOLS(df, y="y", x=["x1"], fe="id").fit(alpha=0.10)
+    for c in res.coefficients:
+        d = next(dc for dc in direct.coefficients if dc.name == c.name)
+        assert np.isclose(c.beta, d.beta, rtol=1e-10)
+        assert np.isclose(c.ci_low, d.ci_low, rtol=1e-10)
+        assert np.isclose(c.ci_high, d.ci_high, rtol=1e-10)
 
 
 def test_xtreg_fe_unsupported_kwargs():
@@ -87,6 +109,17 @@ def test_areg_delegation():
     for c in res.coefficients:
         d = next(dc for dc in direct.coefficients if dc.name == c.name)
         assert np.isclose(c.beta, d.beta, rtol=1e-10)
+
+
+def test_areg_level():
+    df = _make_fe_data()
+    res = areg(df, y="y", x=["x1"], absorb="id", level=90)
+    direct = AbsorbingOLS(df, y="y", x=["x1"], absorb="id").fit(alpha=0.10)
+    for c in res.coefficients:
+        d = next(dc for dc in direct.coefficients if dc.name == c.name)
+        assert np.isclose(c.beta, d.beta, rtol=1e-10)
+        assert np.isclose(c.ci_low, d.ci_low, rtol=1e-10)
+        assert np.isclose(c.ci_high, d.ci_high, rtol=1e-10)
 
 
 def test_areg_unsupported_kwargs():
