@@ -402,8 +402,10 @@ def test_logit_factor_syntax_runs_and_matches_manual():
         "x2": rng.normal(0, 1, size=n),
     })
     df["x1_x2"] = df["x1"] * df["x2"]
-    res_factor = logit(df, y="y", x=["c.x1##c.x2"])
-    res_manual = logit(df, y="y", x=["x1", "x2", "x1_x2"])
+    model_factor = logit(df, y="y", x=["c.x1##c.x2"])
+    model_manual = logit(df, y="y", x=["x1", "x2", "x1_x2"])
+    res_factor = model_factor._result
+    res_manual = model_manual._result
     for i in range(3):
         assert pytest.approx(res_factor.coefficients[i].beta, rel=1e-10) == res_manual.coefficients[i].beta
         assert pytest.approx(res_factor.coefficients[i].std_err, rel=1e-10) == res_manual.coefficients[i].std_err

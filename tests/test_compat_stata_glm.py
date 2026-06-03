@@ -30,7 +30,8 @@ def _make_count_data(n=200, seed=42):
 
 def test_logit_delegation():
     df = _make_binary_data()
-    res = logit(df, y="y", x=["x1", "x2"])
+    model = logit(df, y="y", x=["x1", "x2"])
+    res = model._result
     direct = Logit(df, y="y", x=["x1", "x2"]).fit()
     assert res.model.command == "logit"
     for c in res.coefficients:
@@ -40,7 +41,8 @@ def test_logit_delegation():
 
 def test_logit_noconstant():
     df = _make_binary_data()
-    res = logit(df, y="y", x=["x1", "x2"], noconstant=True)
+    model = logit(df, y="y", x=["x1", "x2"], noconstant=True)
+    res = model._result
     names = [c.name for c in res.coefficients]
     assert "_cons" not in names
 
@@ -53,7 +55,8 @@ def test_logit_unsupported_kwargs():
 
 def test_logit_wrapper_has_no_postestimation_methods():
     df = _make_binary_data()
-    res = logit(df, y="y", x=["x1", "x2"])
+    model = logit(df, y="y", x=["x1", "x2"])
+    res = model._result
     assert not hasattr(res, "predict")
     assert not hasattr(res, "margins")
 
@@ -109,7 +112,8 @@ def test_logit_cluster_vce_uses_mle_cluster_adjustment():
 
 def test_probit_delegation():
     df = _make_binary_data()
-    res = probit(df, y="y", x=["x1", "x2"])
+    model = probit(df, y="y", x=["x1", "x2"])
+    res = model._result
     direct = Probit(df, y="y", x=["x1", "x2"]).fit()
     assert res.model.command == "probit"
     for c in res.coefficients:
@@ -125,7 +129,8 @@ def test_probit_unsupported_kwargs():
 
 def test_probit_wrapper_has_no_postestimation_methods():
     df = _make_binary_data()
-    res = probit(df, y="y", x=["x1", "x2"])
+    model = probit(df, y="y", x=["x1", "x2"])
+    res = model._result
     assert not hasattr(res, "predict")
     assert not hasattr(res, "margins")
 
@@ -174,7 +179,8 @@ def test_probit_cluster_vce_uses_mle_cluster_adjustment():
 
 def test_poisson_delegation():
     df = _make_count_data()
-    res = poisson(df, y="y", x=["x1", "x2"])
+    model = poisson(df, y="y", x=["x1", "x2"])
+    res = model._result
     direct = Poisson(df, y="y", x=["x1", "x2"]).fit()
     assert res.model.command == "poisson"
     for c in res.coefficients:
@@ -204,7 +210,8 @@ def test_poisson_unsupported_kwargs():
 
 def test_poisson_wrapper_has_no_postestimation_methods():
     df = _make_count_data()
-    res = poisson(df, y="y", x=["x1", "x2"])
+    model = poisson(df, y="y", x=["x1", "x2"])
+    res = model._result
     assert not hasattr(res, "predict")
     assert not hasattr(res, "margins")
 

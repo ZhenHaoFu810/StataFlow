@@ -36,7 +36,8 @@ def logit(
         add_constant=not noconstant,
         missing=missing,
     )
-    return model.fit(vce=vce, cluster=cluster)
+    model.fit(vce=vce, cluster=cluster)
+    return model
 
 
 def probit(
@@ -67,7 +68,8 @@ def probit(
         add_constant=not noconstant,
         missing=missing,
     )
-    return model.fit(vce=vce, cluster=cluster)
+    model.fit(vce=vce, cluster=cluster)
+    return model
 
 
 def poisson(
@@ -105,4 +107,5 @@ def poisson(
         add_constant=not noconstant,
         missing=missing,
     )
-    return model.fit(vce=vce, cluster=cluster)
+    model.fit(vce=vce, cluster=cluster)
+    return model
