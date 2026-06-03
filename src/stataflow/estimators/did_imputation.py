@@ -149,6 +149,7 @@ class DIDImputation:
                 df, self.y_var, self.id_var, self.time_var, control_mask,
                 controls=controls, unitcontrols=unitcontrols, timecontrols=timecontrols,
                 pretrend_cols=None,
+                cluster=cluster,
             )
             alpha_fe = cov_result.get("alpha_fe")
             gamma_fe = cov_result.get("gamma_fe")
@@ -162,6 +163,7 @@ class DIDImputation:
                     df, self.y_var, self.id_var, self.time_var, control_mask,
                     controls=controls, unitcontrols=unitcontrols, timecontrols=timecontrols,
                     pretrend_cols=pretrend_cols,
+                    cluster=cluster,
                 )
                 cov_matrix = cov_result_pre.get("cov")
                 col_names = cov_result_pre.get("col_names")
@@ -617,6 +619,7 @@ class DIDImputation:
         unitcontrols: Optional[list[str]] = None,
         timecontrols: Optional[list[str]] = None,
         pretrend_cols: Optional[list[str]] = None,
+        cluster: Optional[str] = None,
     ) -> dict:
         """
         Fit TWFE + covariates on control sample via dense LSDV.
@@ -704,9 +707,16 @@ class DIDImputation:
         resid = y - X @ beta
         rank = np.linalg.matrix_rank(X)
         df_resid = max(n_ctrl - rank, 1)
-        sigma2 = np.dot(resid, resid) / df_resid
         xtx_inv = np.linalg.pinv(X.T @ X)
-        cov = sigma2 * xtx_inv
+        if cluster is not None and cluster in ctrl_df.columns:
+            from stataflow.estimators._vce_utils import compute_cluster_meat
+            meat, cluster_count = compute_cluster_meat(X, resid, ctrl_df[cluster].values)
+            g_adj = cluster_count / (cluster_count - 1) if cluster_count > 1 else 1.0
+            n_adj = (n_ctrl - 1) / (n_ctrl - rank) if n_ctrl > rank else 1.0
+            cov = n_adj * g_adj * xtx_inv @ meat @ xtx_inv
+        else:
+            sigma2 = np.dot(resid, resid) / df_resid
+            cov = sigma2 * xtx_inv
 
         # Extract coefficients
         idx = 0

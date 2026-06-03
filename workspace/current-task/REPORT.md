@@ -256,4 +256,14 @@ stata/output/phase2/
 
 *报告完成时间: 2026-06-03*
 *总投入: 6 个并行 Agent + 人工验证 + 手动修复*
-*问题总数: 108（已修复 20，待修复 88）*
+### 2026-06-03 — P2 修复（PANEL-05 partial）
+
+| # | 问题 | 命令族 | 修复内容 | 验证 |
+|---|------|--------|----------|------|
+| 21 | **PANEL-05**: `areg()` 不支持 `noconstant` | Panel | `areg` wrapper 添加 `noconstant` 参数并传给 `AbsorbingOLS(add_constant=not noconstant)` | 20 项 Linear 测试通过 |
+
+---
+
+*报告完成时间: 2026-06-03*
+*总投入: 6 个并行 Agent + 人工验证 + 手动修复*
+*问题总数: 108（已修复 21，待修复 87）*
