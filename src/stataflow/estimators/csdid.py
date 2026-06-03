@@ -297,9 +297,6 @@ class CSDID:
 
     def _fit_dr(self, method="drimp", vce=None, cluster=None, notyet=False):
         """Doubly-robust implementation (drimp / dripw)."""
-        if notyet:
-            raise NotImplementedError("notyet is not implemented for method='drimp' or method='dripw'.")
-
         from sklearn.linear_model import LogisticRegression, LinearRegression
 
         df = self.data.copy()
@@ -331,17 +328,18 @@ class CSDID:
         # Covariates in wide format (unit-level, first observation)
         X_wide = df.groupby(uid)[xvars].first()
 
-        # DR requires never-treated units
-        has_never_treated = (df[ft] == 0).any()
-        if not has_never_treated:
-            raise ValueError("method='drimp' requires never-treated units")
+        # Control group strategy: never-treated by default; fall back to not-yet-treated
+        has_never_treated = (df[ft] == 0).any() and not notyet
 
         att_gt = {}
         if_gt = {}
 
         for g in cohorts:
             for t in years:
-                control_mask = df[ft] == 0
+                if has_never_treated:
+                    control_mask = df[ft] == 0
+                else:
+                    control_mask = df[ft] > max(g, t)
                 treated_mask = df[ft] == g
 
                 if control_mask.sum() == 0:
@@ -355,7 +353,7 @@ class CSDID:
                 if base < min_year:
                     continue
 
-                # Fit PS: G=g vs G=0 at unit level
+                # Fit PS: G=g vs control at unit level
                 ps_units = df.loc[treated_mask | control_mask, uid].unique()
                 ps_y = (cohort_map.loc[ps_units] == g).astype(int).values
                 ps_X = X_wide.loc[ps_units]
@@ -451,7 +449,10 @@ class CSDID:
         # Effective observations
         used_rows = set()
         for (g, t), (att, N_g) in att_gt.items():
-            ctrl_ids = df.loc[df[ft] == 0, uid].unique()
+            if has_never_treated:
+                ctrl_ids = df.loc[df[ft] == 0, uid].unique()
+            else:
+                ctrl_ids = df.loc[df[ft] > max(g, t), uid].unique()
             treat_ids = df.loc[df[ft] == g, uid].unique()
             for u in treat_ids:
                 used_rows.add((u, t))

@@ -1117,8 +1117,8 @@ def test_csdid_dr_vs_reg():
     assert abs(reg_post - dr_post) < 0.5 * abs(reg_post)
 
 
-def test_csdid_dr_requires_never_treated():
-    """drimp should require never-treated units."""
+def test_csdid_dr_without_never_treated():
+    """drimp should fall back to not-yet-treated when no never-treated units exist."""
     rng = np.random.default_rng(72)
     n_units = 50
     n_periods = 5
@@ -1138,11 +1138,12 @@ def test_csdid_dr_requires_never_treated():
         "x": x,
     })
 
-    with pytest.raises(ValueError, match="requires never-treated"):
-        csdid(
-            df, y="y", id="id", time="time", first_treat="first_treat",
-            method="drimp", xvars=["x"],
-        )
+    model = csdid(
+        df, y="y", id="id", time="time", first_treat="first_treat",
+        method="drimp", xvars=["x"],
+    )
+    res = model.estat("event")
+    assert len(res.coefficients) > 0
 
 
 def test_csdid_dr_requires_xvars():
