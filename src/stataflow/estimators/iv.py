@@ -1136,9 +1136,16 @@ class IVAbsorbingOLS:
                 for ca in self._cluster_arrs:
                     meat, _ = compute_cluster_meat(Z_r, e_1s, ca)
                     meats.append(meat)
-                interaction = np.array([
-                    f"{a}__{b}" for a, b in zip(self._cluster_arrs[0], self._cluster_arrs[1])
-                ])
+                # Safe interaction encoding (same as _vce_utils.compute_multiway_cluster_vce)
+                seen = {}
+                interaction = np.empty(len(self._cluster_arrs[0]), dtype=int)
+                idx = 0
+                for i, (a, b) in enumerate(zip(self._cluster_arrs[0], self._cluster_arrs[1])):
+                    key = (a, b)
+                    if key not in seen:
+                        seen[key] = idx
+                        idx += 1
+                    interaction[i] = seen[key]
                 meat_12, _ = compute_cluster_meat(Z_r, e_1s, interaction)
                 omega_meat = meats[0] + meats[1] - meat_12
                 omega = omega_meat / N
