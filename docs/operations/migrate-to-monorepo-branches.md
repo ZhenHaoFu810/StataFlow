@@ -395,13 +395,13 @@ Then decide whether to delete the remote branch or push a corrected one.
 - [ ] Merge `update/v1.1.0-sync` into public `main` only after the public repo is clean.
 - [x] Push public `main`.
 - [x] Create local `dev` from `fix/v1.0.1-hotfix`.
-- [ ] Push full `dev` only after repository visibility and secret-history checks pass.
-- [ ] Create `StataFlow_public` worktree from `main`.
-- [ ] Verify public branch contains no forbidden paths.
+- [ ] Push full `dev` only after repository visibility and secret-history checks pass. Current status: blocked by GitHub push protection on historical PyPI token and by public-branch visibility risk.
+- [x] Create `StataFlow_public` worktree from `main`.
+- [x] Verify public branch contains no forbidden paths.
 - [ ] Add or update public sync script on `dev`.
 - [ ] Add CI public-structure audit.
-- [ ] Run `pytest tests/ -v --ignore=tests/golden/ --ignore=tests/benchmarks/` on public branch.
-- [ ] Run example smoke scripts on public branch.
+- [x] Run `pytest tests/ -v --ignore=tests/golden/ --ignore=tests/benchmarks/` on public branch.
+- [x] Run example smoke scripts on public branch.
 - [ ] Keep `StataFlow_open_source` backup for at least 2-4 weeks before deletion.
 
 ---
