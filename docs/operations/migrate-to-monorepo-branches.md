@@ -181,9 +181,26 @@ git log --oneline --decorate -5
 
 ---
 
-## 6. Phase 3: Create and Push the Full `dev` Branch
+## 6. Phase 3: Decide Where the Full `dev` Branch Can Safely Live
 
-**Goal:** Put the complete internal development state on the same GitHub repository.
+**Goal:** Put the complete internal development state on a safe remote only after visibility and secret checks pass.
+
+Important safety update from execution on 2026-06-05:
+
+- `origin/main` has been pushed as the public branch.
+- Pushing `dev` to `https://github.com/ZhenHaoFu810/StataFlow.git` was blocked by GitHub push protection because old history contains a PyPI token file.
+- A GitHub repository does not have per-branch public/private visibility. If `StataFlow.git` is public, pushing an internal `dev` branch would expose internal docs, audit evidence, golden tests, workspace files, and any other tracked internal content.
+
+Therefore, do **not** push full `dev` to `StataFlow.git` unless both conditions are true:
+
+1. The target repository is private, or the full `dev` tree has been explicitly approved for public visibility.
+2. The complete branch history has passed a secret scan and no secret-containing commit is reachable.
+
+The safe default is:
+
+- `StataFlow.git:main` = public release branch.
+- `StataFlow` local repo = internal development source of truth for now.
+- Optional future private remote, for example `StataFlow-internal.git`, holds `dev`.
 
 In `StataFlow`, after remotes are normalized:
 
@@ -191,27 +208,29 @@ In `StataFlow`, after remotes are normalized:
 Set-Location "D:/OneDrive - SAIF/PhD3/StataFlow"
 git checkout fix/v1.0.1-hotfix
 git status --short --branch
-git branch dev
-git push -u origin dev
+git branch -f dev HEAD
 ```
 
-If the local branch `dev` already exists, use:
+Before any `dev` push, run:
 
 ```powershell
-git branch -f dev fix/v1.0.1-hotfix
-git push -u origin dev
+git ls-tree -r --name-only dev | rg "token|secret|credential|password|\.env"
+git log --all -- "Pypi token.txt"
 ```
 
-Verification:
+If any secret history is found, either keep `dev` local/private or rewrite the internal branch history in a separate, audited operation. Do not bypass GitHub push protection.
+
+Only if the target remote is private and the scan is clean:
 
 ```powershell
-git ls-remote --heads origin main dev
+git push -u <private-remote> dev
 ```
 
 Expected result:
 
 - `refs/heads/main` exists and points to the public branch.
-- `refs/heads/dev` exists and points to the full internal branch.
+- Local `dev` exists and points to the full internal branch.
+- Remote `dev` exists only on an approved private or explicitly public-safe target.
 
 ---
 
@@ -374,8 +393,9 @@ Then decide whether to delete the remote branch or push a corrected one.
 - [ ] Back up both folders.
 - [ ] Normalize internal remotes so `origin` points to `StataFlow.git`, or use `stataflow` explicitly.
 - [ ] Merge `update/v1.1.0-sync` into public `main` only after the public repo is clean.
-- [ ] Push public `main`.
-- [ ] Create and push full `dev` from `fix/v1.0.1-hotfix`.
+- [x] Push public `main`.
+- [x] Create local `dev` from `fix/v1.0.1-hotfix`.
+- [ ] Push full `dev` only after repository visibility and secret-history checks pass.
 - [ ] Create `StataFlow_public` worktree from `main`.
 - [ ] Verify public branch contains no forbidden paths.
 - [ ] Add or update public sync script on `dev`.
@@ -388,7 +408,6 @@ Then decide whether to delete the remote branch or push a corrected one.
 
 ## 12. Recommendation
 
-The optimal path is **single GitHub repository + two branches + optional Git worktree**, not immediate deletion of the open-source folder and not branch switching inside a dirty internal worktree.
+The optimal path is **public `main` plus a separate safe internal `dev` location plus optional Git worktree**. If the GitHub repository is public, the safe internal location must be local or private; do not push internal material to a public branch.
 
 This keeps the public branch clean, preserves the internal branch as the source of truth, avoids duplicate Git object storage, and gives a reversible migration path.
-
