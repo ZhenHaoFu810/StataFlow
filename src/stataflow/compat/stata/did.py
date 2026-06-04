@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Optional
 
+import numpy as np
+
 from stataflow.estimators import DIDImputation, EventStudyInteract, CSDID
 
 
@@ -121,7 +123,7 @@ def eventstudyinteract(
 
         used_event_dummies = []
         rel_time = df[time] - df[first_treat]
-        rel_time = rel_time.where(df[first_treat] > 0, -1000)
+        rel_time = rel_time.where(df[first_treat] > 0, np.nan)
 
         for h in horizons:
             if h == omit:

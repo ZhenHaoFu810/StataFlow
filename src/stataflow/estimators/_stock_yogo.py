@@ -192,6 +192,18 @@ def stock_yogo_critical_values(
     use_liml = (model == "2sls" and k2 == nendog)
     tables = _LIML_TABLES if use_liml else (_2SLS_TABLES if model == "2sls" else _LIML_TABLES)
     result = {}
+    max_nendog = max(t.shape[0] for t in tables.values())
+    max_k2 = max(t.shape[1] for t in tables.values())
+    if nendog > max_nendog or k2 > max_k2:
+        import warnings
+        warnings.warn(
+            f"Stock-Yogo critical values are only tabulated up to nendog={max_nendog} "
+            f"and k2={max_k2}. Requested nendog={nendog}, k2={k2}. "
+            f"Returning NaN. Consider reducing the number of endogenous regressors "
+            f"or instruments, or using simulation-based weak-IV tests.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
     for pct, table in tables.items():
         if nendog < 1 or nendog > table.shape[0]:
             result[f"{pct}%"] = np.nan

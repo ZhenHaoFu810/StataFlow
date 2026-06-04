@@ -136,6 +136,10 @@ class AbsorbingOLS:
         """
         Iteratively drop singleton observations across all absorb variables.
 
+        Also drops observations in absorb groups that lack sufficient variation
+        to estimate slopes (needs at least 2 distinct observations per slope
+        combination).
+
         Returns
         -------
         df_filtered : pd.DataFrame
@@ -148,9 +152,16 @@ class AbsorbingOLS:
 
         while changed:
             changed = False
-            for var in self.absorb_vars:
+            for spec in self.absorb_specs:
+                var = spec.var
                 counts = df[var].value_counts()
+                # Basic singletons: groups with only 1 observation
                 singletons = counts[counts == 1].index.tolist()
+                # Slope singletons: groups with slopes but < 2 obs
+                if spec.slopes:
+                    for group_val, group_size in counts.items():
+                        if group_size < 2 and group_val not in singletons:
+                            singletons.append(group_val)
                 if singletons:
                     mask = ~df[var].isin(singletons)
                     n_before = len(df)
@@ -1285,6 +1296,22 @@ class AbsorbingOLS:
 
         else:
             # -------- LSDV path --------
+            # Memory safety check: estimate dummy matrix size before allocating
+            n_est = int(np.sum(fe_info[0]['counts'])) if fe_info else self._n_input_rows
+            total_fe_levels = sum(info['num_levels'] for info in fe_info)
+            # Each FE dummy matrix is n x (G-1) float64 bytes; also account for slopes
+            estimated_dummies = total_fe_levels - len(self.absorb_specs)
+            estimated_memory_gb = (n_est * estimated_dummies * 8) / (1024**3)
+            if estimated_memory_gb > 2.0:
+                import warnings
+                warnings.warn(
+                    f"LSDV dummy matrix estimated at {estimated_memory_gb:.1f} GB "
+                    f"({n_est:,} obs x {estimated_dummies:,} dummies). "
+                    f"Consider using technique='map' to reduce memory usage.",
+                    ResourceWarning,
+                    stacklevel=2,
+                )
+
             X_full, y, sample_mask, n_input_rows, _ = self._prepare_data(cluster_vars=cluster_vars)
             n = len(y)
             k_full = X_full.shape[1]
@@ -1443,6 +1470,18 @@ class AbsorbingOLS:
 
             beta_reported = T @ beta_full
             cov_reported = T @ cov_full @ T.T
+
+            # PANEL-14: Warn about known _cons SE bias in 2-way cluster VCE
+            if (len(self._cluster_vars) >= 2 and "_cons" in self._coef_names
+                    and vce_core == "cluster"):
+                import warnings
+                warnings.warn(
+                    "2-way cluster-robust SE for the constant term may deviate "
+                    "from Stata reghdfe by up to ~3%% due to PSD-fix side effects. "
+                    "Slope coefficients are unaffected.",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
 
             # For slope absorption, the T-matrix _cons can diverge from reghdfe's
             # demeaning-based constant recovery when slope variables have unequal
@@ -1614,6 +1653,7 @@ class AbsorbingOLS:
         self._beta_reported = beta_reported
         self._cov_reported = cov_reported
         self._result = result
+        result._model = self
 
         if savefe:
             result.fixed_effects = self.save_fixed_effects()

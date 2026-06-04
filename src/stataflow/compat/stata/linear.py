@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from typing import Optional
 
+import numpy as np
+import pandas as pd
+
 from stataflow.estimators import OLS, FixedEffectsOLS, AbsorbingOLS
 from stataflow.compat.stata.factor_variables import expand_factor_terms, parse_absorb
 
@@ -15,7 +18,7 @@ def regress(
     *,
     vce: str = "ols",
     cluster: Optional[str | list[str]] = None,
-    aweight: Optional[str] = None,
+    aweight: Optional[str | np.ndarray | pd.Series] = None,
     noconstant: bool = False,
     missing: str = "drop",
     **kwargs,
@@ -48,7 +51,10 @@ def regress(
     weights = None
     if aweight is not None:
         weight_type = "aweight"
-        weights = data[aweight].values
+        if isinstance(aweight, str):
+            weights = data[aweight].values
+        else:
+            weights = np.asarray(aweight)
 
     data_expanded, x_expanded = expand_factor_terms(data, x)
 
@@ -72,6 +78,7 @@ def xtreg_fe(
     fe: str,
     vce: str = "ols",
     cluster: Optional[str | list[str]] = None,
+    constant: bool = False,
     missing: str = "drop",
     **kwargs,
 ) -> object:
@@ -109,6 +116,7 @@ def xtreg_fe(
         y=y,
         x=x_expanded,
         fe=fe,
+        add_constant=constant,
         missing=missing,
     )
     return model.fit(vce=vce, cluster=cluster, alpha=alpha)
@@ -122,7 +130,7 @@ def areg(
     absorb: str,
     vce: str = "ols",
     cluster: Optional[str | list[str]] = None,
-    aweight: Optional[str] = None,
+    aweight: Optional[str | np.ndarray | pd.Series] = None,
     noconstant: bool = False,
     missing: str = "drop",
     **kwargs,
@@ -132,6 +140,21 @@ def areg(
 
     Maps to :class:`stataflow.estimators.AbsorbingOLS` with a single
     absorption variable.
+
+    Parameters
+    ----------
+    absorb : str
+        Categorical variable to absorb as a fixed effect.
+    vce : str, default "ols"
+        Variance estimator: "ols", "robust", or "cluster".
+    cluster : str or list[str], optional
+        Cluster variable(s) (required when vce="cluster").
+    aweight : str or array-like, optional
+        Analytical weight variable name or array-like of weights.
+    noconstant : bool, default False
+        If True, omit the constant term.
+    missing : str, default "drop"
+        Missing value handling. Only "drop" is supported.
     """
     if vce is not None and vce.startswith("cluster "):
         cluster = vce.split(" ", 1)[1]
@@ -164,7 +187,10 @@ def areg(
     weights = None
     if aweight is not None:
         weight_type = "aweight"
-        weights = data[aweight].values
+        if isinstance(aweight, str):
+            weights = data[aweight].values
+        else:
+            weights = np.asarray(aweight)
 
     model = AbsorbingOLS(
         data=data_expanded,

@@ -17,6 +17,8 @@ def ivregress_2sls(
     *,
     vce: str = "ols",
     cluster: Optional[str] = None,
+    noconstant: bool = False,
+    first: bool = False,
     missing: str = "drop",
     **kwargs,
 ) -> object:
@@ -29,7 +31,25 @@ def ivregress_2sls(
     if vce is not None and vce.startswith('cluster '):
         cluster = vce.split(' ', 1)[1]
         vce = 'cluster'
+    # Map HC subtypes: hc1 is alias for robust; hc2/hc3 not yet implemented
+    vce_lower = (vce or "").lower()
+    if vce_lower == "hc1":
+        vce = "robust"
+    elif vce_lower in ("hc2", "hc3"):
+        raise NotImplementedError(f"vce({vce}) is not yet supported. Use 'robust' or 'cluster'.")
 
+    for known_unsupported in ("level", "beta", "eform"):
+        if known_unsupported in kwargs:
+            kwargs.pop(known_unsupported)
+            raise NotImplementedError(
+                f"'{known_unsupported}' is not yet supported by the ivregress_2sls wrapper."
+            )
+    for known_unimplemented in ("orthog", "endogtest", "redundant", "partial", "fwl", "wmatrix", "ffirst"):
+        if known_unimplemented in kwargs:
+            kwargs.pop(known_unimplemented)
+            raise NotImplementedError(
+                f"'{known_unimplemented}' is not yet supported by the ivreghdfe wrapper."
+            )
     if kwargs:
         raise ValueError(f"Unsupported arguments: {list(kwargs.keys())}")
 
@@ -43,9 +63,10 @@ def ivregress_2sls(
         x_exog=x_exog_exp,
         x_endog=x_endog_exp,
         instruments=instruments_exp,
+        add_constant=not noconstant,
         missing=missing,
     )
-    return model.fit(vce=vce, cluster=cluster)
+    return model.fit(vce=vce, cluster=cluster, first=first)
 
 
 def ivreghdfe(
@@ -92,8 +113,35 @@ def ivreghdfe(
     kclass : float, optional
         User-specified k-class parameter for LIML.
     """
+    for known_unsupported in ("level", "beta", "eform"):
+        if known_unsupported in kwargs:
+            kwargs.pop(known_unsupported)
+            raise NotImplementedError(
+                f"'{known_unsupported}' is not yet supported by the ivreghdfe wrapper."
+            )
+    for known_unimplemented in ("orthog", "endogtest", "redundant", "partial", "fwl", "wmatrix", "ffirst"):
+        if known_unimplemented in kwargs:
+            kwargs.pop(known_unimplemented)
+            raise NotImplementedError(
+                f"'{known_unimplemented}' is not yet supported by the ivreghdfe wrapper."
+            )
     if kwargs:
         raise ValueError(f"Unsupported arguments: {list(kwargs.keys())}")
+
+    # Parse Stata-style vce(cluster var) syntax
+    if vce is not None and vce.startswith('cluster '):
+        cluster = vce.split(' ', 1)[1]
+        vce = 'cluster'
+    # Map HC subtypes: hc1 is alias for robust; hc2/hc3 not yet implemented
+    vce_lower = (vce or "").lower()
+    if vce_lower == "hc1":
+        vce = "robust"
+    elif vce_lower in ("hc2", "hc3"):
+        raise NotImplementedError(f"vce({vce}) is not yet supported. Use 'robust' or 'cluster'.")
+
+    # Support Stata-style space-separated cluster variables
+    if isinstance(cluster, str) and ' ' in cluster:
+        cluster = [c.strip() for c in cluster.split()]
 
     data_exog, x_exog_exp = expand_factor_terms(data, x_exog)
     data_endog, x_endog_exp = expand_factor_terms(data_exog, x_endog)

@@ -91,6 +91,20 @@ class CSDID:
         units = df[uid].unique()
         n_units = len(units)
 
+        # Check for duplicate (unit, time) observations before pivot
+        dup_mask = df.duplicated(subset=[uid, time], keep=False)
+        if dup_mask.any():
+            n_dup = dup_mask.sum()
+            dup_examples = df.loc[dup_mask, [uid, time]].head(5).to_dict('records')
+            example_str = ', '.join(
+                f"{uid}={row[uid]}, {time}={row[time]}" for row in dup_examples
+            )
+            raise ValueError(
+                f"Found {n_dup} duplicate (unit, time) observations. "
+                f"CSDID requires a balanced panel with one observation per unit-time. "
+                f"Examples: {example_str}"
+            )
+
         # Wide format for influence function convenience
         df_wide = df.pivot(index=uid, columns=time, values=y)
         cohort_map = df.groupby(uid)[ft].first()
@@ -322,6 +336,20 @@ class CSDID:
 
         units = df[uid].unique()
         n_units = len(units)
+
+        # Check for duplicate (unit, time) observations before pivot
+        dup_mask = df.duplicated(subset=[uid, time], keep=False)
+        if dup_mask.any():
+            n_dup = dup_mask.sum()
+            dup_examples = df.loc[dup_mask, [uid, time]].head(5).to_dict('records')
+            example_str = ', '.join(
+                f"{uid}={row[uid]}, {time}={row[time]}" for row in dup_examples
+            )
+            raise ValueError(
+                f"Found {n_dup} duplicate (unit, time) observations. "
+                f"CSDID requires a balanced panel with one observation per unit-time. "
+                f"Examples: {example_str}"
+            )
 
         # Wide format for influence function convenience
         df_wide = df.pivot(index=uid, columns=time, values=y)
@@ -755,6 +783,13 @@ class CSDID:
             inv_cov = np.linalg.inv(cov)
             wald = float(pre_est @ inv_cov @ pre_est)
         except np.linalg.LinAlgError:
+            import warnings
+            warnings.warn(
+                "Pretrend covariance matrix is singular; using pseudo-inverse. "
+                "Pretrend test may be unreliable.",
+                UserWarning,
+                stacklevel=2,
+            )
             inv_cov = np.linalg.pinv(cov)
             wald = float(pre_est @ inv_cov @ pre_est)
 

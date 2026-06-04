@@ -187,12 +187,12 @@ class FixedEffectsOLS:
             Fitted result object.
         """
         # Validate inputs
-        if vce not in ("ols", "cluster"):
-            raise ValueError(f"vce='{vce}' not supported for FE. Use 'ols' or 'cluster'.")
+        if vce not in ("ols", "robust", "cluster"):
+            raise ValueError(f"vce='{vce}' not supported for FE. Use 'ols', 'robust', or 'cluster'.")
         if vce == "cluster" and cluster is None:
             raise ValueError("cluster variable required when vce='cluster'. Pass cluster='...'.")
-        if vce != "cluster" and cluster is not None:
-            raise ValueError("cluster only used when vce='cluster'.")
+        if vce not in ("cluster", "robust") and cluster is not None:
+            raise ValueError("cluster only used when vce='cluster' or vce='robust'.")
 
         # Prepare data and apply within transformation
         df_clean, y_w, X_w, sample_mask, cluster_arr = self._prepare_data(cluster_var=cluster)
@@ -250,6 +250,14 @@ class FixedEffectsOLS:
         if vce == "ols":
             # Conventional homoskedastic VCE
             cov_beta = sigma_e2 * np.linalg.inv(XtX)
+        elif vce == "robust":
+            # White/Huber robust VCE (sandwich)
+            XtX_inv = np.linalg.inv(XtX)
+            # Meat: X' * diag(u^2) * X
+            meat = X_w.T @ (X_w * (residuals_w ** 2)[:, None])
+            # Small-sample correction: (N-1)/(N-k-1) for FE structure
+            n_adj = (n - 1) / (n - k - 1) if n > k + 1 else 1.0
+            cov_beta = n_adj * XtX_inv @ meat @ XtX_inv
         elif vce == "cluster":
             # Cluster-robust VCE
             XtX_inv = np.linalg.inv(XtX)
@@ -292,6 +300,16 @@ class FixedEffectsOLS:
                 # Conventional F-statistic
                 f_stat = (mss_w / k) / (rss / df_resid_fe)
                 f_pvalue = 1 - f_dist.cdf(f_stat, dfn=k, dfd=df_resid_fe)
+            elif vce == "robust":
+                # Wald F-statistic for robust VCE
+                try:
+                    cov_inv = np.linalg.inv(cov_beta)
+                    wald_stat = float(beta @ cov_inv @ beta)
+                    f_stat = wald_stat / k
+                    f_pvalue = 1 - f_dist.cdf(f_stat, dfn=k, dfd=df_resid_fe)
+                except np.linalg.LinAlgError:
+                    f_stat = None
+                    f_pvalue = None
             elif vce == "cluster":
                 # Wald F-statistic for cluster VCE
                 try:
@@ -438,6 +456,7 @@ class FixedEffectsOLS:
         self._beta = beta
         self._cov_beta = cov_beta
         self._result = result
+        result._model = self
 
         return result
 
@@ -456,15 +475,20 @@ class FixedEffectsOLS:
         grand_mean = float(self._entity_effects.mean()) if self._entity_effects is not None else 0.0
 
         if newdata is not None:
-            df = newdata[self.x].copy()
-            X = df.values.astype(np.float64)
+            required_cols = [self.y] + self.x if type == "residuals" else self.x
+            df = newdata[required_cols].copy()
+            mask = df.notna().all(axis=1)
+            if not mask.all():
+                # Stata-compatible: drop missing and predict on complete cases
+                df = df[mask]
+            X = df[self.x].values.astype(np.float64)
             beta = np.zeros(X.shape[1])
             for i, name in enumerate(self.x):
                 if name in self._coef_names:
                     beta[i] = self._beta[self._coef_names.index(name)]
             xb = X @ beta + (grand_mean if self.add_constant else 0.0)
             if type == "residuals":
-                y = newdata[self.y].values.astype(np.float64)
+                y = df[self.y].values.astype(np.float64)
                 return y - xb
             return xb
         else:

@@ -17,6 +17,7 @@ def logit(
     cluster: Optional[str] = None,
     aweight: Optional[str] = None,
     noconstant: bool = False,
+    or_: bool = False,
     missing: str = "drop",
     **kwargs,
 ) -> object:
@@ -24,7 +25,13 @@ def logit(
     Stata-compatible wrapper for ``logit``.
 
     Maps to :class:`stataflow.estimators.Logit`.
+
+    Parameters
+    ----------
+    or_ : bool
+        Report odds ratios (``eform`` alias for logit).
     """
+    eform = or_
     if kwargs:
         raise ValueError(f"Unsupported arguments: {list(kwargs.keys())}")
 
@@ -39,8 +46,7 @@ def logit(
         missing=missing,
         weights=weights,
     )
-    model.fit(vce=vce, cluster=cluster)
-    return model
+    return model.fit(vce=vce, cluster=cluster, eform=eform)
 
 
 def probit(
@@ -74,8 +80,7 @@ def probit(
         missing=missing,
         weights=weights,
     )
-    model.fit(vce=vce, cluster=cluster)
-    return model
+    return model.fit(vce=vce, cluster=cluster)
 
 
 def poisson(
@@ -89,6 +94,8 @@ def poisson(
     noconstant: bool = False,
     exposure: Optional[str] = None,
     offset: Optional[str] = None,
+    irr: bool = False,
+    eform: bool = False,
     missing: str = "drop",
     **kwargs,
 ) -> object:
@@ -96,7 +103,15 @@ def poisson(
     Stata-compatible wrapper for ``poisson``.
 
     Maps to :class:`stataflow.estimators.Poisson`.
+
+    Parameters
+    ----------
+    irr : bool
+        Report incidence-rate ratios (``eform`` alias).
+    eform : bool
+        Report exponentiated coefficients.
     """
+    eform = eform or irr
     if kwargs:
         raise ValueError(f"Unsupported arguments: {list(kwargs.keys())}")
 
@@ -116,5 +131,4 @@ def poisson(
         missing=missing,
         weights=weights,
     )
-    model.fit(vce=vce, cluster=cluster)
-    return model
+    return model.fit(vce=vce, cluster=cluster, eform=eform)

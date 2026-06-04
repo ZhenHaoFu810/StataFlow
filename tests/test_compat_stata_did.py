@@ -332,21 +332,18 @@ def test_csdid_single_cohort():
 
 
 def test_did_imputation_allhorizons_false():
-    """Default allhorizons=False should only report non-negative horizons."""
+    """Default allhorizons=False should report a single aggregate tau coefficient."""
     df = _make_did_data(n_units=50, n_periods=5)
     res = did_imputation(
         df, y="y", id="id", time="time", first_treat="first_treat",
         allhorizons=False,
     )
     names = [c.name for c in res.coefficients]
-    # All reported horizons should be >= 0 (tau0, tau1, ...)
-    for name in names:
-        horizon = int(name.replace("tau", ""))
-        assert horizon >= 0, f"Expected non-negative horizon, got {name}"
+    assert names == ["tau"], f"Expected ['tau'] in aggregate mode, got {names}"
 
 
 def test_did_imputation_allhorizons_true():
-    """allhorizons=True should report never-treated calendar horizons too."""
+    """allhorizons=True should report event-study tauh for each non-negative horizon."""
     df = _make_did_data(n_units=50, n_periods=5)
     df["time"] = df["time"] + 2001
     df.loc[df["first_treat"] > 0, "first_treat"] += 2001
@@ -355,15 +352,16 @@ def test_did_imputation_allhorizons_true():
         allhorizons=True,
     )
     names = [c.name for c in res.coefficients]
+    # Should contain tau0, tau1, ... (non-negative event-time horizons)
     horizons = {int(name.replace("tau", "")) for name in names}
-    assert any(h >= 2001 for h in horizons), (
-        f"allhorizons=True should include calendar horizons, got {names}"
+    assert all(h >= 0 for h in horizons), (
+        f"allhorizons=True should only include non-negative horizons, got {names}"
     )
-    assert "tau2001" in names
+    assert "tau0" in names
 
 
 def test_did_imputation_allhorizons_more_horizons_than_default():
-    """allhorizons=True should add omitted calendar horizons."""
+    """allhorizons=True reports event-study coefficients; allhorizons=False reports aggregate tau."""
     df = _make_did_data(n_units=50, n_periods=5)
     df["time"] = df["time"] + 2001
     df.loc[df["first_treat"] > 0, "first_treat"] += 2001
@@ -377,8 +375,10 @@ def test_did_imputation_allhorizons_more_horizons_than_default():
     )
     default_names = {c.name for c in res_default.coefficients}
     all_names = {c.name for c in res_all.coefficients}
-    assert len(all_names) > len(default_names)
-    assert any(int(name.replace("tau", "")) >= 2001 for name in all_names - default_names)
+    # Aggregate mode has exactly one coefficient (tau)
+    assert default_names == {"tau"}, f"Expected aggregate mode to return ['tau'], got {default_names}"
+    # Event-study mode has multiple tauh coefficients
+    assert len(all_names) > 1, f"Expected event-study mode to have multiple horizons, got {all_names}"
 
 
 def test_did_imputation_provenance_no_unconditional_options():
@@ -561,7 +561,7 @@ def test_did_imputation_unitcontrols_basic():
     )
     assert len(res.coefficients) > 0
     names = [c.name for c in res.coefficients]
-    assert "tau0" in names or "tau1" in names
+    assert "tau" in names, f"Expected 'tau' in aggregate mode, got {names}"
 
 
 def test_did_imputation_timecontrols_basic():
@@ -823,12 +823,12 @@ def test_did_imputation_wtr_basic():
         "w": w,
     })
 
-    # Without wtr (simple average)
+    # Without wtr (simple average), use allhorizons=True to match wtr mode
     res_simple = did_imputation(
         df, y="y", id="id", time="time", first_treat="first_treat",
-        autosample=True,
+        autosample=True, allhorizons=True,
     )
-    # With wtr
+    # With wtr (forces event-study mode)
     res_wtr = did_imputation(
         df, y="y", id="id", time="time", first_treat="first_treat",
         autosample=True, wtr="w",

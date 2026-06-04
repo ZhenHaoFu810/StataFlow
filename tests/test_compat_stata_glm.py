@@ -30,8 +30,7 @@ def _make_count_data(n=200, seed=42):
 
 def test_logit_delegation():
     df = _make_binary_data()
-    model = logit(df, y="y", x=["x1", "x2"])
-    res = model._result
+    res = logit(df, y="y", x=["x1", "x2"])
     direct = Logit(df, y="y", x=["x1", "x2"]).fit()
     assert res.model.command == "logit"
     for c in res.coefficients:
@@ -41,8 +40,7 @@ def test_logit_delegation():
 
 def test_logit_noconstant():
     df = _make_binary_data()
-    model = logit(df, y="y", x=["x1", "x2"], noconstant=True)
-    res = model._result
+    res = logit(df, y="y", x=["x1", "x2"], noconstant=True)
     names = [c.name for c in res.coefficients]
     assert "_cons" not in names
 
@@ -50,14 +48,13 @@ def test_logit_noconstant():
 def test_logit_unsupported_kwargs():
     df = _make_binary_data()
     with pytest.raises(ValueError, match="Unsupported arguments"):
-        logit(df, y="y", x=["x1"], or_=True)  # 'or' is reserved; test via kwargs
+        logit(df, y="y", x=["x1"], foo=True)
 
 
 def test_logit_wrapper_has_no_postestimation_methods():
     df = _make_binary_data()
-    model = logit(df, y="y", x=["x1", "x2"])
-    res = model._result
-    assert not hasattr(res, "predict")
+    res = logit(df, y="y", x=["x1", "x2"])
+    assert hasattr(res, "predict")
     assert not hasattr(res, "margins")
 
 
@@ -112,8 +109,7 @@ def test_logit_cluster_vce_uses_mle_cluster_adjustment():
 
 def test_probit_delegation():
     df = _make_binary_data()
-    model = probit(df, y="y", x=["x1", "x2"])
-    res = model._result
+    res = probit(df, y="y", x=["x1", "x2"])
     direct = Probit(df, y="y", x=["x1", "x2"]).fit()
     assert res.model.command == "probit"
     for c in res.coefficients:
@@ -129,9 +125,8 @@ def test_probit_unsupported_kwargs():
 
 def test_probit_wrapper_has_no_postestimation_methods():
     df = _make_binary_data()
-    model = probit(df, y="y", x=["x1", "x2"])
-    res = model._result
-    assert not hasattr(res, "predict")
+    res = probit(df, y="y", x=["x1", "x2"])
+    assert hasattr(res, "predict")
     assert not hasattr(res, "margins")
 
 
@@ -179,8 +174,7 @@ def test_probit_cluster_vce_uses_mle_cluster_adjustment():
 
 def test_poisson_delegation():
     df = _make_count_data()
-    model = poisson(df, y="y", x=["x1", "x2"])
-    res = model._result
+    res = poisson(df, y="y", x=["x1", "x2"])
     direct = Poisson(df, y="y", x=["x1", "x2"]).fit()
     assert res.model.command == "poisson"
     for c in res.coefficients:
@@ -205,14 +199,13 @@ def test_poisson_exposure_not_implemented():
 def test_poisson_unsupported_kwargs():
     df = _make_count_data()
     with pytest.raises(ValueError, match="Unsupported arguments"):
-        poisson(df, y="y", x=["x1"], irr=True)
+        poisson(df, y="y", x=["x1"], foo=True)
 
 
 def test_poisson_wrapper_has_no_postestimation_methods():
     df = _make_count_data()
-    model = poisson(df, y="y", x=["x1", "x2"])
-    res = model._result
-    assert not hasattr(res, "predict")
+    res = poisson(df, y="y", x=["x1", "x2"])
+    assert hasattr(res, "predict")
     assert not hasattr(res, "margins")
 
 

@@ -567,6 +567,7 @@ class PPMLHDFE:
         self._beta_reported = beta_reported
         self._cov_reported = cov_reported
         self._result = result
+        result._model = self
 
         return result
 

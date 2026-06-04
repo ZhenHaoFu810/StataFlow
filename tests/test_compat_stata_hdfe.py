@@ -80,7 +80,7 @@ def test_ppmlhdfe_unsupported_kwargs():
 def test_ppmlhdfe_wrapper_has_no_postestimation_methods():
     df = _make_ppml_data()
     res = ppmlhdfe(df, y="y", x=["x1", "x2"], absorb=["g1", "g2"])
-    assert not hasattr(res, "predict")
+    assert hasattr(res, "predict")
     assert not hasattr(res, "margins")
 
 
