@@ -40,9 +40,9 @@ class GLMBase:
         Whether to add constant term.
     missing : str, default "drop"
         Missing value handling. Only "drop" is supported.
-    max_iter : int, default 100
+    max_iter : int, default 160
         Maximum IRLS iterations.
-    tol : float, default 1e-8
+    tol : float, default 1e-6
         Convergence tolerance for log-likelihood relative change.
     """
 
@@ -53,8 +53,9 @@ class GLMBase:
         x: list[str],
         add_constant: bool = True,
         missing: str = "drop",
-        max_iter: int = 100,
-        tol: float = 1e-8,
+        max_iter: int = 160,
+        tol: float = 1e-6,
+        weights: Optional[np.ndarray] = None,
     ):
         self.data = data
         self.y = y
@@ -63,6 +64,8 @@ class GLMBase:
         self.missing = missing
         self.max_iter = max_iter
         self.tol = tol
+        self._weights_input = weights
+        self._weights: Optional[np.ndarray] = None
 
         self._design_matrix: Optional[np.ndarray] = None
         self._dep_var: Optional[np.ndarray] = None
@@ -112,11 +115,31 @@ class GLMBase:
         df = self.data[all_vars].copy()
         n_input_rows = len(df)
 
+        # Handle weights: add weight column to missing check if provided
+        weight_arr = None
+        if self._weights_input is not None:
+            weight_arr = np.asarray(self._weights_input, dtype=np.float64)
+            if len(weight_arr) != n_input_rows:
+                raise ValueError(
+                    f"weights length ({len(weight_arr)}) must match data length ({n_input_rows})"
+                )
+            df["_stataflow_weights"] = weight_arr
+
         if self.missing == "drop":
             mask = df.notna().all(axis=1)
             df = df[mask]
         else:
             raise ValueError(f"missing='{self.missing}' not supported")
+
+        # Extract weights after missing drop
+        if weight_arr is not None:
+            weight_arr = df["_stataflow_weights"].values.astype(np.float64)
+            if np.any(weight_arr <= 0):
+                raise ValueError("aweight requires all weights > 0")
+            # Normalize weights so that sum(w) = N (Stata aweight convention)
+            n_after_drop = len(df)
+            weight_arr = weight_arr * n_after_drop / np.sum(weight_arr)
+            self._weights = weight_arr
 
         sample_mask = mask.tolist()
         y = df[self.y].values.astype(np.float64)
@@ -185,6 +208,11 @@ class GLMBase:
             w = 1.0 / (var * gprime ** 2)
             w = np.clip(w, 1e-12, 1e12)
 
+            # Multiply by prior weights if provided
+            if self._weights is not None:
+                w = w * self._weights
+                w = np.clip(w, 1e-12, 1e12)
+
             # Working response: z = eta + (y - mu) * g'(mu)
             z = eta + (y - mu) * gprime
 
@@ -233,6 +261,12 @@ class GLMBase:
         w = 1.0 / (var * gprime ** 2)
         w = np.clip(w, 1e-12, 1e12)
 
+        # Multiply by prior weights if provided
+        p = self._weights
+        if p is not None:
+            w = w * p
+            w = np.clip(w, 1e-12, 1e12)
+
         sqrt_w = np.sqrt(w)
         Xw = X * sqrt_w[:, np.newaxis]
         XtX_inv = np.linalg.inv(Xw.T @ Xw)
@@ -244,13 +278,32 @@ class GLMBase:
         elif vce == "robust":
             # Sandwich: meat = X' diag((y-mu)^2) X
             residuals = y - mu
-            meat = (X * residuals[:, np.newaxis]).T @ (X * residuals[:, np.newaxis])
+            if p is not None:
+                sqrt_p = np.sqrt(p)
+                meat = (X * sqrt_p[:, np.newaxis] * residuals[:, np.newaxis]).T @ (
+                    X * sqrt_p[:, np.newaxis] * residuals[:, np.newaxis]
+                )
+            else:
+                meat = (X * residuals[:, np.newaxis]).T @ (X * residuals[:, np.newaxis])
             n_adj = n / (n - 1) if n > 1 else 1.0
             cov_beta = n_adj * XtX_inv @ meat @ XtX_inv
         elif vce == "cluster":
             residuals = y - mu
-            from stataflow.estimators._vce_utils import compute_cluster_meat
-            meat, cluster_count = compute_cluster_meat(X, residuals, cluster_arr)
+            if p is not None:
+                # Weighted cluster meat
+                sqrt_p = np.sqrt(p)
+                unique_clusters = np.unique(cluster_arr)
+                meat = np.zeros((k, k))
+                for g_val in unique_clusters:
+                    mask = cluster_arr == g_val
+                    score_g = X[mask].T @ (sqrt_p[mask] * residuals[mask])
+                    meat += np.outer(score_g, score_g)
+                cluster_count = len(unique_clusters)
+            else:
+                from stataflow.estimators._vce_utils import compute_cluster_meat
+                meat, cluster_count = compute_cluster_meat(X, residuals, cluster_arr)
+            # MLE cluster VCE uses only G/(G-1) adjustment (Stata convention).
+            # Unlike linear models, MLE does not multiply by (N-1)/(N-k).
             g_adj = cluster_count / (cluster_count - 1) if cluster_count > 1 else 1.0
             cov_beta = g_adj * XtX_inv @ meat @ XtX_inv
         else:
@@ -263,8 +316,18 @@ class GLMBase:
         vce: str = "ols",
         cluster: Optional[str] = None,
         alpha: float = 0.05,
+        eform: bool = False,
     ) -> ResultSchema:
-        """Fit GLM model."""
+        """Fit GLM model.
+
+        Parameters
+        ----------
+        eform : bool
+            If True, report exponentiated coefficients (incidence-rate ratios
+            for Poisson, odds ratios for Logit). Standard errors are transformed
+            via the delta method; z-stats, p-values, and CIs remain on the
+            original scale, matching Stata's ``eform`` behavior.
+        """
         if vce not in ("ols", "robust", "cluster"):
             raise ValueError(f"vce='{vce}' not supported. Use 'ols', 'robust', or 'cluster'.")
         if vce == "cluster" and cluster is None:
@@ -306,6 +369,19 @@ class GLMBase:
         ci_low = beta - z_crit * se
         ci_high = beta + z_crit * se
 
+        # eform: exponentiate coefficients and transform SE via delta method
+        # z-stats, p-values, and CIs remain on the original scale (Stata convention)
+        if eform:
+            beta_display = np.exp(beta)
+            se_display = beta_display * se
+            ci_low_display = np.exp(ci_low)
+            ci_high_display = np.exp(ci_high)
+        else:
+            beta_display = beta
+            se_display = se
+            ci_low_display = ci_low
+            ci_high_display = ci_high
+
         # LR chi2
         chi2 = 2.0 * (ll_model - ll_null)
         chi2_pvalue = 1.0 - chi2_dist.cdf(chi2, df=df_model) if df_model > 0 else None
@@ -343,12 +419,12 @@ class GLMBase:
         result.coefficients = [
             CoefficientRow(
                 name=name,
-                beta=float(beta[i]),
-                std_err=float(se[i]),
+                beta=float(beta_display[i]),
+                std_err=float(se_display[i]),
                 t_stat=float(z_stats[i]),
                 p_value=float(p_values[i]),
-                ci_low=float(ci_low[i]),
-                ci_high=float(ci_high[i]),
+                ci_low=float(ci_low_display[i]),
+                ci_high=float(ci_high_display[i]),
             )
             for i, name in enumerate(self._coef_names)
         ]
@@ -378,6 +454,7 @@ class GLMBase:
         self._mu = mu
         self._eta = eta
         self._result = result
+        result._model = self
 
         return result
 
@@ -555,6 +632,8 @@ class Probit(GLMBase):
         elif vce == "robust":
             score_i = phi * (y - mu) / (mu_clip * (1 - mu_clip))
             meat = (X * score_i[:, np.newaxis]).T @ (X * score_i[:, np.newaxis])
+            # Stata MLE robust VCE applies n/(n-1) small-sample correction.
+            # This differs from linear-model HC1 which uses (N-1)/(N-k).
             n_adj = n / (n - 1) if n > 1 else 1.0
             cov_beta = n_adj * cov_bread @ meat @ cov_bread
         elif vce == "cluster":
@@ -569,6 +648,7 @@ class Probit(GLMBase):
                 mu_g = mu_clip[mask_g]
                 score_g = X_g.T @ (phi_g * (y_g - mu_g) / (mu_g * (1 - mu_g)))
                 meat += np.outer(score_g, score_g)
+            # MLE cluster VCE uses only G/(G-1) adjustment (Stata convention).
             g_adj = cluster_count / (cluster_count - 1) if cluster_count > 1 else 1.0
             cov_beta = g_adj * cov_bread @ meat @ cov_bread
         else:

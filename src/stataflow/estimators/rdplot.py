@@ -15,6 +15,47 @@ import pandas as pd
 from stataflow.estimators.rdrobust import _kernel_weight, _wls_poly
 
 
+def _local_fwl_gamma(y, x, Z, c, h, kernel):
+    """
+    Estimate covariate coefficients using local WLS within bandwidth h.
+
+    Runs weighted least squares of y on [1, Z] using kernel weights
+    centered at c with bandwidth h, then returns the coefficients on Z.
+    This follows the local FWL principle used in rdrobust covariate
+    adjustment, avoiding the bias from global OLS when covariates have
+    different relationships on either side of the cutoff.
+
+    Parameters
+    ----------
+    y : np.ndarray
+        Outcome variable.
+    x : np.ndarray
+        Running variable (used only for kernel weighting).
+    Z : np.ndarray
+        Covariate matrix (n x d).
+    c : float
+        Cutoff.
+    h : float
+        Bandwidth.
+    kernel : str
+        Kernel type.
+
+    Returns
+    -------
+    np.ndarray or None
+        Coefficients on Z (shape (d,)), or None if not enough observations.
+    """
+    w = _kernel_weight(x, c, h, kernel)
+    mask = w > 0
+    if mask.sum() < Z.shape[1] + 1:
+        return None
+    X = np.column_stack([np.ones(mask.sum()), Z[mask]])
+    Xw = X * np.sqrt(w[mask, None])
+    yw = y[mask] * np.sqrt(w[mask])
+    beta = np.linalg.lstsq(Xw, yw, rcond=None)[0]
+    return beta[1:]
+
+
 def _global_poly_fit(x, y, k=4):
     """Global polynomial fit of order k with fallback to k-1, k-2."""
     n = len(x)
@@ -80,7 +121,9 @@ def _compute_bins_esmv(x, y, c, side="left"):
     mu1_grid = dR_grid @ gamma
 
     # Bias estimator for ES
-    B = ((range_x ** 2) / (12 * n_grid)) * np.sum(mu1_grid ** 2) * dx
+    # B = (range_x^2 / 12) * \int mu'(x)^2 dx
+    # where \int mu'(x)^2 dx \approx sum(mu1_grid^2) * dx
+    B = ((range_x ** 2) / 12.0) * np.sum(mu1_grid ** 2) * dx
 
     # Variance estimator (spacings-based)
     sort_idx = np.argsort(x)
@@ -312,11 +355,28 @@ class RDPlot:
         # Covariate adjustment for fit
         gamma_cov = None
         if Z is not None:
-            # FWL: regress y on Z within bandwidth, partial out
-            # Simplified: use global OLS of y on Z
-            Z_centered = Z - Z.mean(axis=0)
-            y_centered = y - y.mean()
-            gamma_cov = np.linalg.lstsq(Z_centered, y_centered, rcond=None)[0]
+            # Local FWL: estimate covariate coefficients within bandwidth
+            # on each side, then average. This avoids global OLS bias when
+            # covariate-outcome relationships differ across the cutoff.
+            gamma_l = (
+                _local_fwl_gamma(y_l, x_l, Z_l, self.c, self.h_l, self.kernel)
+                if N_l > 0 else None
+            )
+            gamma_r = (
+                _local_fwl_gamma(y_r, x_r, Z_r, self.c, self.h_r, self.kernel)
+                if N_r > 0 else None
+            )
+            if gamma_l is not None and gamma_r is not None:
+                gamma_cov = 0.5 * (gamma_l + gamma_r)
+            elif gamma_l is not None:
+                gamma_cov = gamma_l
+            elif gamma_r is not None:
+                gamma_cov = gamma_r
+            else:
+                # Fallback to global OLS if local fails (too few obs)
+                Z_centered = Z - Z.mean(axis=0)
+                y_centered = y - y.mean()
+                gamma_cov = np.linalg.lstsq(Z_centered, y_centered, rcond=None)[0]
             y_l_adj = y_l - Z_l @ gamma_cov
             y_r_adj = y_r - Z_r @ gamma_cov
         else:

@@ -2,7 +2,12 @@
 
 import numpy as np
 
-from stataflow.estimators._vce_utils import detect_collinear_columns, fix_psd_reghdfe
+from stataflow.estimators._vce_utils import (
+    compute_cluster_meat,
+    compute_multiway_cluster_vce,
+    detect_collinear_columns,
+    fix_psd_reghdfe,
+)
 
 
 def test_detect_collinear_columns_keeps_late_independent_column_when_wide():
@@ -41,6 +46,35 @@ def test_fix_psd_reghdfe_without_constant_does_not_treat_last_slope_as_constant(
     assert not np.allclose(fixed[:2, :2], mat[:2, :2])
 
 
+def test_fix_psd_reghdfe_preserves_reported_standard_errors_with_constant():
+    """PSD fix should not change reported slope or _cons variances."""
+    mat = np.array([
+        [1.0, 0.0, 1.4],
+        [0.0, 1.0, 0.0],
+        [1.4, 0.0, 1.0],
+    ])
+
+    fixed = fix_psd_reghdfe(mat.copy(), constant_index=2)
+
+    assert np.allclose(np.diag(fixed), np.diag(mat))
+    assert np.allclose(fixed[:2, :2], mat[:2, :2])
+    assert np.min(np.linalg.eigvalsh(fixed)) >= -1e-12
+
+
+def test_fix_psd_reghdfe_preserves_slope_block_when_constant_variance_is_negative():
+    """Negative _cons variance should not force a generic slope-block rewrite."""
+    mat = np.array([
+        [0.01500439, -0.00227936, -0.00201321],
+        [-0.00227936, 0.00781007, 0.00166196],
+        [-0.00201321, 0.00166196, -0.00560264],
+    ])
+
+    fixed = fix_psd_reghdfe(mat.copy(), constant_index=2)
+
+    assert np.allclose(fixed[:2, :2], mat[:2, :2])
+    assert fixed[2, 2] >= 0.0
+
+
 def test_multiway_cluster_interaction_avoids_separator_collision():
     """2-way cluster interaction must not merge distinct pairs when values contain '__'."""
     from stataflow.estimators._vce_utils import compute_cluster_meat
@@ -77,3 +111,31 @@ def test_multiway_cluster_interaction_avoids_separator_collision():
     old_meat, old_G = compute_cluster_meat(X, residuals, old_interaction)
     # This demonstrates the bug: old approach sees only 1 cluster
     assert old_G == 1, f"Old approach should show 1 merged cluster, got {old_G}"
+
+
+def test_multiway_cluster_vce_falls_back_when_one_dimension_has_too_few_clusters():
+    """Two-way cluster should fall back to the richer one-way dimension when G<3."""
+    X = np.array([
+        [1.0, 0.0],
+        [1.0, 1.0],
+        [1.0, 2.0],
+        [1.0, 3.0],
+        [1.0, 4.0],
+        [1.0, 5.0],
+    ])
+    residuals = np.array([1.0, -1.0, 0.5, -0.5, 0.75, -0.75])
+    M_inv = np.linalg.inv(X.T @ X)
+    c1 = np.array([0, 0, 1, 1, 2, 2])
+    c2 = np.array([0, 0, 0, 1, 1, 1])  # only 2 clusters -> fallback
+
+    cov_2way, cluster_count = compute_multiway_cluster_vce(
+        X, residuals, M_inv, [c1, c2], k_eff=2, n=len(residuals)
+    )
+    meat_1way, cluster_count_1way = compute_cluster_meat(X, residuals, c1)
+    n_adj = (len(residuals) - 1) / (len(residuals) - 2)
+    g_adj = cluster_count_1way / (cluster_count_1way - 1)
+    cov_1way = n_adj * g_adj * M_inv @ meat_1way @ M_inv
+
+    assert cluster_count == 3
+    assert cluster_count_1way == 3
+    assert np.allclose(cov_2way, cov_1way)

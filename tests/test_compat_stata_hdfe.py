@@ -80,7 +80,7 @@ def test_ppmlhdfe_unsupported_kwargs():
 def test_ppmlhdfe_wrapper_has_no_postestimation_methods():
     df = _make_ppml_data()
     res = ppmlhdfe(df, y="y", x=["x1", "x2"], absorb=["g1", "g2"])
-    assert not hasattr(res, "predict")
+    assert hasattr(res, "predict")
     assert not hasattr(res, "margins")
 
 
@@ -102,3 +102,36 @@ def test_ppmlhdfe_eform_preserves_raw_z_and_p_values():
         )
         assert np.isclose(eform_coef.t_stat, raw_coef.t_stat, rtol=1e-10)
         assert np.isclose(eform_coef.p_value, raw_coef.p_value, rtol=1e-10)
+
+
+def test_ppmlhdfe_weighted_matches_unweighted_when_weights_unity():
+    """Uniform weights should reproduce the unweighted result."""
+    df = _make_ppml_data(n=150, seed=123)
+    df["w"] = 1.0
+    unweighted = PPMLHDFE(df, y="y", x=["x1", "x2"], absorb=["g1", "g2"]).fit(vce="robust")
+    weighted = PPMLHDFE(df, y="y", x=["x1", "x2"], absorb=["g1", "g2"], weights="w").fit(vce="robust")
+    for u, w in zip(unweighted.coefficients, weighted.coefficients):
+        assert np.isclose(u.beta, w.beta, rtol=1e-10)
+        assert np.isclose(u.std_err, w.std_err, rtol=1e-10)
+    assert np.isclose(unweighted.fit.ll, weighted.fit.ll, rtol=1e-10)
+
+
+def test_ppmlhdfe_wrapper_aweight():
+    """Wrapper accepts aweight and passes it through."""
+    df = _make_ppml_data(n=150, seed=123)
+    df["w"] = np.abs(np.random.default_rng(42).normal(1, 0.3, size=len(df)))
+    res = ppmlhdfe(df, y="y", x=["x1", "x2"], absorb=["g1", "g2"], aweight="w")
+    assert res.model.command == "ppmlhdfe"
+    assert len(res.coefficients) > 0
+
+
+def test_ppmlhdfe_weighted_changes_coefficients():
+    """Non-uniform weights should generally change point estimates."""
+    df = _make_ppml_data(n=200, seed=456)
+    df["w"] = np.where(df["x1"] > 0, 2.0, 0.5)
+    unweighted = PPMLHDFE(df, y="y", x=["x1", "x2"], absorb=["g1", "g2"]).fit(vce="robust")
+    weighted = PPMLHDFE(df, y="y", x=["x1", "x2"], absorb=["g1", "g2"], weights="w").fit(vce="robust")
+    # Coefficients should differ (they are not guaranteed to, but very likely with this weight design)
+    betas_u = np.array([c.beta for c in unweighted.coefficients])
+    betas_w = np.array([c.beta for c in weighted.coefficients])
+    assert not np.allclose(betas_u, betas_w, rtol=1e-6)

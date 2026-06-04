@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import warnings
+
 import pandas as pd
 
 from stataflow.estimators.rdplot import RDPlot
@@ -57,6 +59,16 @@ def rdplot(
         unsupported = set(kwargs.keys())
         raise ValueError(
             f"Unsupported arguments for rdplot wrapper: {sorted(unsupported)}"
+        )
+
+    if covs is not None:
+        warnings.warn(
+            "covs() option is meant to be used when plotting RDROBUST estimates. "
+            "If the option is used for global polynomial fitting, it may deliver "
+            "results that are not visually compatible with the local binned means "
+            "depicted due to the underlying assumptions used.",
+            UserWarning,
+            stacklevel=2,
         )
 
     model = RDPlot(

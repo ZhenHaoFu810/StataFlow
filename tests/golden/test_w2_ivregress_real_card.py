@@ -182,8 +182,11 @@ class TestW2IvregressRealCard:
         assert passed, msg
 
     def test_df_resid(self, python_result, stata_result):
+        st_df_resid = stata_result.get('df_resid')
+        if st_df_resid is None:
+            pytest.skip("Stata ivregress 2sls does not store e(df_r) with this VCE")
         passed, msg = tolerance_close(
-            python_result.fit.df_resid, stata_result.get('df_resid'), name="df_resid"
+            python_result.fit.df_resid, st_df_resid, name="df_resid"
         )
         assert passed, msg
 
@@ -206,8 +209,11 @@ class TestW2IvregressRealCard:
         assert passed, msg
 
     def test_f_stat(self, python_result, stata_result):
+        st_f_stat = stata_result.get('f_stat')
+        if st_f_stat is None:
+            pytest.skip("Stata ivregress 2sls does not store e(F) with this VCE")
         passed, msg = tolerance_close(
-            python_result.fit.f_stat, stata_result.get('f_stat'), name="f_stat"
+            python_result.fit.f_stat, st_f_stat, name="f_stat"
         )
         assert passed, msg
 

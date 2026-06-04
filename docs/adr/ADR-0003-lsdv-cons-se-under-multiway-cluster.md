@@ -113,3 +113,14 @@ b0 = weighted_mean(y_resid) - sum_j weighted_mean(x_j_resid) * b_j
 - 实现迭代去均值内核后（Wave 12）
 - LSDV T 矩阵构造方式发生重大变化
 - 发现新的 _cons SE 计算公式可缩小差距至 < 1% 且证明正确
+
+## 2026-06-04 裁定落地
+
+在 `docs/audit/revalidation-v1.1` 这一轮全面复核中，`IV-14` 被正式按本 ADR 关闭为**已知局限**，不再作为本轮开放 bug 保留。  
+关闭条件是：
+
+- synthetic 2-way cluster `_cons` SE 残差仍处于 Tier 1 容忍度内
+- real-data 2-way cluster `_cons` SE 残差仍处于 Tier 2 容忍度内
+- slope SE、`df_resid`、weak-IV、first-stage、second-stage `fit.f_stat` 已全部独立收口
+
+这意味着：在 Wave 12 / HDFE 内核重构之前，`_cons` SE 的 2-way cluster 残差继续按 ADR 约束管理，而不再进入本轮修缮的开放缺陷列表。

@@ -101,6 +101,20 @@ class DIDImputation:
 
         df = self.data.copy()
 
+        # Warn about first_treat encoding compatibility with Stata
+        min_time = df[self.time_var].min()
+        has_never_treated = (df[self.first_treat_var] <= 0).any()
+        if has_never_treated and min_time > 0:
+            import warnings
+            warnings.warn(
+                "Detected first_treat <= 0 with time starting at a positive value. "
+                "Stata's did_imputation treats first_treat=0 as treatment in period 0, "
+                "which may produce different results from Python (which treats first_treat<=0 as never-treated). "
+                "To match Stata exactly on the same data, consider setting first_treat to missing for never-treated units.",
+                UserWarning,
+                stacklevel=2,
+            )
+
         # Sample screening: drop rows with missing key variables
         key_vars = [self.y_var, self.id_var, self.time_var, self.first_treat_var]
         cov_vars = []
@@ -235,22 +249,20 @@ class DIDImputation:
             df.loc[ever_treated_mask, self.y_var] - df.loc[ever_treated_mask, "_Y0"]
         )
 
-        # Determine horizons to compute. By default only post-treatment event
-        # horizons are reported. allhorizons also keeps non-negative horizons
-        # observed among never-treated rows (time - 0), which Stata reports as
-        # omitted calendar-time coefficients.
-        if allhorizons:
-            observed_horizons = df["_K_all"].dropna().unique()
-            horizons = sorted(observed_horizons)
-        else:
+        # Determine horizons to compute.
+        # Without allhorizons: compute a single aggregate tau coefficient.
+        # With allhorizons: compute event-study tauh for each non-negative horizon.
+        if allhorizons or wtr is not None or hetby is not None:
             observed_horizons = df.loc[ever_treated_mask, "_K"].dropna().unique()
             horizons = sorted([h for h in observed_horizons if h >= 0])
+        else:
+            horizons = [None]  # aggregate mode
 
-        # Apply window restriction
+        # Apply window restriction (only for event-study mode)
         if window is not None:
             if len(window) != 2:
                 raise ValueError("window must be a two-element list or tuple [min, max]")
-            horizons = [h for h in horizons if window[0] <= h <= window[1]]
+            horizons = [h for h in horizons if h is not None and window[0] <= h <= window[1]]
 
         # Build wtr entries
         wtr_entries = []
@@ -318,14 +330,18 @@ class DIDImputation:
         for wtr_name, wtr_col in wtr_entries:
             norm_col = f"{wtr_col}_norm"
             for h in horizons:
-                h_mask = ever_treated_mask & (df["_K"] == h)
+                if h is None:
+                    # Aggregate mode: single tau across all post-treated obs
+                    h_mask = ever_treated_mask & (df["_D"] == 1)
+                else:
+                    h_mask = ever_treated_mask & (df["_K"] == h)
                 wtr_mask = h_mask & df[norm_col].notna() & (df[norm_col] != 0)
                 if wtr_mask.sum() == 0:
-                    if allhorizons:
+                    if allhorizons or wtr is not None or hetby is not None:
                         if wtr_name == "tau" and hetby is None:
-                            coeff_name = f"tau{int(h)}"
+                            coeff_name = f"tau{int(h)}" if h is not None else "tau"
                         else:
-                            coeff_name = f"{wtr_name}_h{int(h)}"
+                            coeff_name = f"{wtr_name}_h{int(h)}" if h is not None else f"{wtr_name}"
                         tau_results.append({
                             "name": coeff_name,
                             "beta": 0.0,
@@ -347,14 +363,14 @@ class DIDImputation:
 
                 # Determine coefficient name
                 if wtr_name == "tau" and hetby is None:
-                    coeff_name = f"tau{int(h)}"
+                    coeff_name = f"tau{int(h)}" if h is not None else "tau"
                 else:
-                    coeff_name = f"{wtr_name}_h{int(h)}"
+                    coeff_name = f"{wtr_name}_h{int(h)}" if h is not None else f"{wtr_name}"
 
                 if n_imputable == 0:
                     if not autosample:
                         raise RuntimeError(
-                            f"Could not impute FE for horizon {coeff_name}. "
+                            f"Could not impute FE for coefficient {coeff_name}. "
                             "Use autosample=True to drop automatically."
                         )
                     # Coefficient completely dropped
@@ -496,8 +512,6 @@ class DIDImputation:
                         "imputation_weights"
                     ].values
 
-        nobs = int((df["_D"] == 0).sum())  # Control observations (Nc in Stata)
-
         # Build minimal result schema
         model_info = ModelInfo(
             command="did_imputation",
@@ -513,7 +527,7 @@ class DIDImputation:
 
         fit_info = FitInfo(
             df_model=float(len([c for c in coefficients if c.name.startswith("tau") and c.std_err > 0])),
-            df_resid=float(nobs - 1) if cluster else float(nobs),
+            df_resid=float(nobs_all - 1) if cluster else float(nobs_all),
         )
 
         # Covariance matrix (only for non-dropped coefficients)
@@ -700,6 +714,34 @@ class DIDImputation:
         X = np.hstack(cols) if cols else np.ones((n_ctrl, 1))
         y = ctrl_df[y_var].values
 
+        # DID-009: rank deficiency detection for user-specified controls
+        _controls_list = list(controls) if controls is not None else []
+        _pretrend_list = list(pretrend_cols) if pretrend_cols is not None else []
+        if X.shape[1] > 1 and (_controls_list or _pretrend_list):
+            from stataflow.estimators._vce_utils import detect_collinear_columns
+            _, dropped_names, _ = detect_collinear_columns(X, col_names)
+            dropped_user = [
+                name for name in dropped_names
+                if name in _controls_list or name in _pretrend_list
+            ]
+            if dropped_user:
+                import warnings
+                warnings.warn(
+                    f"Collinear columns detected in did_imputation control subsample "
+                    f"and dropped: {dropped_user}. Consider removing these variables.",
+                    UserWarning,
+                    stacklevel=3,
+                )
+                keep_mask = [
+                    name not in dropped_user for name in col_names
+                ]
+                X = X[:, keep_mask]
+                col_names = [name for name in col_names if name not in dropped_user]
+                # Update local controls list so extraction logic stays correct
+                _controls_list = [c for c in _controls_list if c not in dropped_user]
+                if pretrend_cols is not None:
+                    _pretrend_list = [c for c in _pretrend_list if c not in dropped_user]
+
         # Solve via least squares (handles collinearity via minimum-norm)
         beta = np.linalg.lstsq(X, y, rcond=None)[0]
 
@@ -712,8 +754,9 @@ class DIDImputation:
             from stataflow.estimators._vce_utils import compute_cluster_meat
             meat, cluster_count = compute_cluster_meat(X, resid, ctrl_df[cluster].values)
             g_adj = cluster_count / (cluster_count - 1) if cluster_count > 1 else 1.0
-            n_adj = (n_ctrl - 1) / (n_ctrl - rank) if n_ctrl > rank else 1.0
-            cov = n_adj * g_adj * xtx_inv @ meat @ xtx_inv
+            # Stata's did_imputation applies only G/(G-1) for cluster-robust
+            # pretrend SEs, not the (N-1)/(N-k) adjustment used by regress/reghdfe.
+            cov = g_adj * xtx_inv @ meat @ xtx_inv
         else:
             sigma2 = np.dot(resid, resid) / df_resid
             cov = sigma2 * xtx_inv
@@ -761,9 +804,9 @@ class DIDImputation:
                     idx += 1
             result["tc_slopes"] = tc_slopes
 
-        if controls is not None:
-            result["beta_controls"] = beta[idx:idx + len(controls)]
-            idx += len(controls)
+        if _controls_list:
+            result["beta_controls"] = beta[idx:idx + len(_controls_list)]
+            idx += len(_controls_list)
 
         return result
 

@@ -124,9 +124,16 @@ class TestW2IvregressBasic:
         assert passed, msg
 
     def test_df_resid(self, python_result, stata_result):
-        """Compare residual degrees of freedom."""
+        """Compare residual degrees of freedom.
+
+        Stata's ``ivregress 2sls`` with default VCE does not store ``e(df_r)``
+        (returns missing ``.``), so we skip when Stata cannot provide it.
+        """
+        st_df_resid = stata_result.get("df_resid")
+        if st_df_resid is None:
+            pytest.skip("Stata ivregress 2sls does not store e(df_r) with default VCE")
         passed, msg = tolerance_close(
-            python_result.fit.df_resid, stata_result.get("df_resid"), name="df_resid"
+            python_result.fit.df_resid, st_df_resid, name="df_resid"
         )
         assert passed, msg
 
@@ -152,9 +159,16 @@ class TestW2IvregressBasic:
         assert passed, msg
 
     def test_f_stat(self, python_result, stata_result):
-        """Compare F-statistic."""
+        """Compare F-statistic.
+
+        Stata's ``ivregress 2sls`` with default VCE does not store ``e(F)``
+        (returns missing ``.``), so we skip when Stata cannot provide it.
+        """
+        st_f_stat = stata_result.get("f_stat")
+        if st_f_stat is None:
+            pytest.skip("Stata ivregress 2sls does not store e(F) with default VCE")
         passed, msg = tolerance_close(
-            python_result.fit.f_stat, stata_result.get("f_stat"), name="f_stat"
+            python_result.fit.f_stat, st_f_stat, name="f_stat"
         )
         assert passed, msg
 

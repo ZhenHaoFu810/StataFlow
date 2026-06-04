@@ -15,7 +15,9 @@ def logit(
     *,
     vce: str = "ols",
     cluster: Optional[str] = None,
+    aweight: Optional[str] = None,
     noconstant: bool = False,
+    or_: bool = False,
     missing: str = "drop",
     **kwargs,
 ) -> object:
@@ -23,21 +25,28 @@ def logit(
     Stata-compatible wrapper for ``logit``.
 
     Maps to :class:`stataflow.estimators.Logit`.
+
+    Parameters
+    ----------
+    or_ : bool
+        Report odds ratios (``eform`` alias for logit).
     """
+    eform = or_
     if kwargs:
         raise ValueError(f"Unsupported arguments: {list(kwargs.keys())}")
 
     data_expanded, x_expanded = expand_factor_terms(data, x)
 
+    weights = data[aweight].values if aweight is not None else None
     model = Logit(
         data=data_expanded,
         y=y,
         x=x_expanded,
         add_constant=not noconstant,
         missing=missing,
+        weights=weights,
     )
-    model.fit(vce=vce, cluster=cluster)
-    return model
+    return model.fit(vce=vce, cluster=cluster, eform=eform)
 
 
 def probit(
@@ -47,6 +56,7 @@ def probit(
     *,
     vce: str = "ols",
     cluster: Optional[str] = None,
+    aweight: Optional[str] = None,
     noconstant: bool = False,
     missing: str = "drop",
     **kwargs,
@@ -61,15 +71,16 @@ def probit(
 
     data_expanded, x_expanded = expand_factor_terms(data, x)
 
+    weights = data[aweight].values if aweight is not None else None
     model = Probit(
         data=data_expanded,
         y=y,
         x=x_expanded,
         add_constant=not noconstant,
         missing=missing,
+        weights=weights,
     )
-    model.fit(vce=vce, cluster=cluster)
-    return model
+    return model.fit(vce=vce, cluster=cluster)
 
 
 def poisson(
@@ -79,9 +90,12 @@ def poisson(
     *,
     vce: str = "ols",
     cluster: Optional[str] = None,
+    aweight: Optional[str] = None,
     noconstant: bool = False,
     exposure: Optional[str] = None,
     offset: Optional[str] = None,
+    irr: bool = False,
+    eform: bool = False,
     missing: str = "drop",
     **kwargs,
 ) -> object:
@@ -89,7 +103,15 @@ def poisson(
     Stata-compatible wrapper for ``poisson``.
 
     Maps to :class:`stataflow.estimators.Poisson`.
+
+    Parameters
+    ----------
+    irr : bool
+        Report incidence-rate ratios (``eform`` alias).
+    eform : bool
+        Report exponentiated coefficients.
     """
+    eform = eform or irr
     if kwargs:
         raise ValueError(f"Unsupported arguments: {list(kwargs.keys())}")
 
@@ -100,12 +122,13 @@ def poisson(
 
     data_expanded, x_expanded = expand_factor_terms(data, x)
 
+    weights = data[aweight].values if aweight is not None else None
     model = Poisson(
         data=data_expanded,
         y=y,
         x=x_expanded,
         add_constant=not noconstant,
         missing=missing,
+        weights=weights,
     )
-    model.fit(vce=vce, cluster=cluster)
-    return model
+    return model.fit(vce=vce, cluster=cluster, eform=eform)

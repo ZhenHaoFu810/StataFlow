@@ -200,6 +200,7 @@ class IV2SLS:
         vce: str = "ols",
         cluster: Optional[str] = None,
         alpha: float = 0.05,
+        first: bool = False,
     ) -> ResultSchema:
         """
         Fit 2SLS model.
@@ -212,6 +213,8 @@ class IV2SLS:
             Cluster variable name (required when vce="cluster").
         alpha : float
             Significance level for confidence intervals.
+        first : bool
+            If True, compute and attach first-stage F-statistics.
 
         Returns
         -------
@@ -335,6 +338,99 @@ class IV2SLS:
         ci_low = beta - crit * se
         ci_high = beta + crit * se
 
+        # First-stage statistics and overidentification test
+        extra_stats = {}
+        first_stage: dict[str, dict] = {}
+        if first:
+            from scipy.stats import f as f_dist
+            # Number of excluded instruments
+            k_excl = len(self.instruments)
+            k_exog = len(self.x_exog)
+            # Endogenous variable indices in X (after constant if present)
+            endog_start = k_exog + (1 if self.add_constant else 0)
+            for j, endog_name in enumerate(self.x_endog):
+                x_j = X[:, endog_start + j]
+                x_hat_j = X_proj[:, endog_start + j]
+                # First-stage regression of x_j on Z
+                beta_fs = np.linalg.solve(ZtZ, Z.T @ x_j)
+                resid_fs = x_j - Z @ beta_fs
+                RSS_full = float(np.sum(resid_fs ** 2))
+                TSS = float(np.sum((x_j - np.mean(x_j)) ** 2))
+                R2 = 1.0 - RSS_full / TSS if TSS > 0 else 0.0
+                # Restricted model: x_j on exogenous vars (and constant)
+                if k_exog > 0 or self.add_constant:
+                    W_cols = []
+                    if self.add_constant:
+                        W_cols.append(np.ones(n))
+                    for exog_name in self.x_exog:
+                        idx = self._coef_names.index(exog_name)
+                        W_cols.append(X[:, idx])
+                    W = np.column_stack(W_cols)
+                    beta_r = np.linalg.solve(W.T @ W, W.T @ x_j)
+                    resid_r = x_j - W @ beta_r
+                else:
+                    resid_r = x_j
+                RSS_r = float(np.sum(resid_r ** 2))
+                R2_r = 1.0 - RSS_r / TSS if TSS > 0 else 0.0
+                partial_R2 = (R2 - R2_r) / (1.0 - R2_r) if R2_r < 1.0 else 0.0
+                # Shea partial R2
+                if len(self.x_endog) == 1:
+                    shea_R2 = partial_R2
+                else:
+                    var_x_hat = np.var(x_hat_j, ddof=0)
+                    var_x = np.var(x_j, ddof=0)
+                    shea_R2 = (var_x_hat / var_x) * partial_R2 if var_x > 0 else 0.0
+                q = k_excl
+                df_denom = n - Z.shape[1]
+                f_stat = None
+                f_pvalue = None
+                if q > 0 and df_denom > 0 and RSS_full > 0:
+                    f_stat = ((RSS_r - RSS_full) / q) / (RSS_full / df_denom)
+                    f_pvalue = float(1 - f_dist.cdf(f_stat, dfn=q, dfd=df_denom))
+                first_stage[endog_name] = {
+                    "r2": R2,
+                    "partial_r2": partial_R2,
+                    "shea_r2": shea_R2,
+                    "f_stat": f_stat,
+                    "f_pvalue": f_pvalue,
+                    "df": q,
+                    "df_r": df_denom,
+                }
+
+        # Overidentification test (Sargan/Hansen J)
+        k_excl = len(self.instruments)
+        k_endog = len(self.x_endog)
+        if k_excl > k_endog:
+            from scipy.stats import chi2
+            j_df = k_excl - k_endog
+            # Regression of residuals on instruments
+            beta_ez = np.linalg.solve(ZtZ, Z.T @ residuals)
+            resid_ez = residuals - Z @ beta_ez
+            rss_ez = float(np.sum(resid_ez ** 2))
+            tss_e = float(np.sum(residuals ** 2))
+            if tss_e > 0:
+                if vce == "ols":
+                    # Sargan statistic: n * R^2 from residual regression
+                    r2_sargan = 1.0 - rss_ez / tss_e
+                    sargan = float(n * r2_sargan)
+                    p_sargan = float(1 - chi2.cdf(sargan, df=j_df))
+                    extra_stats["sargan"] = sargan
+                    extra_stats["sargan_df"] = j_df
+                    extra_stats["sargan_p"] = p_sargan
+                else:
+                    # Hansen J (robust/cluster): u'Z (Z'Z)^{-1} Z'u
+                    Zu = Z.T @ residuals
+                    try:
+                        hansen_j = float(Zu @ np.linalg.solve(ZtZ, Zu))
+                        p_hansen = float(1 - chi2.cdf(hansen_j, df=j_df))
+                        extra_stats["hansen_j"] = hansen_j
+                        extra_stats["hansen_j_df"] = j_df
+                        extra_stats["hansen_j_p"] = p_hansen
+                    except np.linalg.LinAlgError:
+                        extra_stats["hansen_j"] = np.nan
+                        extra_stats["hansen_j_df"] = j_df
+                        extra_stats["hansen_j_p"] = np.nan
+
         # Build result object
         result = ResultSchema()
         result.model = ModelInfo(
@@ -390,6 +486,13 @@ class IV2SLS:
             stata_version_target="17",
             stata_command=f"ivregress 2sls {self.y} {' '.join(self.x_exog)} ({' '.join(self.x_endog)} = {' '.join(self.instruments)})",
         )
+        result._model = self
+
+        # Attach first-stage statistics
+        if first:
+            result.first_stage = first_stage
+        for key, value in extra_stats.items():
+            setattr(result, key, value)
 
         return result
 
@@ -832,22 +935,98 @@ class IVAbsorbingOLS:
                 else:
                     from stataflow.estimators._vce_utils import compute_cluster_meat
                     meats = []
+                    Gs = []
                     for ca in self._cluster_arrs:
-                        m, _ = compute_cluster_meat(z_p, u, ca)
+                        m, G = compute_cluster_meat(z_p, u, ca)
                         meats.append(m)
-                    interaction = np.array([
-                        f"{a}__{b}" for a, b in zip(self._cluster_arrs[0], self._cluster_arrs[1])
-                    ])
-                    m12, _ = compute_cluster_meat(z_p, u, interaction)
-                    meat_cluster = meats[0] + meats[1] - m12
+                        Gs.append(G)
+                    if min(Gs) < 3:
+                        meat_cluster = meats[int(np.argmax(Gs))]
+                    else:
+                        seen = {}
+                        interaction = np.empty(len(self._cluster_arrs[0]), dtype=int)
+                        idx = 0
+                        for i, (a, b) in enumerate(zip(self._cluster_arrs[0], self._cluster_arrs[1])):
+                            key = (a, b)
+                            if key not in seen:
+                                seen[key] = idx
+                                idx += 1
+                            interaction[i] = seen[key]
+                        m12, _ = compute_cluster_meat(z_p, u, interaction)
+                        meat_cluster = meats[0] + meats[1] - m12
                 Zu = z_p.T @ u
                 try:
                     idstat = float(Zu @ np.linalg.inv(meat_cluster) @ Zu)
                 except np.linalg.LinAlgError:
                     idstat = np.nan
         else:
-            # Multiple endogenous: not yet fully implemented
-            idstat = np.nan
+            # Multiple endogenous: Anderson canonical correlation LM / Cragg-Donald F
+            # Compute canonical correlations between X_endog_p and Z_excl_p
+            ZtZ_p = Z_excl_p.T @ Z_excl_p
+            ZtX_p = Z_excl_p.T @ X_endog_p
+            XtX_p = X_endog_p.T @ X_endog_p
+            try:
+                A = np.linalg.solve(ZtZ_p, ZtX_p)
+                B = np.linalg.solve(XtX_p, ZtX_p.T)
+                M = A @ B
+                eigenvalues = np.linalg.eigvals(M)
+                lambda_sq = np.clip(np.real(eigenvalues), 0, 1)
+                min_lambda_sq = float(np.min(lambda_sq))
+            except np.linalg.LinAlgError:
+                min_lambda_sq = 0.0
+
+            if vce == "ols":
+                idstat = n * min_lambda_sq
+            elif vce == "robust":
+                # Multivariate score test (Kleibergen-Paap rk LM approximation)
+                U = X_endog_p
+                score = Z_excl_p.T @ U
+                score_vec = score.ravel(order="F")
+                k_total = k_excl * k_endog
+                Omega = np.zeros((k_total, k_total))
+                for i in range(n):
+                    s_i = np.outer(U[i, :], Z_excl_p[i, :]).ravel(order="F")
+                    Omega += np.outer(s_i, s_i)
+                try:
+                    Omega_inv = np.linalg.inv(Omega)
+                    idstat = float(score_vec @ Omega_inv @ score_vec)
+                except np.linalg.LinAlgError:
+                    idstat = np.nan
+            else:  # cluster
+                U = X_endog_p
+                score = Z_excl_p.T @ U
+                score_vec = score.ravel(order="F")
+                k_total = k_excl * k_endog
+                Omega = np.zeros((k_total, k_total))
+                if len(self._cluster_arrs) == 1:
+                    for g in np.unique(self._cluster_arrs[0]):
+                        mask = self._cluster_arrs[0] == g
+                        s_g = np.zeros(k_total)
+                        for idx in np.where(mask)[0]:
+                            s_g += np.outer(U[idx, :], Z_excl_p[idx, :]).ravel(order="F")
+                        Omega += np.outer(s_g, s_g)
+                else:
+                    from stataflow.estimators._vce_utils import compute_cluster_meat
+                    for j in range(k_endog):
+                        u_j = U[:, j]
+                        meats_j = []
+                        for ca in self._cluster_arrs:
+                            m, _ = compute_cluster_meat(Z_excl_p, u_j, ca)
+                            meats_j.append(m)
+                        interaction = np.array([
+                            f"{a}__{b}" for a, b in zip(self._cluster_arrs[0], self._cluster_arrs[1])
+                        ])
+                        m12, _ = compute_cluster_meat(Z_excl_p, u_j, interaction)
+                        meat_j = meats_j[0] + meats_j[1] - m12
+                        # Place in block diagonal of Omega
+                        # This is a simplification; full multivariate cluster is complex
+                        block_start = j * k_excl
+                        Omega[block_start:block_start+k_excl, block_start:block_start+k_excl] += meat_j
+                try:
+                    Omega_inv = np.linalg.inv(Omega)
+                    idstat = float(score_vec @ Omega_inv @ score_vec)
+                except np.linalg.LinAlgError:
+                    idstat = np.nan
 
         # Compute Wald F (weak identification test) via first-stage F-test
         widstat: float = np.nan
@@ -893,22 +1072,16 @@ class IVAbsorbingOLS:
                         g_adj = cc / (cc - 1) if cc > 1 else 1.0
                         VCE = g_adj * ZtZ_inv @ meat @ ZtZ_inv
                     else:
-                        from stataflow.estimators._vce_utils import (
-                            compute_cluster_meat,
-                            compute_multiway_cluster_vce,
+                        from stataflow.estimators._vce_utils import compute_multiway_cluster_vce
+                        VCE, _ = compute_multiway_cluster_vce(
+                            Z_full,
+                            resid_fs,
+                            ZtZ_inv,
+                            self._cluster_arrs,
+                            k_eff=0,
+                            n=n,
+                            small_sample_adjust=False,
                         )
-                        meats_z = []
-                        for ca in self._cluster_arrs:
-                            m, _ = compute_cluster_meat(Z_full, resid_fs, ca)
-                            meats_z.append(m)
-                        interaction_z = np.array([
-                            f"{a}__{b}" for a, b in zip(self._cluster_arrs[0], self._cluster_arrs[1])
-                        ])
-                        m12, _ = compute_cluster_meat(Z_full, resid_fs, interaction_z)
-                        omega_z = meats_z[0] + meats_z[1] - m12
-                        G_min = min(len(np.unique(ca)) for ca in self._cluster_arrs)
-                        g_adj = G_min / (G_min - 1) if G_min > 1 else 1.0
-                        VCE = g_adj * ZtZ_inv @ omega_z @ ZtZ_inv
 
                 VCE_z = VCE[w_cols_count_in_z:, w_cols_count_in_z:]
                 delta_z = delta
@@ -936,6 +1109,77 @@ class IVAbsorbingOLS:
                         widstat = wald / (n - 1) * (n - iv1_ct) / q
                 except np.linalg.LinAlgError:
                     widstat = np.nan
+        else:
+            # Multi-endogenous: Kleibergen-Paap rk Wald F (Wald approximation)
+            q = max(1, k_excl - k_endog + 1)
+            chi2_total = 0.0
+            for j in range(k_endog):
+                x_j = X_endog[:, j]
+                ZtZ = Z_full.T @ Z_full
+                Ztx = Z_full.T @ x_j
+                beta_fs_full = np.linalg.solve(ZtZ, Ztx)
+                resid_fs = x_j - Z_full @ beta_fs_full
+                delta = beta_fs_full[w_cols_count_in_z:]
+
+                ZtZ_inv = np.linalg.inv(ZtZ)
+                if vce == "ols":
+                    sigma2 = float(np.sum(resid_fs ** 2)) / (n - Z_full.shape[1]) if n > Z_full.shape[1] else 0.0
+                    VCE = sigma2 * ZtZ_inv
+                elif vce == "robust":
+                    e_sq = resid_fs ** 2
+                    meat = (Z_full * e_sq[:, np.newaxis]).T @ Z_full
+                    VCE = ZtZ_inv @ meat @ ZtZ_inv
+                else:  # cluster
+                    k_z = Z_full.shape[1]
+                    if len(self._cluster_arrs) == 1:
+                        meat = np.zeros((k_z, k_z))
+                        for g in np.unique(self._cluster_arrs[0]):
+                            mask = self._cluster_arrs[0] == g
+                            Z_g = Z_full[mask]
+                            e_g = resid_fs[mask]
+                            Ze_g = Z_g.T @ e_g
+                            meat += np.outer(Ze_g, Ze_g)
+                        cc = len(np.unique(self._cluster_arrs[0]))
+                        g_adj = cc / (cc - 1) if cc > 1 else 1.0
+                        VCE = g_adj * ZtZ_inv @ meat @ ZtZ_inv
+                    else:
+                        from stataflow.estimators._vce_utils import compute_multiway_cluster_vce
+                        VCE, _ = compute_multiway_cluster_vce(
+                            Z_full,
+                            resid_fs,
+                            ZtZ_inv,
+                            self._cluster_arrs,
+                            k_eff=0,
+                            n=n,
+                            small_sample_adjust=False,
+                        )
+
+                VCE_z = VCE[w_cols_count_in_z:, w_cols_count_in_z:]
+                try:
+                    VCE_z_inv = np.linalg.inv(VCE_z)
+                    chi2_j = float(delta @ VCE_z_inv @ delta)
+                    chi2_total += chi2_j
+                except np.linalg.LinAlgError:
+                    chi2_total = np.nan
+                    break
+
+            if not np.isnan(chi2_total):
+                iv1_ct = (
+                    (1 if self._constant_idx_reduced is not None else 0)
+                    + len(self._x_exog_indices_in_full)
+                    + k_excl
+                )
+                if vce == "ols":
+                    widstat = chi2_total / n * (n - iv1_ct) / q
+                elif vce == "robust":
+                    dofminus = (
+                        w_cols_count_in_z
+                        - (1 if self._constant_idx_reduced is not None else 0)
+                        - len(self._x_exog_indices_in_full)
+                    )
+                    widstat = chi2_total / n * (n - iv1_ct - dofminus) / q
+                else:  # cluster
+                    widstat = chi2_total / (n - 1) * (n - iv1_ct) / q
 
         # Stock-Yogo critical values
         model_sy = "liml" if estimator == "liml" else "2sls"
@@ -1070,13 +1314,17 @@ class IVAbsorbingOLS:
         # Force symmetry before inversion
         omega = (omega + omega.T) / 2.0
         try:
+            cond_omega = np.linalg.cond(omega)
+            if cond_omega > 1e12 or not np.isfinite(cond_omega):
+                raise np.linalg.LinAlgError("ill-conditioned omega")
             W = np.linalg.inv(omega)
         except np.linalg.LinAlgError:
-            # Singular omega arises when Z_full includes FE dummies that are
-            # collinear with the cluster variable(s).  ivreghdfe residualizes
-            # FEs before ivreg2, so the moment conditions only involve
-            # structural instruments.  We replicate that by partialing out
-            # W = [constant, FE dummies] and running GMM on residualized data.
+            # Singular / ill-conditioned omega arises when Z_full includes FE
+            # dummies that are collinear with the cluster variable(s).
+            # ivreghdfe residualizes FEs before ivreg2, so the moment
+            # conditions only involve structural instruments.  We replicate
+            # that by partialing out W = [constant, FE dummies] and running
+            # GMM on residualized data.
             return self._fit_gmm2s_residualized(
                 X_full, Z_full, y, vce, n, k_x_full, k_x_reported, df_resid
             )
@@ -1362,6 +1610,16 @@ class IVAbsorbingOLS:
             V = aux9.T @ omega @ aux9 / N
             V = (V + V.T) / 2.0
 
+            # Small-sample correction for cluster VCE
+            if vce == "cluster":
+                if len(self._cluster_arrs) == 1:
+                    G = len(np.unique(self._cluster_arrs[0]))
+                else:
+                    G = min(len(np.unique(ca)) for ca in self._cluster_arrs)
+                g_adj = G / (G - 1) if G > 1 else 1.0
+                V = V * g_adj
+                V = (V + V.T) / 2.0
+
         return beta_liml, residuals, V, {"liml_lambda": lambda_, "liml_k": k}
 
     def fit(
@@ -1475,6 +1733,9 @@ class IVAbsorbingOLS:
             else:
                 X_tilde_proj = X_proj_reported
             rss_2s_resid = float(np.sum((y_resid - X_tilde_proj @ beta_reported_for_f) ** 2))
+
+        if vce == "cluster" and cluster_count is not None:
+            df_resid = float(cluster_count - 1)
 
         # Weak instrument diagnostics
         weakiv_stats = self._compute_weakiv_stats(
@@ -1617,19 +1878,16 @@ class IVAbsorbingOLS:
                                 VCE = g_adj * ZtZ_inv @ meat @ ZtZ_inv
                             else:
                                 # 2-way clustering for first-stage
-                                meats_z = []
-                                for ca in self._cluster_arrs:
-                                    from stataflow.estimators._vce_utils import compute_cluster_meat
-                                    meat_z, _ = compute_cluster_meat(Z_full, resid_fs, ca)
-                                    meats_z.append(meat_z)
-                                interaction_z = np.array([
-                                    f"{a}__{b}" for a, b in zip(self._cluster_arrs[0], self._cluster_arrs[1])
-                                ])
-                                meat_z_12, _ = compute_cluster_meat(Z_full, resid_fs, interaction_z)
-                                omega_z = meats_z[0] + meats_z[1] - meat_z_12
-                                G_min = min(len(np.unique(ca)) for ca in self._cluster_arrs)
-                                g_adj = G_min / (G_min - 1) if G_min > 1 else 1.0
-                                VCE = g_adj * ZtZ_inv @ omega_z @ ZtZ_inv
+                                from stataflow.estimators._vce_utils import compute_multiway_cluster_vce
+                                VCE, _ = compute_multiway_cluster_vce(
+                                    Z_full,
+                                    resid_fs,
+                                    ZtZ_inv,
+                                    self._cluster_arrs,
+                                    k_eff=0,
+                                    n=n,
+                                    small_sample_adjust=False,
+                                )
 
                         VCE_z = VCE[w_cols_count_in_z:, w_cols_count_in_z:]
                         delta_z = delta[w_cols_count_in_z:]
@@ -1637,7 +1895,11 @@ class IVAbsorbingOLS:
                             VCE_z_inv = np.linalg.inv(VCE_z)
                             wald = float(delta_z @ VCE_z_inv @ delta_z)
                             f_stat = wald / q
-                            f_pvalue = float(1 - chi2.cdf(wald, df=q))
+                            # NEW-IV-03: cluster VCE first-stage F uses G-1 df, not chi2
+                            if vce == "cluster" and cluster_count is not None and cluster_count > 1:
+                                f_pvalue = float(1 - f_dist.cdf(f_stat, dfn=q, dfd=cluster_count - 1))
+                            else:
+                                f_pvalue = float(1 - chi2.cdf(wald, df=q))
                         except np.linalg.LinAlgError:
                             pass
 
@@ -1674,11 +1936,22 @@ class IVAbsorbingOLS:
                 beta_slopes = beta_reported[slope_idx]
                 cov_slopes = cov_reported[np.ix_(slope_idx, slope_idx)]
                 try:
-                    cov_inv = np.linalg.inv(cov_slopes)
+                    # Guard against ill-conditioned cov_slopes (NEW-IV-02).
+                    # In the small-cluster Card real-data path, Stata's
+                    # ivreghdfe still reports F(df_model, df_resid) but the
+                    # implied Wald scaling behaves as if singular covariance
+                    # directions are dropped before forming the model F.
+                    cond = np.linalg.cond(cov_slopes)
+                    if cond > 1e12 or not np.isfinite(cond):
+                        cov_inv = np.linalg.pinv(cov_slopes, rcond=1e-12)
+                        wald_df = float(max(np.linalg.matrix_rank(cov_slopes), 1))
+                    else:
+                        cov_inv = np.linalg.inv(cov_slopes)
+                        wald_df = df_model
                     wald_stat = float(beta_slopes @ cov_inv @ beta_slopes)
-                    f_stat = wald_stat / df_model
+                    f_stat = wald_stat / wald_df
                     f_pvalue = 1 - f_dist.cdf(f_stat, dfn=df_model, dfd=df_resid)
-                except np.linalg.LinAlgError:
+                except (np.linalg.LinAlgError, ValueError):
                     f_stat = None
                     f_pvalue = None
         else:
@@ -1737,6 +2010,14 @@ class IVAbsorbingOLS:
             warnings.append(f"Collinear variables dropped: {', '.join(self._collinear_dropped)}")
         if getattr(self, '_num_singletons', 0) > 0:
             warnings.append(f"Singleton observations dropped: {self._num_singletons}")
+        # Weak instrument warning
+        widstat = extra_stats.get("widstat", np.nan)
+        sy_10pct = extra_stats.get("sy_10pct", np.nan)
+        if not np.isnan(widstat) and not np.isnan(sy_10pct) and widstat < sy_10pct:
+            warnings.append(
+                f"Weak instrument test: F = {widstat:.2f} < Stock-Yogo 10% critical value ({sy_10pct:.2f}). "
+                f"Instruments may be weak."
+            )
         result.diagnostics = DiagnosticsInfo(
             residual_df_correction=None,
             cluster_count=cluster_count,
@@ -1767,6 +2048,7 @@ class IVAbsorbingOLS:
         # Attach estimator-specific diagnostics without changing ResultSchema
         for key, value in extra_stats.items():
             setattr(result, key, value)
+        result._model = self
 
         return result
 

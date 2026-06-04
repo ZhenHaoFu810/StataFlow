@@ -111,6 +111,16 @@ class ResultSchema:
     variance: VarianceInfo = field(default_factory=VarianceInfo)
     diagnostics: DiagnosticsInfo = field(default_factory=DiagnosticsInfo)
     provenance: ProvenanceInfo = field(default_factory=ProvenanceInfo)
+    _model: Any = field(default=None, repr=False, compare=False)
+
+    def predict(self, type: str = "xb", newdata=None):
+        """Delegate prediction to the underlying fitted model, if available."""
+        if self._model is None:
+            raise ValueError(
+                "predict() is not available for this result. "
+                "It may have been deserialized from JSON or the model was not attached."
+            )
+        return self._model.predict(type=type, newdata=newdata)
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary compatible with schema."""

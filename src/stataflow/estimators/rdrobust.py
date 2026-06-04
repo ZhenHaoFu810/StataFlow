@@ -49,11 +49,11 @@ def _kernel_weight(x: np.ndarray, c: float, h: float, kernel: str) -> np.ndarray
     w = np.zeros_like(u, dtype=float)
     k = kernel.lower()
     if k in ("triangular", "tri"):
-        w[inside] = (1.0 - np.abs(u[inside])) / h
+        w[inside] = (1.0 - np.abs(u[inside]))
     elif k in ("epanechnikov", "epa"):
-        w[inside] = 0.75 * (1.0 - u[inside] ** 2) / h
+        w[inside] = 0.75 * (1.0 - u[inside] ** 2)
     elif k in ("uniform", "uni"):
-        w[inside] = 0.5 / h
+        w[inside] = 0.5
     else:
         raise ValueError(f"Unsupported kernel: {kernel}")
     return w
@@ -125,16 +125,6 @@ def _nn_residuals(x: np.ndarray, y: np.ndarray, matches: int = 3) -> np.ndarray:
     return res
 
 
-def _vce_nn(inv_gram: np.ndarray, R: np.ndarray, w: np.ndarray, res: np.ndarray) -> np.ndarray:
-    """Conventional variance matrix using nearest-neighbor residuals."""
-    n = R.shape[0]
-    M = np.zeros((R.shape[1], R.shape[1]), dtype=float)
-    for i in range(n):
-        ri = R[i, :] * w[i] * res[i]
-        M += np.outer(ri, ri)
-    return inv_gram @ M @ inv_gram
-
-
 def _vce_hc0(inv_gram: np.ndarray, R: np.ndarray, w: np.ndarray, res: np.ndarray) -> np.ndarray:
     """Heteroskedasticity-robust plug-in residual variance (hc0)."""
     n = R.shape[0]
@@ -143,6 +133,12 @@ def _vce_hc0(inv_gram: np.ndarray, R: np.ndarray, w: np.ndarray, res: np.ndarray
         ri = R[i, :] * w[i] * res[i]
         M += np.outer(ri, ri)
     return inv_gram @ M @ inv_gram
+
+
+# _vce_nn is functionally identical to _vce_hc0 in this implementation
+def _vce_nn(inv_gram: np.ndarray, R: np.ndarray, w: np.ndarray, res: np.ndarray) -> np.ndarray:
+    """Conventional variance matrix using nearest-neighbor residuals."""
+    return _vce_hc0(inv_gram, R, w, res)
 
 
 def _rdrobust_vce_multi(s: np.ndarray, RX: np.ndarray, res: np.ndarray, cluster_ids: np.ndarray | None = None) -> np.ndarray:
@@ -669,8 +665,9 @@ class RDRobust:
     level : int, default 95
         Confidence level.
     bwselect : str or None
-        Bandwidth selector. Supported: "mserd". If h is provided,
-        bwselect is ignored.
+        Bandwidth selector. Supported: "mserd", "msesum", "msetwo",
+        "msecomb1", "msecomb2", "cerrd", "cersum", "certwo",
+        "cercomb1", "cercomb2". If h is provided, bwselect is ignored.
     covs : list[str] or str or None
         Covariate variable name(s) for covariate-adjusted RD.
     covs_drop : bool, default True
@@ -1259,7 +1256,7 @@ class RDRobust:
                 n_input_rows=n_input,
             ),
             fit=FitInfo(
-                df_model=float(self.p + 1),
+                df_model=float(2 * (self.p + 1)),
                 df_resid=float(nobs - 2 * (self.p + 1)),
             ),
             coefficients=coefficients,

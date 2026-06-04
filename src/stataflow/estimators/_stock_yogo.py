@@ -164,7 +164,12 @@ def stock_yogo_critical_values(
     k2 : int
         Number of excluded instruments (L1).
     fuller : float
-        Fuller parameter (only affects LIML; not yet implemented).
+        Fuller parameter (only affects LIML). When ``fuller > 0`` with
+        ``model="liml"``, the standard LIML critical values are not
+        applicable; Fuller-adjusted LIML uses distinct "relative bias"
+        and "maximum bias" tables (Stock-Yogo 2005, Tables 5.6–5.9).
+        Those tables are not yet hard-coded, so this function returns
+        NaN in that case to avoid misleading inference.
 
     Returns
     -------
@@ -177,10 +182,28 @@ def stock_yogo_critical_values(
     nendog = int(nendog)
     k2 = int(k2)
 
+    # Fuller-adjusted LIML uses different Stock-Yogo tables (relative bias
+    # and maximum bias) that are not yet implemented. Return NaN to avoid
+    # returning standard LIML values which would mislead weak-IV diagnosis.
+    if model == "liml" and fuller > 0:
+        return {"10%": np.nan, "15%": np.nan, "20%": np.nan, "25%": np.nan}
+
     # When exactly identified (k2 == nendog), 2SLS uses LIML critical values
     use_liml = (model == "2sls" and k2 == nendog)
     tables = _LIML_TABLES if use_liml else (_2SLS_TABLES if model == "2sls" else _LIML_TABLES)
     result = {}
+    max_nendog = max(t.shape[0] for t in tables.values())
+    max_k2 = max(t.shape[1] for t in tables.values())
+    if nendog > max_nendog or k2 > max_k2:
+        import warnings
+        warnings.warn(
+            f"Stock-Yogo critical values are only tabulated up to nendog={max_nendog} "
+            f"and k2={max_k2}. Requested nendog={nendog}, k2={k2}. "
+            f"Returning NaN. Consider reducing the number of endogenous regressors "
+            f"or instruments, or using simulation-based weak-IV tests.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
     for pct, table in tables.items():
         if nendog < 1 or nendog > table.shape[0]:
             result[f"{pct}%"] = np.nan

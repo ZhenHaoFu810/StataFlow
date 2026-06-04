@@ -62,6 +62,7 @@ class PPMLHDFE:
         offset: Optional[str] = None,
         exposure: Optional[str] = None,
         separation: Optional[str] = None,
+        weights: Optional[str] = None,
     ):
         if offset is not None and exposure is not None:
             raise ValueError("Only one of offset or exposure can be specified.")
@@ -80,6 +81,7 @@ class PPMLHDFE:
         self.offset_var = offset
         self.exposure_var = exposure
         self.separation = separation
+        self.weights_var = weights
 
         # Load offset vector (exposure is converted to log offset)
         self._offset_vec: Optional[np.ndarray] = None
@@ -91,6 +93,11 @@ class PPMLHDFE:
         elif offset is not None:
             self._offset_vec = data[offset].values.astype(np.float64)
 
+        # Load prior weights vector (aweight)
+        self._weights_vec: Optional[np.ndarray] = None
+        if weights is not None:
+            self._weights_vec = data[weights].values.astype(np.float64)
+
         # Fitted state
         self._is_fitted: bool = False
         self._gamma: Optional[np.ndarray] = None
@@ -101,7 +108,7 @@ class PPMLHDFE:
         self._cov_reported: Optional[np.ndarray] = None
         self._result: Optional[ResultSchema] = None
 
-        # Internal AbsorbingOLS handles LSDV matrix construction
+        # Internal AbsorbingOLS handles LSDV matrix construction and sample screening
         self._abs_ols = AbsorbingOLS(
             data=data,
             y=y,
@@ -109,6 +116,8 @@ class PPMLHDFE:
             absorb=absorb,
             add_constant=add_constant,
             missing=missing,
+            weights=self._weights_vec,
+            weight_type="aweight",
         )
 
     def _irls_fit(
@@ -117,6 +126,7 @@ class PPMLHDFE:
         y: np.ndarray,
         gamma_init: Optional[np.ndarray] = None,
         offset: Optional[np.ndarray] = None,
+        weights: Optional[np.ndarray] = None,
     ) -> tuple[np.ndarray, np.ndarray, bool]:
         """
         Run IRLS for Poisson PML on LSDV matrix.
@@ -127,6 +137,8 @@ class PPMLHDFE:
             Initial coefficients. If None, uses OLS of log(y+1) on X.
         offset : np.ndarray, optional
             Offset vector to add to linear predictor.
+        weights : np.ndarray, optional
+            Prior weights (aweight). If provided, total weights = weights * mu.
 
         Returns
         -------
@@ -137,15 +149,22 @@ class PPMLHDFE:
         converged : bool
         """
         n, k = X.shape
+        p = weights if weights is not None else np.ones(n)
         if gamma_init is not None:
             gamma = gamma_init.copy()
         else:
-            # Better starting guess: OLS of log(y+1) on X
+            # Better starting guess: OLS of log(y+1) on X (weighted if p provided)
             y_log = np.log(y + 1)
             if offset is not None:
                 y_log = y_log - offset
             try:
-                gamma = np.linalg.lstsq(X, y_log, rcond=None)[0]
+                if weights is not None:
+                    sqrt_p = np.sqrt(p)
+                    Xw = X * sqrt_p[:, np.newaxis]
+                    yw = y_log * sqrt_p
+                    gamma = np.linalg.lstsq(Xw, yw, rcond=None)[0]
+                else:
+                    gamma = np.linalg.lstsq(X, y_log, rcond=None)[0]
             except Exception:
                 gamma = np.zeros(k)
         ll_old = -np.inf
@@ -160,7 +179,7 @@ class PPMLHDFE:
 
             # Working response and weights for Poisson
             z = eta + (y - mu) / mu
-            w = mu
+            w = mu * p
 
             sqrt_w = np.sqrt(w)
             Xw = X * sqrt_w[:, np.newaxis]
@@ -181,7 +200,7 @@ class PPMLHDFE:
                 mu_new = np.exp(np.clip(eta_new, -700, 700))
                 mu_new = np.clip(mu_new, 1e-15, 1e12)
                 from scipy.special import gammaln
-                ll_new = float(np.sum(y * np.log(mu_new) - mu_new - gammaln(y + 1)))
+                ll_new = float(np.sum(p * (y * np.log(mu_new) - mu_new - gammaln(y + 1))))
                 if ll_new >= ll_old or _halve == 9:
                     break
                 step_size *= 0.5
@@ -191,7 +210,7 @@ class PPMLHDFE:
 
             # Log-likelihood (including log(y!) constant for completeness)
             from scipy.special import gammaln
-            ll_new = float(np.sum(y * np.log(mu_new) - mu_new - gammaln(y + 1)))
+            ll_new = float(np.sum(p * (y * np.log(mu_new) - mu_new - gammaln(y + 1))))
 
             rel_change = abs(ll_new - ll_old) / (abs(ll_old) + 1.0)
             param_change = np.max(np.abs(gamma_new - gamma))
@@ -233,7 +252,10 @@ class PPMLHDFE:
         # Map _cons as weighted linear combination
         if "_cons" in self._abs_ols._coef_names:
             cons_row = report_dim - 1
-            w = np.clip(mu, 1e-15, 1e12)
+            p = getattr(self._abs_ols, '_weights', None)
+            if p is None:
+                p = np.ones(len(mu))
+            w = np.clip(mu, 1e-15, 1e12) * p
             w = w / w.sum()
             # weighted mean of each column of X_full
             T[cons_row, :] = np.sum(X_full * w[:, np.newaxis], axis=0)
@@ -257,10 +279,12 @@ class PPMLHDFE:
         gamma: np.ndarray,
         vce: str,
         cluster_arrs: Optional[list[np.ndarray]] = None,
+        weights: Optional[np.ndarray] = None,
     ) -> tuple[np.ndarray, Optional[int]]:
         """Compute VCE in LSDV space."""
         n, k_full = X_full.shape
-        w = np.clip(mu, 1e-15, 1e12)
+        p = weights if weights is not None else np.ones(n)
+        w = np.clip(mu, 1e-15, 1e12) * p
         sqrt_w = np.sqrt(w)
         Xw = X_full * sqrt_w[:, np.newaxis]
 
@@ -277,7 +301,10 @@ class PPMLHDFE:
             cov_full = XtX_inv
         elif vce == "robust":
             # Robust sandwich with N/(N-1) small-sample adjustment
-            meat = X_full.T @ (X_full * (residuals ** 2)[:, np.newaxis])
+            sqrt_p = np.sqrt(p)
+            meat = (X_full * sqrt_p[:, np.newaxis] * residuals[:, np.newaxis]).T @ (
+                X_full * sqrt_p[:, np.newaxis] * residuals[:, np.newaxis]
+            )
             cov_full = XtX_inv @ meat @ XtX_inv
             if n > 1:
                 cov_full *= n / (n - 1)
@@ -287,7 +314,7 @@ class PPMLHDFE:
             if len(cluster_arrs) == 1:
                 from stataflow.estimators._vce_utils import compute_cluster_meat
                 meat, cluster_count = compute_cluster_meat(
-                    X_full, residuals, cluster_arrs[0]
+                    X_full, residuals, cluster_arrs[0], weights=p
                 )
                 # PPMLHDFE uses vce_asymptotic mode, so only G/(G-1) adjustment applies
                 g_adj = cluster_count / (cluster_count - 1) if cluster_count > 1 else 1.0
@@ -298,10 +325,10 @@ class PPMLHDFE:
                 cov_full, cluster_count = compute_multiway_cluster_vce(
                     X=X_full, residuals=residuals, M_inv=XtX_inv,
                     cluster_arrs=cluster_arrs, k_eff=k_full, n=n,
-                    small_sample_adjust=False
+                    small_sample_adjust=False, weights=p
                 )
         else:
-            raise ValueError(f"vce='{vce}' not supported. Use 'ols' or 'cluster'.")
+            raise ValueError(f"vce='{vce}' not supported. Use 'ols', 'robust', or 'cluster'.")
 
         return cov_full, cluster_count
 
@@ -346,6 +373,8 @@ class PPMLHDFE:
                     absorb=self.absorb_vars,
                     add_constant=self.add_constant,
                     missing=self.missing,
+                    weights=self._weights_vec,
+                    weight_type="aweight",
                 )
                 self._abs_ols._prepare_data(cluster_vars=cluster_vars)
 
@@ -373,7 +402,10 @@ class PPMLHDFE:
                 x_means[idx_pos] = np.mean(col)
                 X_std[:, col_idx] = (col - x_means[idx_pos]) / std
 
-        gamma_std, mu, converged = self._irls_fit(X_std, y, offset=offset_vec)
+        # Extract prior weights aligned with retained sample
+        p = getattr(self._abs_ols, '_weights', None)
+
+        gamma_std, mu, converged = self._irls_fit(X_std, y, offset=offset_vec, weights=p)
 
         # Rescale LSDV coefficients back to original x scale
         gamma = gamma_std.copy()
@@ -390,21 +422,22 @@ class PPMLHDFE:
         mu = np.exp(np.clip(eta, -700, 700))
         mu = np.clip(mu, 1e-15, 1e12)
 
-        # Log-likelihood
+        # Log-likelihood (weighted)
         from scipy.special import gammaln
-        ll_model = float(np.sum(y * np.log(mu) - mu - gammaln(y + 1)))
+        p_arr = p if p is not None else np.ones(n)
+        ll_model = float(np.sum(p_arr * (y * np.log(mu) - mu - gammaln(y + 1))))
 
-        # Deviance: 2 * 危 [渭 - y + y * log(y/渭)]  (with 0*log(0) = 0)
+        # Deviance: 2 * sum(p * [mu - y + y * log(y/mu)])  (with 0*log(0) = 0)
         with np.errstate(divide="ignore", invalid="ignore"):
             deviance_terms = (mu - y) + y * np.log(y / mu)
         deviance_terms = np.where(y == 0, mu, deviance_terms)
-        deviance = float(2.0 * np.sum(deviance_terms))
+        deviance = float(2.0 * np.sum(p_arr * deviance_terms))
         if deviance < 0:
             deviance = 0.0
 
-        # Pseudo log-likelihood of constant-only model
-        y_mean = float(np.mean(y))
-        ll_0 = float(np.sum(y * np.log(y_mean) - y_mean - gammaln(y + 1)))
+        # Pseudo log-likelihood of constant-only model (weighted)
+        y_mean = float(np.average(y, weights=p_arr))
+        ll_0 = float(np.sum(p_arr * (y * np.log(y_mean) - y_mean - gammaln(y + 1))))
         pseudo_r2 = 1.0 - ll_model / ll_0 if ll_0 != 0 else None
 
         # Degrees of freedom
@@ -424,7 +457,7 @@ class PPMLHDFE:
             df_resid = float(n - k_full)
 
         # VCE (use original X_full and rescaled gamma)
-        cov_full, cluster_count_vce = self._compute_vce(X_full, y, mu, gamma, vce, cluster_arrs)
+        cov_full, cluster_count_vce = self._compute_vce(X_full, y, mu, gamma, vce, cluster_arrs, weights=p)
         if cluster_count is None:
             cluster_count = cluster_count_vce
 
@@ -534,6 +567,7 @@ class PPMLHDFE:
         self._beta_reported = beta_reported
         self._cov_reported = cov_reported
         self._result = result
+        result._model = self
 
         return result
 

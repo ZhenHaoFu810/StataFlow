@@ -16,6 +16,7 @@ def reghdfe(
     absorb: str | list[str],
     vce: str = "ols",
     cluster: Optional[str | list[str]] = None,
+    aweight: Optional[str] = None,
     missing: str = "drop",
     keepsingletons: bool = False,
     noconstant: bool = False,
@@ -56,6 +57,12 @@ def reghdfe(
     data_expanded, x_expanded = expand_factor_terms(data, x)
     absorb_vars = parse_absorb(absorb)
 
+    weight_type = None
+    weights = None
+    if aweight is not None:
+        weight_type = "aweight"
+        weights = data[aweight].values
+
     model = AbsorbingOLS(
         data=data_expanded,
         y=y,
@@ -65,6 +72,8 @@ def reghdfe(
         missing=missing,
         drop_singletons=not keepsingletons,
         technique=technique if technique is not None else "auto",
+        weights=weights,
+        weight_type=weight_type,
     )
     return model.fit(vce=vce, cluster=cluster, savefe=savefe, timevar=timevar)
 
@@ -85,6 +94,7 @@ def ppmlhdfe(
     tolerance: float = 1e-8,
     eform: bool = False,
     separation: Optional[str] = None,
+    aweight: Optional[str] = None,
     **kwargs,
 ) -> object:
     """
@@ -110,5 +120,6 @@ def ppmlhdfe(
         max_iter=maxiter,
         tol=tolerance,
         separation=separation,
+        weights=aweight,
     )
     return model.fit(vce=vce, cluster=cluster, eform=eform)

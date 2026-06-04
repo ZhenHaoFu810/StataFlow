@@ -468,19 +468,54 @@ def _split_absorb_string(value: str) -> List[str]:
     return terms
 
 
-def parse_absorb(value: str | List[str]) -> List[AbsorbSpec]:
-    """Parse ``absorb`` argument allowing list or space-separated string.
+def parse_absorb(value: str | List[str] | tuple) -> List[AbsorbSpec]:
+    """Parse ``absorb`` argument allowing string, list, or tuple.
 
-    Also parses slope syntax ``var##c.slope`` and ``var#c.slope``.
+    Supports:
+    - Space-separated string: ``"firm year"``
+    - List of strings: ``["firm", "year"]``
+    - List/tuple with slope syntax: ``[("firm_id", "time_trend")]``
+    - List/tuple with multiple slopes: ``[("firm_id", ["x1", "x2"])]``
+    - List/tuple with intercept flag: ``[("firm_id", "time_trend", False)]``
+    - AbsorbSpec objects (passed through as-is)
 
     Examples
     --------
     ``parse_absorb("firm year")`` → ``[AbsorbSpec("firm"), AbsorbSpec("year")]``
     ``parse_absorb("firm_id##c.time")`` → ``[AbsorbSpec("firm_id", ["time"])]``
+    ``parse_absorb([("firm_id", "time_trend")])`` → ``[AbsorbSpec("firm_id", ["time_trend"])]``
     """
     if isinstance(value, str):
         raw_terms = _split_absorb_string(value)
     else:
-        raw_terms = [str(v) for v in value]
+        raw_terms = list(value)
 
-    return [_parse_slope_term(t) for t in raw_terms]
+    result: List[AbsorbSpec] = []
+    for item in raw_terms:
+        if isinstance(item, AbsorbSpec):
+            result.append(item)
+        elif isinstance(item, (list, tuple)):
+            # Tuple/list API: (var, slopes..., has_intercept?)
+            n = len(item)
+            if n == 0:
+                raise ValueError("Empty tuple/list in absorb specification")
+            var = str(item[0]).strip()
+            if n == 1:
+                result.append(AbsorbSpec(var=var, slopes=[], has_intercept=True))
+            elif n == 2:
+                slopes = item[1]
+                if isinstance(slopes, str):
+                    result.append(AbsorbSpec(var=var, slopes=[slopes], has_intercept=True))
+                else:
+                    result.append(AbsorbSpec(var=var, slopes=list(slopes), has_intercept=True))
+            elif n >= 3:
+                slopes = item[1]
+                has_intercept = bool(item[2])
+                if isinstance(slopes, str):
+                    result.append(AbsorbSpec(var=var, slopes=[slopes], has_intercept=has_intercept))
+                else:
+                    result.append(AbsorbSpec(var=var, slopes=list(slopes), has_intercept=has_intercept))
+        else:
+            # String term: parse slope syntax
+            result.append(_parse_slope_term(str(item).strip()))
+    return result

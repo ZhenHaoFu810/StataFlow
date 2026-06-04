@@ -278,6 +278,141 @@ stata/output/phase2/
 
 ---
 
+### 2026-06-03 — P2 修复（批次 4，4 项）
+
+| # | 问题 | 命令族 | 修复内容 | 验证 |
+|---|------|--------|----------|------|
+| 27 | **RD-04**: rdplot bin statistics 与 fit line y 不一致 | RD | 将 `_collapse_bins` 调用移到 covariate adjustment 之后，使用 `y_l_adj`/`y_r_adj` | 12 项 RD 测试通过 |
+| 28 | **RD-05**: rdrobust weights 缺少 aweight 归一化 | RD | 正权重筛选后增加 `fw = fw / fw.sum() * len(fw)` | 12 项 RD 测试通过 |
+| 29 | **DID-016**: did_imputation cluster_var 默认值文档不一致 | DID | wrapper 文档字符串补充 `cluster` 默认行为说明 | 54 项 DID 测试通过 |
+| 30 | **PANEL-04**: reghdfe 不支持 technique 参数 | Panel | wrapper 签名添加 `technique` 参数并传给 `AbsorbingOLS` | 49 项 HDFE 测试通过 |
+
+---
+
 *报告完成时间: 2026-06-03*
 *总投入: 6 个并行 Agent + 人工验证 + 手动修复*
-*问题总数: 108（已修复 26，待修复 82）*
+*问题总数: 108（已修复 30，待修复 78）*
+
+---
+
+## 2026-06-04 — IV/PANEL 收尾修复（共享 2-way cluster / PSD helper）
+
+### 本轮修改文件
+
+- `src/stataflow/estimators/_vce_utils.py`
+- `src/stataflow/estimators/iv.py`
+- `tests/test_vce_utils.py`
+- `tests/test_compat_stata_iv.py`
+- `docs/audit/revalidation-v1.1/PROGRESS_REPORT.md`
+- `docs/audit/revalidation-v1.1/CODEX_ESCALATION.md`
+
+### 本轮完成内容
+
+1. 修复 `fix_psd_reghdfe()` 在 `_cons` 原始方差为负时错误退回 generic `fix_psd(mat)`，导致 `reghdfe` 2-way cluster synthetic case 的 slope block 被改写。
+2. 恢复 `reghdfe` 2-way cluster synthetic 对 Stata 的字段级对齐：`SE[x1]` 与 `F-stat` 回到 Stata 口径。
+3. 修复 `IVAbsorbingOLS.fit()` 在 2-way cluster fallback 后没有用返回的 `cluster_count` 回写 `df_resid`，导致 `df_resid` 仍按原始 `min(G1,G2)-1` 之前的错误路径停留在 1.0。
+4. 将 2-way rank-deficiency fallback 规则扩展到 `ivreghdfe` 的 weak-IV 与 first-stage diagnostics：
+   - `_compute_weakiv_stats()` 的 cluster 分支
+   - `first_stage` 的 2-way cluster VCE 分支
+5. 同步审查文档：
+   - `NEW-IV-04` 不再列为 Codex 裁定项
+   - `NEW-IV-02` 标记为已重开实现问题（Card real-data 下 `fit.f_stat` 仍不稳定）
+
+### 新增回归测试
+
+- `tests/test_vce_utils.py::test_fix_psd_reghdfe_preserves_slope_block_when_constant_variance_is_negative`
+- `tests/test_compat_stata_iv.py::test_ivreghdfe_two_way_cluster_fallback_updates_df_resid`
+- `tests/test_compat_stata_iv.py::test_ivreghdfe_two_way_cluster_fallback_reuses_one_way_first_stage_and_weakiv`
+
+### 验证结果
+
+- `pytest tests/test_vce_utils.py -q` → 6 passed
+- `pytest tests/test_compat_stata_iv.py tests/test_vce_utils.py tests/golden/test_w7_reghdfe_2way_cluster.py tests/golden/test_w7_ivreghdfe_2way_cluster.py -q` → 48 passed
+- Card real-data spot check:
+  - `ivreghdfe(..., cluster='age_group')` 与 `ivreghdfe(..., cluster=['age_group','south'])`
+  - `educ` SE 现已一致
+  - `df_resid` 现已一致（`2.0` vs `2.0`）
+  - `widstat` / `idstat` / `first_stage['educ']['f_stat']` 现已一致
+
+### 剩余风险
+
+- `NEW-IV-02`: Card real-data 下 `ivreghdfe` cluster `fit.f_stat` 仍出现天文量级正负值；该问题独立于 2-way rank-deficiency fallback，需继续单独收口。
+- `IV-14`: `reghdfe` / `ivreghdfe` 2-way cluster `_cons` SE 约 3% 偏差仍属于 Codex 裁定项。
+
+## 2026-06-04 - IV second-stage F-stat 收口（NEW-IV-02）
+
+### 本轮修改文件
+
+- `src/stataflow/estimators/iv.py`
+- `tests/test_compat_stata_iv.py`
+- `docs/audit/revalidation-v1.1/PROGRESS_REPORT.md`
+- `docs/audit/revalidation-v1.1/CODEX_ESCALATION.md`
+
+### 本轮完成内容
+
+1. 修复 `IVAbsorbingOLS.fit()` 在病态 cluster covariance 下 second-stage `fit.f_stat` 仍会爆炸的问题。
+2. 当 `cov_slopes` 条件数过大时：
+   - 改用 `np.linalg.pinv(cov_slopes, rcond=1e-12)`
+   - 按 `cov_slopes` 的有效秩缩放 Wald 统计量，而不是机械除以 `df_model`
+3. 为 Card real-data 场景新增回归测试，直接固定 Stata 口径：
+   - 1-way cluster `age_group`
+   - 2-way cluster `['age_group', 'south']`
+   - 两者 `fit.f_stat` 都应回到约 `0.36`
+
+### 新增回归测试
+
+- `tests/test_compat_stata_iv.py::test_ivreghdfe_card_cluster_f_stat_matches_stata_small_cluster_path`
+
+### 验证结果
+
+- `pytest tests/test_compat_stata_iv.py::test_ivreghdfe_card_cluster_f_stat_matches_stata_small_cluster_path -q` -> 1 passed
+- `pytest tests/test_compat_stata_iv.py tests/test_vce_utils.py -q` -> 19 passed
+- `pytest tests/golden/test_w7_ivreghdfe_2way_cluster.py tests/golden/test_w7_reghdfe_2way_cluster.py -q` -> 30 passed
+
+### 数值核对
+
+- Card real-data, `cluster='age_group'`:
+  - `fit.f_stat = 0.3556943740`
+  - `fit.f_pvalue = 0.8624308894`
+- Card real-data, `cluster=['age_group', 'south']`:
+  - `fit.f_stat = 0.3556943740`
+  - `fit.f_pvalue = 0.8624308894`
+- 与 Stata log `F(6, 2) = 0.36`, `Prob > F = 0.8610` 对齐。
+
+### 当前剩余风险
+
+- `IV-14`: `reghdfe` / `ivreghdfe` 2-way cluster `_cons` SE 约 3% 偏差仍属于 Codex 裁定项。
+
+## 2026-06-04 - revalidation-v1.1 最终收口
+### 本轮结论
+
+1. 重新核对 `docs/audit/revalidation-v1.1/CODEX_ESCALATION.md`、`PROGRESS_REPORT.md` 与当前工作树后，确认最后的开放项只剩 `IV-14`。
+2. 对 `IV-14` 进行了最终数值复核：
+   - synthetic `reghdfe` 2-way cluster `_cons` SE:
+     - Stata: `0.01433482`
+     - Python: `0.0146575851`
+     - 相对误差约 `2.25%`
+   - slope SE、`df_resid`、weak-IV、first-stage、second-stage `fit.f_stat` 已独立收口。
+3. 依据 `docs/adr/ADR-0003-lsdv-cons-se-under-multiway-cluster.md`，将 `IV-14` 从“需 Codex 裁定”正式转为“已知局限”，不再作为本轮开放 bug 保留。
+
+### 本轮修改文件
+
+- `docs/audit/revalidation-v1.1/CODEX_ESCALATION.md`
+- `docs/audit/revalidation-v1.1/PROGRESS_REPORT.md`
+- `docs/audit/revalidation-v1.1/ROADMAP.md`
+- `docs/adr/ADR-0003-lsdv-cons-se-under-multiway-cluster.md`
+- `workspace/current-task/REPORT.md`
+
+### 文档收口结果
+
+- `CODEX_ESCALATION.md`: 改为裁定归档文件，待裁定开放项清零。
+- `PROGRESS_REPORT.md`: 改为最终版进度报告，明确写出 **96 项修复 + 4 项已知局限 + 8 项排期 = 108 项全部收口**。
+- `ROADMAP.md`: 改为本轮路线图完成状态，不再保留待修复口径。
+- `ADR-0003`: 增加 2026-06-04 裁定落地说明。
+
+### 最终状态
+
+- revalidation-v1.1 本轮审查发现的 **108 项问题已全部收尾**。
+- 后续若继续开发，应进入：
+  - `v1.2.0+` 展示层 / AP-SW F 补齐
+  - 或 Wave 12 / HDFE 内核重构

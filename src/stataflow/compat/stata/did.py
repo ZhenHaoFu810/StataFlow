@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Optional
 
+import numpy as np
+
 from stataflow.estimators import DIDImputation, EventStudyInteract, CSDID
 
 
@@ -84,6 +86,8 @@ def eventstudyinteract(
     omit: Optional[int] = None,
     vce: str = "ols",
     cluster: Optional[str] = None,
+    covariates: Optional[list[str]] = None,
+    aweight: Optional[str] = None,
     **kwargs,
 ) -> object:
     """
@@ -119,7 +123,7 @@ def eventstudyinteract(
 
         used_event_dummies = []
         rel_time = df[time] - df[first_treat]
-        rel_time = rel_time.where(df[first_treat] > 0, -1000)
+        rel_time = rel_time.where(df[first_treat] > 0, np.nan)
 
         for h in horizons:
             if h == omit:
@@ -140,6 +144,8 @@ def eventstudyinteract(
         cohort=cohort,
         control_cohort=control_cohort,
         absorb=absorb,
+        covariates=covariates,
+        weights=aweight,
     )
     return model.fit(vce=vce, cluster=cluster)
 

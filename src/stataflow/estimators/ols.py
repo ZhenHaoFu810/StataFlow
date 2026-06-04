@@ -402,8 +402,8 @@ class OLS:
         ci_low = beta - t_crit * se
         ci_high = beta + t_crit * se
 
-        # F-statistic (only if constant is present)
-        if self.add_constant and df_model > 0:
+        # F-statistic
+        if df_model > 0:
             if vce == "ols":
                 # Conventional F-statistic
                 f_stat = (mss / df_model) / (rss / df_resid)
@@ -411,12 +411,10 @@ class OLS:
                 f_pvalue = 1 - f_dist.cdf(f_stat, dfn=df_model, dfd=df_resid)
             elif vce == "robust":
                 # Wald F-statistic for robust VCE
-                # F = (1/df_model) * 尾' * V_rob^{-1} * 尾
-                # where 尾 excludes the constant term
-                # Find index of constant (if present)
+                # F = (1/df_model) * beta' * V_rob^{-1} * beta
+                # where beta excludes the constant term (if present)
                 const_idx = self._coef_names.index("_cons") if "_cons" in self._coef_names else -1
 
-                # Get slope coefficients (exclude constant)
                 if const_idx >= 0:
                     slope_idx = [i for i in range(k) if i != const_idx]
                 else:
@@ -425,16 +423,18 @@ class OLS:
                 beta_slopes = beta[slope_idx]
                 cov_slopes = cov_beta[np.ix_(slope_idx, slope_idx)]
 
-                # Wald statistic: 尾' * V^{-1} * 尾
                 try:
-                    cov_inv = np.linalg.inv(cov_slopes)
+                    # NEW-LINEAR-01: guard against ill-conditioned cov_slopes
+                    cond = np.linalg.cond(cov_slopes)
+                    if cond > 1e12 or not np.isfinite(cond):
+                        cov_inv = np.linalg.pinv(cov_slopes)
+                    else:
+                        cov_inv = np.linalg.inv(cov_slopes)
                     wald_stat = float(beta_slopes @ cov_inv @ beta_slopes)
-                    # F = Wald / df_model
                     f_stat = wald_stat / df_model
                     from scipy.stats import f as f_dist
                     f_pvalue = 1 - f_dist.cdf(f_stat, dfn=df_model, dfd=df_resid)
-                except np.linalg.LinAlgError:
-                    # Covariance matrix is singular
+                except (np.linalg.LinAlgError, ValueError):
                     f_stat = None
                     f_pvalue = None
             elif vce == "cluster":
@@ -450,12 +450,17 @@ class OLS:
                 cov_slopes = cov_beta[np.ix_(slope_idx, slope_idx)]
 
                 try:
-                    cov_inv = np.linalg.inv(cov_slopes)
+                    # NEW-LINEAR-01: guard against ill-conditioned cov_slopes
+                    cond = np.linalg.cond(cov_slopes)
+                    if cond > 1e12 or not np.isfinite(cond):
+                        cov_inv = np.linalg.pinv(cov_slopes)
+                    else:
+                        cov_inv = np.linalg.inv(cov_slopes)
                     wald_stat = float(beta_slopes @ cov_inv @ beta_slopes)
                     f_stat = wald_stat / df_model
                     from scipy.stats import f as f_dist
                     f_pvalue = 1 - f_dist.cdf(f_stat, dfn=df_model, dfd=df_resid)
-                except np.linalg.LinAlgError:
+                except (np.linalg.LinAlgError, ValueError):
                     f_stat = None
                     f_pvalue = None
         else:
@@ -524,6 +529,7 @@ class OLS:
         self._beta = beta
         self._cov_beta = cov_beta
         self._result = result
+        result._model = self
 
         return result
 
