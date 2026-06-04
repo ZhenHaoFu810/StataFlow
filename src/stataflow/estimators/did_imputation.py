@@ -318,7 +318,7 @@ class DIDImputation:
             for h in horizons:
                 if h is None:
                     # Aggregate mode: single tau across all post-treated obs
-                    h_mask = ever_treated_mask.copy()
+                    h_mask = ever_treated_mask & (df["_D"] == 1)
                 else:
                     h_mask = ever_treated_mask & (df["_K"] == h)
                 wtr_mask = h_mask & df[norm_col].notna() & (df[norm_col] != 0)
