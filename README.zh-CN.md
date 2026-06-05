@@ -112,7 +112,7 @@ print(f"R² = {result.fit.r2:.4f}, N = {result.sample.nobs}")
 - [用户手册](docs/USER_GUIDE.md) — 完整教程与概念指南（英文: [User Guide](docs/USER_GUIDE.zh-CN.md)）
 - [Cookbook](docs/cookbook.md) — 可复制的配方示例（英文: [Cookbook](docs/cookbook.zh-CN.md)）
 - [示例](examples/) — 可运行的 demo 脚本
-- [v1.1.0 更新日志](docs/release/open-source-update-log-1.1.0.md) — 最新热修复的更新内容
+- [更新日志](CHANGELOG.md) — 最新热修复的更新内容
 
 ## 运行测试
 

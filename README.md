@@ -112,7 +112,7 @@ print(f"R² = {result.fit.r2:.4f}, N = {result.sample.nobs}")
 - [User Guide](docs/USER_GUIDE.md) — full tutorial and concept guide (中文: [用户手册](docs/USER_GUIDE.zh-CN.md))
 - [Cookbook](docs/cookbook.md) — copy-pasteable recipes for common tasks (中文: [中文 Cookbook](docs/cookbook.zh-CN.md))
 - [Examples](examples/) — runnable demo scripts
-- [v1.1.0 Update Log](docs/release/open-source-update-log-1.1.0.md) — what's new in the latest hotfix
+- [Changelog](CHANGELOG.md) — what's new in the latest hotfix
 
 ## Running Tests
 
