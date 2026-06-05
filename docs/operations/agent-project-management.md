@@ -58,15 +58,15 @@ D:/OneDrive - SAIF/PhD3/StataFlow
 
 - 内部完整开发工作树。
 - 包含治理文档、架构文档、审计材料、golden tests、Stata artifacts、workspace 当前任务材料等。
-- 当前主要工作分支是 `fix/v1.0.1-hotfix`。
-- 本地 `dev` 分支也指向同一内部开发线。
+- 当前主要工作分支是 `dev`。
+- `fix/v1.0.1-hotfix` 仅作为历史保留分支；不要把它当成当前版本目标。
 
 当前已知状态：
 
 ```text
-HEAD: 6a0750e docs: record migration execution status
-branch: fix/v1.0.1-hotfix
-local dev: 6a0750e
+branch: dev
+HEAD: use `git log --oneline --decorate -1` to read the current commit
+legacy local branch: fix/v1.0.1-hotfix remains as a historical pointer
 ```
 
 远端：
@@ -251,17 +251,23 @@ git -c safe.directory='D:/OneDrive - SAIF/PhD3/StataFlow' ls-remote --heads orig
 内部当前开发线：
 
 ```text
-fix/v1.0.1-hotfix
 dev
+fix/v1.0.1-hotfix
 ```
 
-`fix/v1.0.1-hotfix` 是当前 checkout 分支。`dev` 是本地指针，用来表示完整内部开发线。
+`dev` 是当前 checkout 分支，也是后续 Agent 默认工作的完整内部开发线。`fix/v1.0.1-hotfix` 是迁移前遗留的本地分支名，目前仅用于历史定位；不要因为它存在就把当前工作解释为 1.0.1 hotfix。
 
 如果完成内部文档或代码提交后需要同步本地 `dev` 指针：
 
 ```powershell
 Set-Location "D:/OneDrive - SAIF/PhD3/StataFlow"
-git -c safe.directory='D:/OneDrive - SAIF/PhD3/StataFlow' branch -f dev HEAD
+git -c safe.directory='D:/OneDrive - SAIF/PhD3/StataFlow' status --short --branch
+```
+
+如果当前分支不是 `dev`，先停下确认原因。正常情况下应使用：
+
+```powershell
+git -c safe.directory='D:/OneDrive - SAIF/PhD3/StataFlow' switch dev
 ```
 
 不要推送：
@@ -365,9 +371,9 @@ fix: align did_imputation aggregate sample
 
 ```powershell
 Set-Location "D:/OneDrive - SAIF/PhD3/StataFlow"
+git status --short --branch
 git add <files>
 git commit -m "docs: update agent project management runbook"
-git branch -f dev HEAD
 ```
 
 默认不要 push。
@@ -977,12 +983,15 @@ Set-Location "D:/OneDrive - SAIF/PhD3/StataFlow_public"
 git push origin public-main:main
 ```
 
-### 14.7 更新本地 dev 指针
+### 14.7 确认当前内部开发分支
 
 ```powershell
 Set-Location "D:/OneDrive - SAIF/PhD3/StataFlow"
-git branch -f dev HEAD
+git status --short --branch
+git branch --show-current
 ```
+
+正确结果应显示当前分支为 `dev`。如果不是 `dev`，先停下确认原因，不要继续提交。
 
 ---
 
