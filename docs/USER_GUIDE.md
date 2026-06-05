@@ -31,7 +31,7 @@ pip install -e .
 
 ```python
 import stataflow
-print(stataflow.__version__)  # e.g., "1.0.0"
+print(stataflow.__version__)  # e.g., "1.1.0"
 ```
 
 > **Note:** A local Stata 17 installation is only needed if you want to run the golden dual-run tests. The package itself does not require Stata for normal use.
@@ -174,6 +174,21 @@ result = ivregress_2sls(df, y="lwage", x_exog=["edu"],
 
 Returns a `ResultSchema` with `.coefficients`, `.fit`, `.sample`, `.summary()`.
 
+For IV commands, you can request first-stage diagnostics with `first=True`. The result object exposes a `first_stage` dict structured like this:
+
+```python
+result = ivregress_2sls(
+    df, y="lwage", x_exog=["edu"], x_endog=["exper"],
+    instruments=["age", "kidslt6"], vce="robust", first=True
+)
+for endog_var, stats in result.first_stage.items():
+    print(f"{endog_var}: R2={stats['r2']:.4f}, "
+          f"partial R2={stats['partial_r2']:.4f}, "
+          f"F={stats['f_stat']:.2f}")
+```
+
+Weak-instrument diagnostics (`idstat`, `widstat`, `widstat_cv`) and overidentification tests (`hansen_j` / Sargan) are also attached automatically when applicable.
+
 ### 6.2 Core estimator layer (advanced)
 
 Import from `stataflow`:
@@ -253,7 +268,18 @@ print(result.fit.ll)           # Log-likelihood (ML models)
 print(result.fit.deviance)     # Deviance (Poisson/PPML)
 ```
 
-### 8.3 estat commands
+### 8.3 Known alignment residuals
+
+A small number of StataFlow outputs are expected to differ from Stata 17 within documented tolerances. These are **not bugs**; they are structural consequences of implementation choices and are governed by ADRs.
+
+| Area | Residual | Tolerance | Explanation |
+|------|----------|-----------|-------------|
+| 2-way cluster `_cons` SE (`reghdfe`, `ivreghdfe`, `ppmlhdfe`) | ~2–16% | Documented | [ADR-0003](../adr/ADR-0003-lsdv-cons-se-under-multiway-cluster.md): LSDV vs iterative-demeaning structural difference. **Slope SEs remain aligned to `< 1e-6`.** |
+| 2-way cluster rank-deficiency fallback | RuntimeWarning | Documented | When the Cameron-Gelbach-Miller meat matrix is not positive semi-definite, a PSD fix is applied. Slope SEs in non-rank-deficient cases remain exact. |
+| `ivreghdfe` cluster `stdp` when cluster nests all FEs | ~0.28% | `rtol=5e-3` | Known small-sample factor difference |
+| `ppmlhdfe` residuals | ~0.35% | `rtol=5e-3` | IRLS/HDFE convergence precision difference |
+
+### 8.4 estat commands
 
 ```python
 from stataflow.postestimation import estat_summarize, estat_ic
@@ -282,6 +308,8 @@ StataFlow never silently ignores options. If a parameter is not explicitly suppo
 
 ### Q4: How do I get cluster-robust standard errors?
 Pass `vce="cluster"` and `cluster="variable"`. For two-way clustering, pass `cluster=["var1", "var2"]`. Two-way clustering is supported on `regress`, `reghdfe`, `ivreghdfe`, and `ppmlhdfe`.
+
+> **Note:** In 2-way cluster HDFE/IV/PPML models, you may see a `RuntimeWarning` if the moment matrix is rank-deficient (for example, when one cluster dimension is small or nested within fixed effects). This is a documented fallback; slope SEs in non-rank-deficient cases remain aligned to `< 1e-6`. The constant-term SE under 2-way clustering may deviate from Stata by up to ~3% on synthetic data and ~16% on real data; see [ADR-0003](../adr/ADR-0003-lsdv-cons-se-under-multiway-cluster.md).
 
 ### Q5: What weight types are supported?
 Only `aweight` (analytic weights) is supported. `fweight`, `pweight`, and `iweight` are not yet available.
@@ -314,4 +342,4 @@ No. Commands like `reghdfe`, `ivreghdfe`, `ppmlhdfe`, `did_imputation`, `eventst
 
 ---
 
-*Last updated: 2026-04-30*
+*Last updated: 2026-06-04*

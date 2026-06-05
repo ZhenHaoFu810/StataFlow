@@ -177,6 +177,32 @@ reghdfe y x1, absorb(firm_id##c.time) vce(cluster firm_id)
 
 > `var##c.slope` adds both a group-specific intercept and a group-specific slope. Use `var#c.slope` for slope-only (no intercept).
 
+### Advanced absorb API (tuples and lists)
+
+```python
+# List of tuples: (FE var, slope var(s), has_intercept)
+result = reghdfe(
+    df, y="y", x=["x1"],
+    absorb=[("firm_id", "time_trend")],
+    vce="cluster", cluster="firm_id",
+)
+
+# Multiple slopes, no intercept for this FE
+result = reghdfe(
+    df, y="y", x=["x1"],
+    absorb=[("firm_id", ["x2", "x3"], False)],
+    vce="cluster", cluster="firm_id",
+)
+```
+
+**Stata equivalent:**
+```stata
+reghdfe y x1, absorb(firm_id##c.time_trend) vce(cluster firm_id)
+reghdfe y x1, absorb(firm_id#c.x2 firm_id#c.x3) vce(cluster firm_id)
+```
+
+> The `absorb` argument accepts a space-separated string, a list of strings, or a list of tuples. Each tuple has the form `(fe_var, slope_var or list of slope_vars, has_intercept)`.
+
 ### MAP iterative absorption (large-scale FE)
 
 ```python
@@ -263,6 +289,64 @@ result = ivregress_2sls(
 ```stata
 ivregress 2sls y x1 (x2 = z1 z2), robust
 ```
+
+### 2SLS first-stage diagnostics
+
+```python
+result = ivregress_2sls(
+    df, y="y", x_exog=["x1"], x_endog=["x2"],
+    instruments=["z1", "z2"], vce="robust", first=True,
+)
+
+first = result.first_stage
+for endog_var, stats in first.items():
+    print(f"{endog_var}: R2={stats['r2']:.4f}, "
+          f"partial R2={stats['partial_r2']:.4f}, "
+          f"Shea R2={stats['shea_r2']:.4f}, "
+          f"F={stats['f_stat']:.2f}")
+```
+
+**Stata equivalent:**
+```stata
+ivregress 2sls y x1 (x2 = z1 z2), robust first
+```
+
+### 2SLS weak-instrument diagnostics
+
+```python
+result = ivregress_2sls(
+    df, y="y", x_exog=["x1"], x_endog=["x2"],
+    instruments=["z1", "z2"], vce="robust",
+)
+
+print(f"Kleibergen-Paap LM: {result.idstat:.3f}")
+print(f"Cragg-Donald Wald F: {result.widstat:.3f}")
+print(f"Stock-Yogo 10% critical: {result.widstat_cv:.1f}")
+```
+
+**Stata equivalent:**
+```stata
+ivregress 2sls y x1 (x2 = z1 z2), robust
+estat firststage
+```
+
+### 2SLS overidentification test (Sargan)
+
+```python
+result = ivregress_2sls(
+    df, y="y", x_exog=["x1"], x_endog=["x2"],
+    instruments=["z1", "z2", "z3"], vce="robust",
+)
+print(f"Sargan statistic: {result.hansen_j:.3f}")
+```
+
+**Stata equivalent:**
+```stata
+ivregress 2sls y x1 (x2 = z1 z2 z3), robust
+estat overid
+```
+
+> The Sargan statistic is available when the model is overidentified (more instruments than endogenous variables).
 
 ### IV with high-dimensional fixed effects
 
@@ -449,6 +533,28 @@ poisson count_y x1 x2, robust
 
 > `offset` and `exposure` are supported for `ppmlhdfe` (see PPML section below). They are not yet available for the `poisson` wrapper.
 
+### Logit / Probit / Poisson — odds ratios and incidence-rate ratios
+
+```python
+# Logit with odds ratios
+result = logit(df, y="y_binary", x=["x1", "x2"], vce="robust", or_=True)
+
+# Probit with eform (same interpretation: exp(beta))
+result = probit(df, y="y_binary", x=["x1", "x2"], vce="robust", eform=True)
+
+# Poisson with incidence-rate ratios
+result = poisson(df, y="count_y", x=["x1", "x2"], vce="robust", irr=True)
+```
+
+**Stata equivalent:**
+```stata
+logit y_binary x1 x2, robust or
+probit y_binary x1 x2, robust eform
+poisson count_y x1 x2, robust irr
+```
+
+> `eform`, `irr`, and `or_` are aliases. z-statistics and p-values remain on the original coefficient scale, matching Stata output.
+
 ### PPML with high-dimensional fixed effects
 
 ```python
@@ -591,6 +697,8 @@ result = did_imputation(
 did_imputation y unit_id year first_treat_year, cluster(state) allhorizons autosample
 ```
 
+> `allhorizons=True` now includes both post-treatment and pre-treatment horizons (e.g. `tau1980`, `tau1981`, ...), matching Stata's output.
+
 > **Status:** Beta. Controls, pretrends, and heterogeneous effects are supported.
 
 ### Sun-Abraham event study (auto-generated dummies)
@@ -662,6 +770,25 @@ csdid_estat event
 ```
 
 > **Status:** Beta. `method="reg"`, `"drimp"`, and `"dripw"` are supported.
+
+### CSDID with not-yet-treated control group
+
+```python
+result = csdid(
+    df, y="y", id="unit_id", time="year",
+    first_treat="first_treat_year",
+    method="reg",
+    notyet=True,
+    cluster="state",
+)
+```
+
+**Stata equivalent:**
+```stata
+csdid y, ivar(unit_id) time(year) gvar(first_treat_year) method(reg) notyet cluster(state)
+```
+
+> `notyet=True` uses units that have not yet been treated at time `t` as the control group. Supported for `method="reg"`.
 
 ### CSDID with doubly-robust method
 

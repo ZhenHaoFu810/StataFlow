@@ -31,7 +31,7 @@ pip install -e .
 
 ```python
 import stataflow
-print(stataflow.__version__)  # 例如 "1.0.0"
+print(stataflow.__version__)  # 例如 "1.1.0"
 ```
 
 > 仅当需要本地运行 golden dual-run 测试时才需安装 Stata 17。包本身在正常使用中不依赖 Stata。
@@ -164,6 +164,21 @@ result = ivregress_2sls(df, y="lwage", x_exog=["edu"],
 
 返回 `ResultSchema`，包含 `.coefficients`、`.fit`、`.sample`、`.summary()`。
 
+IV 命令可通过 `first=True` 请求一阶段诊断。结果对象的 `first_stage` 字段为结构化字典：
+
+```python
+result = ivregress_2sls(
+    df, y="lwage", x_exog=["edu"], x_endog=["exper"],
+    instruments=["age", "kidslt6"], vce="robust", first=True
+)
+for endog_var, stats in result.first_stage.items():
+    print(f"{endog_var}: R2={stats['r2']:.4f}, "
+          f"partial R2={stats['partial_r2']:.4f}, "
+          f"F={stats['f_stat']:.2f}")
+```
+
+弱工具变量诊断（`idstat`、`widstat`、`widstat_cv`）和过度识别检验（`hansen_j` / Sargan）在适用时也会自动附加到结果对象。
+
 ### 6.2 核心 estimator 层（进阶）
 
 ```python
@@ -194,7 +209,18 @@ result = model.fit(vce="cluster", cluster="state")
 
 **注意**：`#` / `##` 中的裸变量默认按连续变量处理。`L.x` / `F.x` 时间序列算子、三向交互不支持。
 
-## 8. 后估计 (Post-Estimation)
+## 8. 已知对齐残差
+
+以下少数场景下，StataFlow 的输出与 Stata 17 存在已记录的容忍度内差异。这些**不是 bug**，而是由实现路径选择导致的结构性差异，并已通过 ADR 归档。
+
+| 领域 | 残差 | 容忍度 | 说明 |
+|------|------|--------|------|
+| 双向聚类 `_cons` 标准误（`reghdfe`、`ivreghdfe`、`ppmlhdfe`） | ~2–16% | 已记录 | [ADR-0003](../adr/ADR-0003-lsdv-cons-se-under-multiway-cluster.md)：LSDV 与迭代去均值框架的结构性差异。**斜率标准误仍保持 `< 1e-6` 对齐。** |
+| 双向聚类秩亏回退 | RuntimeWarning | 已记录 | 当 Cameron-Gelbach-Miller meat 矩阵非正定时，会应用 PSD fix。非秩亏场景下斜率标准误仍保持精确。 |
+| `ivreghdfe` cluster `stdp`（cluster 嵌套所有 FE 时） | ~0.28% | `rtol=5e-3` | 已知的小样本修正因子差异 |
+| `ppmlhdfe` 残差 | ~0.35% | `rtol=5e-3` | IRLS/HDFE 收敛精度差异 |
+
+## 9. 后估计 (Post-Estimation)
 
 ```python
 from stataflow import OLS, Logit
@@ -216,7 +242,7 @@ ic = estat_ic(result)
 print(f"AIC = {ic['aic']:.2f}, BIC = {ic['bic']:.2f}")
 ```
 
-## 9. 常见问题
+## 10. 常见问题
 
 **Q: `x` 为什么必须是列表？** 因为 stataflow 允许在 `x` 中使用 Stata 风格的因子变量语法（例如 `["i.state##c.post"]`），必须用列表来区分单个字符串与变量名列表。
 
@@ -224,7 +250,9 @@ print(f"AIC = {ic['aic']:.2f}, BIC = {ic['bic']:.2f}")
 
 **Q: 如何区分 `xtreg_fe` 和 `reghdfe`？** `xtreg_fe` 用于单一 FE（面板变量），`reghdfe` 支持多个 FE 及高级功能（MAP、斜率吸收、DK VCE 等）。简单面板模型两者均可使用；2+ FE 场景必须用 `reghdfe`。
 
-## 10. 下一步
+**Q: 双向聚类标准误的 RuntimeWarning 是什么意思？** 在 `reghdfe`/`ivreghdfe`/`ppmlhdfe` 的双向聚类中，如果某个聚类维度较小或嵌套在固定效应内，可能导致矩条件矩阵秩亏。此时会发出 `RuntimeWarning` 并应用 PSD fix 回退。非秩亏场景下斜率标准误仍保持 `< 1e-6` 对齐；常数项标准误可能存在约 3%（合成数据）至 16%（真实数据）的残差，详见 [ADR-0003](../adr/ADR-0003-lsdv-cons-se-under-multiway-cluster.md)。
+
+## 11. 下一步
 
 - **[Cookbook（英文）](./cookbook.md)** — 逐命令可复制代码示例
 - **[中文使用手册（详细版）](./cookbook.zh-CN.md)** — 含教程、图解和完整代码
@@ -233,4 +261,4 @@ print(f"AIC = {ic['aic']:.2f}, BIC = {ic['bic']:.2f}")
 
 ---
 
-*最后更新：2026-04-30*
+*最后更新：2026-06-04*

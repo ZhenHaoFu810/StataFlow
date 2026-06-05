@@ -23,9 +23,9 @@ result.display()
 - **Stata-style regression table**: `result.display()` produces a formatted output matching Stata's layout
 - **High-dimensional fixed effects**: MAP iterative absorption handles 10K+ FE levels without memory issues; individual slope absorption (`absorb(firm_id##c.time)`)
 - **Driscoll-Kraay panel HAC**: time-series-robust standard errors with Bartlett kernel autocorrelation correction
-- **Instrumental variables**: 2SLS, GMM2S, and LIML estimators with weak-instrument diagnostics (Kleibergen-Paap F + Stock-Yogo critical values)
+- **Instrumental variables**: 2SLS, GMM2S, and LIML estimators with first-stage diagnostics, weak-instrument tests (Kleibergen-Paap F + Stock-Yogo critical values), and overidentification tests (Sargan / Hansen J)
 - **Binary, count, and PPML models**: Logit, Probit, Poisson, and PPML with HDFE
-- **Causal inference**: DID (BJS imputation, Sun-Abraham, Callaway-Sant'Anna) with doubly-robust methods; Regression Discontinuity with 11 bandwidth selectors
+- **Causal inference**: DID (BJS imputation, Sun-Abraham, Callaway-Sant'Anna) with doubly-robust methods; Regression Discontinuity with 9 MSE+CER bandwidth selectors
 - **Stata-compatible syntax**: factor variables (`i.group##c.post`), analytic weights, multiple FEs
 - **Validated against Stata 17**: every public capability has field-level Python-Stata dual-run evidence
 
@@ -105,13 +105,14 @@ print(f"R² = {result.fit.r2:.4f}, N = {result.sample.nobs}")
 | **Binary / Count** | `logit`, `probit`, `poisson` | MLE with `ols` / `robust` / `cluster` |
 | **PPML + HDFE** | `ppmlhdfe` | IRLS with `ols` / `robust` / `cluster`, separation detection, eform |
 | **DID** | `did_imputation`, `csdid`, `eventstudyinteract` | BJS imputation, Callaway-Sant'Anna (reg + DR), Sun-Abraham IW |
-| **RDD** | `rdrobust` | Sharp / Fuzzy RD, 11 MSE+CER bandwidth selectors, cluster/nncluster VCE |
+| **RDD** | `rdrobust` | Sharp / Fuzzy RD, 9 MSE+CER bandwidth selectors, cluster/nncluster VCE |
 
 ## Documentation
 
 - [User Guide](docs/USER_GUIDE.md) — full tutorial and concept guide (中文: [用户手册](docs/USER_GUIDE.zh-CN.md))
 - [Cookbook](docs/cookbook.md) — copy-pasteable recipes for common tasks (中文: [中文 Cookbook](docs/cookbook.zh-CN.md))
 - [Examples](examples/) — runnable demo scripts
+- [Changelog](CHANGELOG.md) — what's new in the latest hotfix
 
 ## Running Tests
 

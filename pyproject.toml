@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "StataFlow"
-version = "1.0.0"
+version = "1.1.0"
 description = "StataFlow: A Python econometrics toolkit aligned with Stata 17"
 readme = "README.md"
 license = {text = "MIT"}
