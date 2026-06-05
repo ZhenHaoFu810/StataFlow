@@ -26,7 +26,7 @@ result = reghdfe(
 | `data` | `pd.DataFrame` | Input data |
 | `y` | `str` | Dependent variable |
 | `x` | `list[str]` | Independent variables |
-| `absorb` | `str \| list[str] \| list[tuple]` | Categorical variables to absorb (1+ supported). Supports slope absorption via tuples: `[("firm_id", "time_trend")]` for intercept+slope (`##c.`), `[("firm_id", "time_trend", "slope_only")]` for slope-only (`#c.`), or `[("firm_id", ["x1", "x2"])]` for multiple slopes. |
+| `absorb` | `str \| list[str] \| list[tuple]` | Categorical variables to absorb (1+ supported). Supports slope absorption via tuples: `[("firm_id", "time_trend")]` for intercept+slope (`##c.`), `[("firm_id", "time_trend", False)]` for slope-only (`#c.`), or `[("firm_id", ["x1", "x2"])]` / `[("firm_id", ["x1", "x2"], False)]` for multiple slopes. |
 | `vce` | `str` | `"ols"`, `"robust"`, `"cluster"`, `"dkraay"` (Driscoll-Kraay panel HAC with Bartlett kernel). Use `"dkraay_<bw>"` for custom bandwidth (e.g. `"dkraay_5"`). |
 | `cluster` | `str \| list[str]` | Cluster variable(s); pass a list for 2-way cluster-robust VCE (required when `vce="cluster"`) |
 | `keepsingletons` | `bool` | If `True`, do not drop singleton observations (default `False`) |

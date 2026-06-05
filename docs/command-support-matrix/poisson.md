@@ -22,6 +22,8 @@ result = poisson(data, y="depvar", x=["x1", "x2"], vce="robust")
 | `vce` | `str` | `"ols"`, `"robust"`, `"cluster"` |
 | `cluster` | `str` | Cluster variable (required when `vce="cluster"`) |
 | `noconstant` | `bool` | Drop constant term |
+| `eform` | `bool` | Report exponentiated coefficients |
+| `irr` | `bool` | Alias for `eform` (matches Stata `irr`) |
 | `missing` | `str` | `"drop"` only |
 
 ## Supported Result Fields
@@ -53,7 +55,6 @@ The `compat.stata` wrapper returns a `ResultSchema` object. To use `predict()` o
 ## Planned Parameters
 
 - `offset`, `exposure` (currently hard-rejected with `NotImplementedError`)
-- `irr` (incidence-rate ratios)
 - `nonrtolerance`, `difficult`
 - `from` (starting values)
 

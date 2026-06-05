@@ -1,6 +1,16 @@
 # Known Issues
 
-This document registers issues that are acknowledged but not treated as release-blocking for the current Stable release (v1.0.0).
+This document registers issues that are acknowledged but not treated as release-blocking for the current Stable release (v1.1.0).
+
+## v1.1.0 update
+
+The `revalidation-v1.1` audit remediation (2026-06-04) closed all 108 identified issues:
+
+- **96** were fixed in code and verified.
+- **4** were promoted to documented known limitations (see below and [ADR-0003](../adr/ADR-0003-lsdv-cons-se-under-multiway-cluster.md)).
+- **8** were deferred to v1.2.0+ (display-layer parameters and advanced first-stage statistics).
+
+See [`open-source-update-log-1.1.0.md`](./open-source-update-log-1.1.0.md) for the full user-facing change list.
 
 ---
 
@@ -41,6 +51,10 @@ The following are known mathematical/algorithmic gaps where Python and Stata res
 - **Weights beyond `aweight`:** `fweight`, `pweight`, `iweight` are not yet supported.
 - **Post-estimation on wrappers:** The `compat.stata` wrapper layer returns `ResultSchema` and does not expose `.predict()` / `.margins()` directly. Use the core estimator layer for post-estimation.
 - **CI/CD:** GitHub Actions pipeline is configured (`.github/workflows/ci.yml`) and runs on Python 3.10, 3.11, and 3.12. Golden dual-run tests (which require local Stata 17) are excluded from CI.
+
+## 4. Runtime warnings and intentional fallbacks
+
+- **2-way cluster rank-deficiency detection:** When the Cameron-Gelbach-Miller meat matrix is not positive semi-definite (for example, when one cluster dimension is small or nested within fixed effects), `reghdfe`, `ivreghdfe`, and `ppmlhdfe` emit a `RuntimeWarning` and apply a PSD-fix fallback. This is intentional behavior and matches the documented fallback path; standard errors in these cases may differ slightly from Stata's internal fallback. Slope SEs in non-rank-deficient cases remain aligned to `< 1e-6`.
 
 ---
 

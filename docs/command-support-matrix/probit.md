@@ -22,6 +22,7 @@ result = probit(data, y="depvar", x=["x1", "x2"], vce="robust")
 | `vce` | `str` | `"ols"`, `"robust"`, `"cluster"` |
 | `cluster` | `str` | Cluster variable (required when `vce="cluster"`) |
 | `noconstant` | `bool` | Drop constant term |
+| `eform` | `bool` | Report exponentiated coefficients |
 | `missing` | `str` | `"drop"` only |
 
 ## Supported Result Fields

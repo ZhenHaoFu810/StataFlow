@@ -22,6 +22,8 @@ result = logit(data, y="depvar", x=["x1", "x2"], vce="robust")
 | `vce` | `str` | `"ols"`, `"robust"`, `"cluster"` |
 | `cluster` | `str` | Cluster variable (required when `vce="cluster"`) |
 | `noconstant` | `bool` | Drop constant term |
+| `eform` | `bool` | Report exponentiated coefficients (odds ratios) |
+| `or_` | `bool` | Alias for `eform` (matches Stata `or`) |
 | `missing` | `str` | `"drop"` only |
 
 ## Supported Result Fields
@@ -56,7 +58,6 @@ The `compat.stata` wrapper returns a `ResultSchema` object. To use `predict()` o
 - `asis` (perfect prediction handling)
 - `nonrtolerance`, `difficult`
 - `from` (starting values)
-- `or` (odds ratios)
 
 ## Explicitly Unsupported Parameters
 

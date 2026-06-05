@@ -255,6 +255,32 @@ reghdfe y x1, absorb(firm_id##c.time) vce(cluster firm_id)
 reghdfe y x1, absorb(firm_id#c.time) vce(cluster firm_id)
 ```
 
+### 3.6a 高级 absorb API（tuple / list 形式）
+
+```python
+# tuple 形式：(FE 变量, 斜率变量, 是否含截距)
+result = reghdfe(
+    df, y="y", x=["x1"],
+    absorb=[("firm_id", "time_trend")],
+    vce="cluster", cluster="firm_id",
+)
+
+# 多个斜率，不含截距
+result = reghdfe(
+    df, y="y", x=["x1"],
+    absorb=[("firm_id", ["x2", "x3"], False)],
+    vce="cluster", cluster="firm_id",
+)
+```
+
+**Stata 对应**：
+```stata
+reghdfe y x1, absorb(firm_id##c.time_trend) vce(cluster firm_id)
+reghdfe y x1, absorb(firm_id#c.x2 firm_id#c.x3) vce(cluster firm_id)
+```
+
+> `absorb` 参数支持空格分隔字符串、字符串列表或 tuple 列表。每个 tuple 的格式为 `(fe_var, slope_var_or_list, has_intercept)`。
+
 ### 3.7 MAP 迭代吸收（大规模固定效应）
 
 ```python
@@ -379,6 +405,63 @@ result = ivregress_2sls(
 ```stata
 ivregress 2sls y x1 (x2 = z1 z2), robust
 ```
+
+### 4.1a 一阶段诊断（`ivregress 2sls`）
+
+```python
+result = ivregress_2sls(
+    df, y="y", x_exog=["x1"], x_endog=["x2"],
+    instruments=["z1", "z2"], vce="robust", first=True,
+)
+
+first = result.first_stage
+for var, s in first.items():
+    print(f"{var}: R2={s['r2']:.4f}, "
+          f"partial R2={s['partial_r2']:.4f}, "
+          f"Shea R2={s['shea_r2']:.4f}, F={s['f_stat']:.2f}")
+```
+
+**Stata 对应**：
+```stata
+ivregress 2sls y x1 (x2 = z1 z2), robust first
+```
+
+### 4.1b 弱工具变量检验（`ivregress 2sls`）
+
+```python
+result = ivregress_2sls(
+    df, y="y", x_exog=["x1"], x_endog=["x2"],
+    instruments=["z1", "z2"], vce="robust",
+)
+
+print(f"KP LM = {result.idstat:.3f}")
+print(f"CD Wald F = {result.widstat:.3f}")
+print(f"Stock-Yogo 10% = {result.widstat_cv:.1f}")
+```
+
+**Stata 对应**：
+```stata
+ivregress 2sls y x1 (x2 = z1 z2), robust
+estat firststage
+```
+
+### 4.1c 过度识别检验 — Sargan（`ivregress 2sls`）
+
+```python
+result = ivregress_2sls(
+    df, y="y", x_exog=["x1"], x_endog=["x2"],
+    instruments=["z1", "z2", "z3"], vce="robust",
+)
+print(f"Sargan = {result.hansen_j:.3f}")
+```
+
+**Stata 对应**：
+```stata
+ivregress 2sls y x1 (x2 = z1 z2 z3), robust
+estat overid
+```
+
+> 当工具变量数大于内生变量数（过度识别）时，自动计算 Sargan 统计量。
 
 ### 4.2 IV + 高维固定效应 — `ivreghdfe`
 
@@ -526,6 +609,28 @@ result = poisson(df, y="count_y", x=["x1"], noconstant=True)
 
 **注意**：`offset` 和 `exposure` 在 `ppmlhdfe` 中已支持（见下文 5.5），`poisson` wrapper 暂未支持。
 
+### 5.2a 比值比 / 发生率比（`or_`、`eform`、`irr`）
+
+```python
+# Logit：比值比（odds ratios）
+result = logit(df, y="y_binary", x=["x1", "x2"], vce="robust", or_=True)
+
+# Probit：eform 输出 exp(beta)
+result = probit(df, y="y_binary", x=["x1", "x2"], vce="robust", eform=True)
+
+# Poisson：发生率比（IRR）
+result = poisson(df, y="count_y", x=["x1", "x2"], vce="robust", irr=True)
+```
+
+**Stata 对应**：
+```stata
+logit y_binary x1 x2, robust or
+probit y_binary x1 x2, robust eform
+poisson count_y x1 x2, robust irr
+```
+
+> `eform`、`irr`、`or_` 为别名。z 统计量和 p 值仍基于原始系数尺度计算，与 Stata 输出一致。
+
 ### 5.3 PPML + 高维固定效应 — `ppmlhdfe`
 
 ```python
@@ -651,7 +756,7 @@ result = did_imputation(
     time="year",
     first_treat="first_treat_year",
     cluster="state",
-    allhorizons=True,   # 估计所有时期效应
+    allhorizons=True,   # 估计所有时期效应（含预处理期）
     autosample=True,    # 自动样本选择
 )
 
@@ -662,6 +767,8 @@ result.display()
 ```stata
 did_imputation y unit_id year first_treat_year, cluster(state) allhorizons autosample
 ```
+
+> `allhorizons=True` 现在同时包含处理后期与预处理期（如 `tau1980`、`tau1981` 等），与 Stata 输出一致。
 
 ### 6.2 Sun-Abraham 交互加权估计量 — `eventstudyinteract`
 
@@ -736,6 +843,25 @@ result.display()
 csdid y, ivar(unit_id) time(year) gvar(first_treat_year) method(drimp)
 csdid_estat event
 ```
+
+### 6.3a 使用尚未处理组作为控制组（`notyet`）
+
+```python
+result = csdid(
+    df, y="y", id="unit_id", time="year",
+    first_treat="first_treat_year",
+    method="reg",
+    notyet=True,
+    cluster="state",
+)
+```
+
+**Stata 对应**：
+```stata
+csdid y, ivar(unit_id) time(year) gvar(first_treat_year) method(reg) notyet cluster(state)
+```
+
+> `notyet=True` 将当期尚未受处理的单元作为控制组。当前在 `method="reg"` 下支持。
 
 ### 6.4 CSDID 聚合类型与 DID 高级功能
 

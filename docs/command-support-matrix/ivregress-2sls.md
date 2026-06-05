@@ -27,11 +27,13 @@ result = ivregress_2sls(
 | `instruments` | `list[str]` | Excluded instruments |
 | `vce` | `str` | `"ols"`, `"robust"`, `"cluster"` |
 | `cluster` | `str` | Cluster variable (required when `vce="cluster"`) |
+| `first` | `bool` | If `True`, compute and attach first-stage diagnostics in `result.first_stage` |
+| `noconstant` | `bool` | If `True`, omit the constant term |
 | `missing` | `str` | `"drop"` only |
 
 ## Supported Result Fields
 
-Coefficients, standard errors, z-statistics, p-values, confidence intervals, R-squared, adjusted R-squared, RMSE.
+Coefficients, standard errors, z-statistics, p-values, confidence intervals, R-squared, adjusted R-squared, RMSE. When `first=True`, first-stage R², partial R², Shea R², and F-statistics are attached in `result.first_stage`. Weak-instrument diagnostics (`idstat`, `widstat`, `widstat_cv`) and the Sargan overidentification statistic (`hansen_j`) are also attached automatically.
 
 ## Factor Variable Support
 
@@ -47,9 +49,8 @@ Unsupported factor syntax (`ib#.`, `o.`, `b.`, time-series operators, three-way+
 
 ## Planned Parameters
 
-- First-stage and weak-IV diagnostics (`first`, `ffirst`, `estat firststage`)
-- Overidentification tests (`estat overid`)
-- `noconstant`, `beta`, `hascons`, `tsscons`, `level`
+- `ffirst` (fuller first-stage output)
+- `beta`, `hascons`, `tsscons`, `level`
 
 ## Explicitly Unsupported Parameters
 

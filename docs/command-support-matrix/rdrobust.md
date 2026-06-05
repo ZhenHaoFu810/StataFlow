@@ -90,14 +90,14 @@ The `rdplot` companion command is implemented as a separate supported command; s
 
 
 - **Synthetic cases:** `tests/test_rdrobust.py` (controlled jump, kernel/bandwidth variation, boundary behavior, automatic bandwidth selector behavior, covariate-adjusted estimation), `tests/golden/test_w8_rdrobust_fuzzy_synthetic.py` (fuzzy RD)
-- **Real-data cases:** `tests/test_rdrobust.py` — official `rdrobust_senate.dta` (Cattaneo, Frandsen, and Titiunik 2015), `tests/golden/test_w8_rdrobust_bwselect_all_real_senate.py` (all 11 bandwidth selectors), `tests/golden/test_w8_rdrobust_fuzzy_real_senate.py` (fuzzy RD), `tests/golden/test_w8_rdrobust_cluster_real_senate.py` (cluster / nncluster VCE)
+- **Real-data cases:** `tests/test_rdrobust.py` — official `rdrobust_senate.dta` (Cattaneo, Frandsen, and Titiunik 2015), `tests/golden/test_w8_rdrobust_bwselect_all_real_senate.py` (all 9 bandwidth selectors), `tests/golden/test_w8_rdrobust_fuzzy_real_senate.py` (fuzzy RD), `tests/golden/test_w8_rdrobust_cluster_real_senate.py` (cluster / nncluster VCE)
 - **Dual-run verified against Stata 17** for:
   - `rdrobust vote margin, c(0) h(15)` — `tau_cl`, `tau_bc`, `se_tau_cl`, `se_tau_rb` all match to < 1e-6 relative tolerance.
   - `rdrobust vote margin, c(0) h(15) vce(hc0) kernel(uniform)` — full four-object match to < 1e-6 relative tolerance.
   - `rdrobust vote margin, c(0) bwselect(mserd)` — bandwidths agree to ~0.03 %, estimates to ~1e-4 relative tolerance.
   - `rdrobust vote margin, c(0) h(15) covs(z)` — full four-object match to < 1e-6 relative tolerance.
   - `rdrobust vote margin, c(0) covs(z)` — bandwidths agree to ~0.03 %, estimates to ~1e-4 relative tolerance.
-  - All 11 bandwidth selectors on `rdrobust_senate.dta` — estimates < 0.5 %, bandwidths < 1 % relative tolerance.
+  - All 9 bandwidth selectors on `rdrobust_senate.dta` — estimates < 0.5 %, bandwidths < 1 % relative tolerance.
   - Fuzzy RD (synthetic + real senate data) — estimates < 0.5 %, SEs < 5 % (synthetic) / < 0.5 % (real) relative tolerance.
   - `vce(cluster)` and `vce(nncluster)` on `rdrobust_senate.dta` — estimates < 1 %, SEs < 3 % relative tolerance.
 - **Local source mirror:** `research/vendor/stata_community/rdrobust/`

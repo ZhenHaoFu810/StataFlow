@@ -1,7 +1,7 @@
 # Open-Source Stable Status
 
-**Version:** 1.0.0 (Stable)
-**Last updated:** 2026-04-30
+**Version:** 1.1.0 (Stable)
+**Last updated:** 2026-06-04
 
 ---
 
@@ -34,7 +34,7 @@ Specifically:
 | Linear base | `regress` | Stable | OLS, robust, cluster, aweight, noconstant |
 | Panel / FE | `xtreg, fe` | Stable | Within estimator, single FE, cluster |
 | Panel / FE | `areg` | Stable | Single absorb var, OLS/cluster VCE |
-| IV | `ivregress 2sls` | Stable | 2SLS, robust, cluster |
+| IV | `ivregress 2sls` | Stable | 2SLS, robust, cluster, first-stage diagnostics, weak-IV tests, Sargan overid test |
 | Binary | `logit` | Stable | MLE, robust, cluster |
 | Binary | `probit` | Stable | MLE, robust, cluster |
 | Count | `poisson` | Stable | MLE, robust, cluster |
@@ -68,9 +68,9 @@ Every public command is validated with two lines of evidence:
 1. **Synthetic / controlled cases** — formula, degrees of freedom, sample screening, edge cases.
 2. **Real public datasets** — field-level comparison against Stata 17 on openly available data.
 
-Current non-golden test status: **271 passed, 0 failed** (as of 2026-04-30).
+Current non-golden test status: **301 passed, 0 failed** (as of 2026-06-04).
 
-Golden dual-run test status: **87+ passed, 0 failed** (requires local Stata 17).
+Golden dual-run test status: **606+ passed** against Stata 17 (requires local Stata 17; real-data tests skip gracefully when external datasets are unavailable).
 
 Public validation evidence:
 
@@ -80,15 +80,24 @@ Public validation evidence:
 
 ---
 
+## Already delivered in v1.1.0
+
+- IV first-stage diagnostics, weak-instrument tests, and overidentification tests.
+- GLM robust small-sample correction and `eform`/`irr`/`or_` aliases.
+- DID `allhorizons`, `csdid notyet`, and unbalanced-panel NaN fixes.
+- 2-way cluster rank-deficiency detection with documented PSD fallback.
+- `reghdfe` advanced tuple/list `absorb` API and `aweight` array/Series support.
+
 ## Roadmap
 
-High-level priorities for v1.0.0:
+High-level priorities for v1.2.0+:
 
-1. Iterative MAP/LSMR absorption kernel (performance for very high-dimensional FEs).
-2. Individual slope absorption (`absorb(var##c.slope)`).
-3. Advanced VCE: Driscoll-Kraay, three-way+ clustering.
+1. Display-layer parameters: `level()`, `noci`, `nopvalues`, full `eform` formatting.
+2. First-stage AP/SW F statistics.
+3. Three-way and higher multi-way clustering.
 4. Complete `separation` methods for `ppmlhdfe` (`ir`, `simplex`, `mu`).
 5. CUE estimator for `ivreghdfe`.
+6. HAC standard errors (`dkraay`) for `ivreghdfe`.
 
 ---
 

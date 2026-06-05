@@ -32,6 +32,7 @@ result = csdid(
 | `xvars` | `list[str]` | Covariates for doubly-robust estimation |
 | `vce` | `str` | `"cluster"` only |
 | `cluster` | `str` | Cluster variable (defaults to `id`) |
+| `notyet` | `bool` | Use not-yet-treated units as control group (supported for `method="reg"`) |
 | `aggtype` | `str` | `"event"`, `"simple"`, `"group"`, `"calendar"`, or `"pretrend"` (defaults to `"event"`) |
 
 ## Supported Result Fields
@@ -44,6 +45,7 @@ ATT(g,t) estimates, event-study / simple / group / calendar aggregation coeffici
 - `aggtype="dynamic"` (already covered by `event`)
 - `gtcontrol` (control group strategy)
 - `longdiff` (long-difference pre-trends)
+- `window`, `minn`
 
 ## Explicitly Unsupported Parameters
 
