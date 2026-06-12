@@ -548,3 +548,45 @@ Make the four DID real-data golden tests dynamically generate their Stata eviden
 
 ### Concerns / Blockers
 - None. The static logs were untracked, so no repository content needed removal beyond dropping the test references.
+
+---
+
+## 2026-06-12 — Task 6.2 (P1-8 VCE-002/003/004): HDFE / reghdfe 2-way cluster `_cons` SE
+
+**Status**: ✅ Documented as Open / Known limitation (not fixed).
+
+### Scope
+- Either fix the remaining HDFE MAP / 2-way cluster `_cons` SE deviation, or formally document it as a known limitation with an ADR.
+
+### Attempted fix
+- Tried changing ` AbsorbingOLS._compute_map_constant_variance()` multi-way cluster call from `k_eff=1` to `self._cluster_k_eff(k_x)`.
+- The change did not affect the failing tests because those datasets fall below the MAP threshold and use the LSDV path.
+- The residual deviation is structural (LSDV/T-matrix vs Stata reghdfe iterative-demeaning framework) and not resolved by a small-sample adjustment change.
+
+### Modified files
+- `tests/golden/test_w7_reghdfe_2way_cluster.py`
+  - Marked `test_coefficients_std_err_2way` as `xfail` with reason `VCE-003: 2-way cluster _cons SE MAP approximation (known limitation)`.
+- `tests/golden/test_w7_reghdfe_2way_cluster_real.py`
+  - Marked `test_coefficients_std_err_2way` as `xfail` for the same reason.
+- `docs/adr/vce-003-2way-cluster-cons-se-known-limitation.md`
+  - New ADR documenting the observed deviations, root cause, fix options, and acceptance decision.
+- `docs/audit/revalidation-v1.2/REMEDIATION_REPORT.md`
+  - Updated VCE-002/003/004 rows to `Open / Known limitation`.
+
+### Observed deviations
+| Dataset | Python `_cons` SE | Stata 17 `_cons` SE | Relative diff |
+|---------|-------------------|---------------------|---------------|
+| Synthetic 2-way cluster | 0.015478144461213 | 0.014334820000000 | 7.98% |
+| Real wagepan 2-way cluster | 0.007808456596193 | 0.008346020000000 | 6.44% |
+
+All slope SEs, coefficients, R², adjusted R², RMSE, and F-statistics continue to match Stata at `<1e-6`.
+
+### Validation
+- `pytest tests/golden/test_w7_reghdfe_2way_cluster.py tests/golden/test_w7_reghdfe_2way_cluster_real.py tests/golden/test_p3_reghdfe_cluster.py tests/golden/test_p3_reghdfe_real_panel.py tests/golden/test_w12_map_small_sample.py -v` → 67 passed, 2 xfailed.
+- `pytest tests/ --ignore=tests/golden/ --ignore=tests/benchmarks/ -q` → 339 passed.
+- `python -m compileall -q src/stataflow` → clean.
+- `git diff --check` → only LF/CRLF conversion warnings, no whitespace errors.
+
+### Git commit
+- SHA: `df10d9a`
+- Message: `docs(vce-003): document HDFE 2-way cluster _cons SE as known limitation`
