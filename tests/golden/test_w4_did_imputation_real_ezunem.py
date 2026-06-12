@@ -9,7 +9,7 @@ from tests.golden.test_utils import tolerance_close
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 STATA_LOG = PROJECT_ROOT / "stata" / "output" / "realdata_did_imputation_ezunem.log"
-DATA_FILE = PROJECT_ROOT / "research" / "data" / "public" / "did" / "ezunem_prepared.dta"
+DATA_FILE = PROJECT_ROOT / "research" / "data" / "public" / "did" / "ezunem_prepared_didimp.dta"
 
 
 def _parse_did_imputation_log(log_content: str) -> dict:
@@ -44,7 +44,7 @@ class TestW4DIDImputationRealEzunem:
             time='year',
             first_treat='first_treat',
         )
-        return model.fit(cluster='city', allhorizons=True, autosample=True)
+        return model.fit(cluster='city', allhorizons=True, autosample=True, minn=0)
 
     @pytest.fixture(scope="class")
     def stata_result(self):
@@ -80,3 +80,8 @@ class TestW4DIDImputationRealEzunem:
     def test_nobs(self, python_result, stata_result):
         passed, msg = tolerance_close(python_result.sample.nobs, stata_result['nobs'], name='nobs')
         assert passed, msg
+
+    def test_sample_mask_invariants(self, python_result):
+        mask = python_result.sample.sample_mask
+        assert len(mask) == python_result.sample.n_input_rows
+        assert sum(mask) == python_result.sample.nobs

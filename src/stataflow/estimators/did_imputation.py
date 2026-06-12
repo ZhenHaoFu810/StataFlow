@@ -100,20 +100,8 @@ class DIDImputation:
             raise ValueError("sum cannot be combined with autosample")
 
         df = self.data.copy()
-
-        # Warn about first_treat encoding compatibility with Stata
-        min_time = df[self.time_var].min()
-        has_never_treated = (df[self.first_treat_var] <= 0).any()
-        if has_never_treated and min_time > 0:
-            import warnings
-            warnings.warn(
-                "Detected first_treat <= 0 with time starting at a positive value. "
-                "Stata's did_imputation treats first_treat=0 as treatment in period 0, "
-                "which may produce different results from Python (which treats first_treat<=0 as never-treated). "
-                "To match Stata exactly on the same data, consider setting first_treat to missing for never-treated units.",
-                UserWarning,
-                stacklevel=2,
-            )
+        n_input_rows = len(df)
+        df["_stataflow_row_id"] = np.arange(n_input_rows)
 
         # Sample screening: drop rows with missing key variables
         key_vars = [self.y_var, self.id_var, self.time_var, self.first_treat_var]
@@ -128,12 +116,24 @@ class DIDImputation:
         mask = df[all_vars].notna().all(axis=1)
         df = df.loc[mask].copy()
 
+        # Align first_treat semantics with Stata's native did_imputation command:
+        # - Missing values are dropped by the screening above.
+        # - Zero or negative values mark never-treated units (control group).
+        # - Positive values mark treated cohorts.
+        ft = df[self.first_treat_var]
+        ever_treated_mask = ft > 0
+
         # Compute treatment indicator and relative time
-        df["_D"] = (df[self.time_var] >= df[self.first_treat_var]).astype(int)
-        df.loc[df[self.first_treat_var] <= 0, "_D"] = 0
-        df["_K_all"] = df[self.time_var] - df[self.first_treat_var]
-        df["_K"] = df[self.time_var] - df[self.first_treat_var]
-        df.loc[df[self.first_treat_var] <= 0, "_K"] = np.nan
+        df["_D"] = 0
+        df.loc[ever_treated_mask, "_D"] = (
+            df.loc[ever_treated_mask, self.time_var]
+            >= df.loc[ever_treated_mask, self.first_treat_var]
+        ).astype(int)
+        df["_K"] = np.nan
+        df.loc[ever_treated_mask, "_K"] = (
+            df.loc[ever_treated_mask, self.time_var]
+            - df.loc[ever_treated_mask, self.first_treat_var]
+        )
 
         # Construct pretreatment dummies for pretrends test
         pretrend_cols = []
@@ -418,7 +418,13 @@ class DIDImputation:
         for tr in tau_results:
             if not tr.get("dropped", False):
                 effective_sample_mask = effective_sample_mask | tr["effective_mask"]
-        nobs_all = int(effective_sample_mask.sum())
+
+        # Map the effective sample back to original input rows so that
+        # sample_mask has length n_input_rows and sum(sample_mask) == nobs.
+        kept_row_ids = set(df.loc[effective_sample_mask, "_stataflow_row_id"].values)
+        final_sample_mask = [rid in kept_row_ids for rid in range(n_input_rows)]
+        nobs_all = len(kept_row_ids)
+        df = df.drop(columns=["_stataflow_row_id"])
 
         # Compute standard errors
         if cluster:
@@ -522,7 +528,8 @@ class DIDImputation:
 
         sample_info = SampleInfo(
             nobs=nobs_all,
-            n_input_rows=nobs_all,
+            n_input_rows=n_input_rows,
+            sample_mask=final_sample_mask,
         )
 
         fit_info = FitInfo(
@@ -530,14 +537,15 @@ class DIDImputation:
             df_resid=float(nobs_all - 1) if cluster else float(nobs_all),
         )
 
-        # Covariance matrix (only for non-dropped coefficients)
-        active_coeffs = [c for c in coefficients if c.std_err > 0]
-        cov = np.zeros((len(active_coeffs), len(active_coeffs)))
-        for i, c in enumerate(active_coeffs):
+        # Covariance matrix for all reported coefficients.
+        # Dropped coefficients (std_err == 0) remain in the matrix with zero
+        # variance so that coefficients and variance row_names stay aligned.
+        cov = np.zeros((len(coefficients), len(coefficients)))
+        for i, c in enumerate(coefficients):
             cov[i, i] = c.std_err ** 2
 
         variance_info = VarianceInfo(
-            row_names=[c.name for c in active_coeffs],
+            row_names=[c.name for c in coefficients],
             values=cov.tolist(),
         )
 
