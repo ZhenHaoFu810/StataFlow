@@ -416,3 +416,103 @@ stata/output/phase2/
 - 后续若继续开发，应进入：
   - `v1.2.0+` 展示层 / AP-SW F 补齐
   - 或 Wave 12 / HDFE 内核重构
+
+---
+
+## 2026-06-12 — Task 2.1 (P1-3 SCHEMA-001): ResultSchema invariant validation
+
+### Scope
+- Add strict invariant validation to `ResultSchema.validate()`.
+- Ensure `ResultSchema.from_dict()` / `from_json()` call `validate()` on deserialization.
+- Add regression tests that fail before the fix and pass after.
+
+### Modified files
+- `src/stataflow/results/result.py`
+  - Added `validate()` checks for:
+    - `len(coefficients) == len(row_names)`
+    - 2-D square VCE (NumPy or list-of-lists), rejecting ragged rows
+    - coefficient names match `row_names` in order (element-wise)
+    - `len(sample_mask) == n_input_rows`
+    - `sum(sample_mask) == nobs` when mask is non-empty
+  - `from_dict()` now calls `validate()` before returning.
+- `tests/test_result_schema.py`
+  - Added `test_result_schema_validate` with positive and negative cases.
+  - Updated existing round-trip tests to satisfy the new invariants.
+- `src/stataflow/estimators/rdrobust.py`
+  - Aligned VCE dimensions with the 3 coefficient rows (Conventional / Bias-Corrected / Robust).
+  - Fixed `sample_mask` to exclude rows dropped by non-positive frequency weights.
+- `src/stataflow/estimators/csdid.py`
+  - Filtered `used_rows` to pairs actually present after missing-value drops.
+  - Fixed `_build_sample_mask()` to return all-`False` when no rows are used.
+
+### Validation
+- `pytest tests/test_result_schema.py -v` → 6 passed
+- `pytest tests/ --ignore=tests/golden/ --ignore=tests/benchmarks/ -q` → 323 passed, 28 warnings
+- `python -m compileall -q src/stataflow` → clean
+
+### Git commit
+- SHA: `45ae32e`
+- Message: `fix(schema): enforce ResultSchema invariants and validate on deserialization`
+
+## 2026-06-12 — Task 3.1 (P1-4 DID-004) + Task 3.2 (P1-7 DID-001): DID sample mask and first_treat semantics
+
+### Scope
+- Fix DID imputation sample mask / nobs consistency so `len(sample_mask) == n_input_rows` and `sum(sample_mask) == nobs`.
+- Align `first_treat` semantics with Stata's native `did_imputation` encoding: missing values dropped, zero or negative values as never-treated, positive values as treated cohorts.
+- Document the encoding explicitly in the Stata-compatible wrapper and add regression tests.
+
+### Modified files
+- `src/stataflow/estimators/did_imputation.py`
+  - Added `_stataflow_row_id` before missing-value screening.
+  - Mapped the post-autosample effective sample back to original rows to build a length-`n_input_rows` boolean `sample_mask`.
+  - Aligned `first_treat` semantics: missing dropped by screening, `<= 0` treated as never-treated, `> 0` as treated cohorts.
+  - Removed the obsolete warning about `first_treat < 0`.
+  - Included all reported coefficients (including dropped horizons) in the variance matrix so `ResultSchema.validate()` invariants hold.
+- `src/stataflow/compat/stata/did.py`
+  - Documented `first_treat` encoding in the `did_imputation()` wrapper and stated that no silent recoding is performed.
+- `tests/test_compat_stata_did.py`
+  - Updated helper comments and never-treated dummies to reflect the new semantics.
+  - Added `test_did_imputation_sample_mask_nobs_consistency` (n_input_rows=5, autosample drops 1 row, nobs=4).
+  - Added `test_did_imputation_first_treat_zero_negative_never_treated`.
+  - Added `test_did_imputation_first_treat_missing_dropped`.
+  - Added `test_did_imputation_negative_zero_time_values`.
+- `tests/golden/test_w4_did_imputation_real_ezunem.py`
+  - Added `test_sample_mask_invariants` asserting `len(mask) == n_input_rows` and `sum(mask) == nobs`.
+
+### Validation
+- `pytest tests/test_compat_stata_did.py -v` → 62 passed, 14 warnings
+- `pytest tests/golden/test_w4_did_imputation_real_ezunem.py -v` → 5 passed, 2 warnings
+- `pytest tests/ --ignore=tests/golden/ --ignore=tests/benchmarks/ -q` → 337 passed, 53 warnings
+- `python -m compileall -q src/stataflow` → clean
+- `git diff --check` → no whitespace errors (only LF/CRLF conversion warning for the golden test file)
+
+### Git commit
+- SHA: `ccaeb9f`
+- Message: `fix(did): align first_treat semantics and sample mask contract (DID-004/DID-001)`
+
+### 2026-06-12 — Task 4.1 CSDID custom cluster missing screening & sample consistency (P1-6)
+
+- **Files changed**:
+  - `src/stataflow/estimators/csdid.py`
+    - `_check_cluster_consistency()`: validates that a user-provided cluster variable is constant within each unit.
+    - `_fit_reg()` / `_fit_dr()`: include the cluster variable in the initial `dropna()` screening; raise `ValueError` if the cluster column is missing.
+    - `_fit_reg()` / `_fit_dr()`: compute `_n_clust` from the units actually used in the final estimation sample, so `cluster_count`, `nobs`, and `sample_mask` all refer to the same sample.
+    - `estat_event()`: uses the pre-computed `_n_clust` for diagnostics / `df_resid` while keeping the cluster indicator matrix over all units (zero rows for unused units do not affect the covariance).
+    - `estat_pretrend()`: builds the IF matrix over `len(self._units)` and scales the covariance by the number of clusters, fixing a dimension mismatch when custom cluster count differs from unit count.
+  - `tests/test_compat_stata_did.py`
+    - Added `test_csdid_cluster_missing_dropped`: rows with missing cluster values are excluded from `nobs` and `sample_mask`.
+    - Added `test_csdid_cluster_varies_within_unit`: a unit with two cluster values raises `ValueError("cluster variable varies within unit")`.
+  - `tests/golden/test_w4_csdid_real_ezunem.py`
+    - Added `test_sample_mask_nobs_consistency`.
+  - `tests/golden/test_w9_csdid_dr_real_ezunem.py`
+    - Added `test_sample_mask_nobs_consistency`.
+
+- **Validation**:
+  - `pytest tests/test_compat_stata_did.py -v` → 64 passed, 14 warnings
+  - `pytest tests/golden/test_w4_csdid_real_ezunem.py tests/golden/test_w9_csdid_dr_real_ezunem.py -v` → 10 passed, 18 warnings
+  - `pytest tests/ --ignore=tests/golden/ --ignore=tests/benchmarks/ -q` → 339 passed, 53 warnings
+  - `python -m compileall -q src/stataflow` → clean
+
+- **Git commit**:
+  - SHA: `de5e45d`
+  - Message: `fix(csdid): include cluster in missing screening, enforce within-unit constancy, align nobs/mask/cluster count`

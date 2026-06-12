@@ -108,3 +108,7 @@ class TestW4CSDIDRealEzunem:
     def test_nobs(self, python_result, stata_result):
         passed, msg = tolerance_close(python_result.sample.nobs, stata_result['nobs'], name='nobs')
         assert passed, msg
+
+    def test_sample_mask_nobs_consistency(self, python_result):
+        assert len(python_result.sample.sample_mask) == python_result.sample.n_input_rows
+        assert sum(python_result.sample.sample_mask) == python_result.sample.nobs

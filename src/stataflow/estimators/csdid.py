@@ -56,6 +56,17 @@ class CSDID:
                 "Each unit must have a single first_treat value."
             )
 
+    def _check_cluster_consistency(self, df, uid, cluster_col):
+        """Raise ValueError if the cluster variable varies within a unit."""
+        if cluster_col is None or cluster_col == uid:
+            return
+        if cluster_col not in df.columns:
+            raise ValueError(f"cluster variable '{cluster_col}' not found in data")
+        nunique = df.groupby(uid)[cluster_col].nunique()
+        inconsistent = nunique[nunique > 1]
+        if len(inconsistent) > 0:
+            raise ValueError("cluster variable varies within unit")
+
     def _build_sample_mask(self) -> list[bool]:
         """Build sample mask from used_rows and cleaned dataframe."""
         if self._df_clean is None:
@@ -113,9 +124,12 @@ class CSDID:
         time = self.time_name
         ft = self.first_treat_name
 
-        # Drop missings in key variables
+        # Drop missings in key variables (cluster participates in screening)
+        cluster_col = cluster if cluster is not None else uid
+        if cluster_col not in df.columns:
+            raise ValueError(f"cluster variable '{cluster_col}' not found in data")
         df["_stataflow_row_id"] = np.arange(len(df))
-        df = df.dropna(subset=[y, uid, time, ft])
+        df = df.dropna(subset=[y, uid, time, ft, cluster_col])
 
         cohorts = sorted([g for g in df[ft].unique() if g > 0])
         years = sorted(df[time].unique())
@@ -137,6 +151,9 @@ class CSDID:
                 f"CSDID requires a balanced panel with one observation per unit-time. "
                 f"Examples: {example_str}"
             )
+
+        # Validate cluster is constant within unit before grouping
+        self._check_cluster_consistency(df, uid, cluster_col)
 
         # Wide format for influence function convenience
         df_wide = df.pivot(index=uid, columns=time, values=y)
@@ -253,9 +270,13 @@ class CSDID:
         self._nobs = len(used_rows)
         self._used_rows = used_rows
         self._df_clean = df.copy()
-        cluster_col = cluster if cluster is not None else uid
-        self._n_clust = int(df[cluster_col].nunique()) if cluster_col in df.columns else n_units
         self._cluster_var = cluster_col
+        # Cluster count is computed from the final estimation sample
+        used_units = {u for u, _ in used_rows}
+        if cluster_col == uid:
+            self._n_clust = len(used_units)
+        else:
+            self._n_clust = int(df.loc[df[uid].isin(used_units), cluster_col].nunique())
         return self._finalize_fit(att_gt, if_gt, df, units, cohort_map, has_never_treated)
 
     def _finalize_fit(self, att_gt, if_gt, df, units, cohort_map, has_never_treated):
@@ -406,9 +427,12 @@ class CSDID:
                 "method='drimp' requires xvars. Pass xvars to CSDID() or fit()."
             )
 
-        # Drop missings in key variables
+        # Drop missings in key variables (cluster participates in screening)
+        cluster_col = cluster if cluster is not None else uid
+        if cluster_col not in df.columns:
+            raise ValueError(f"cluster variable '{cluster_col}' not found in data")
         df["_stataflow_row_id"] = np.arange(len(df))
-        df = df.dropna(subset=[y, uid, time, ft] + xvars)
+        df = df.dropna(subset=[y, uid, time, ft, cluster_col] + xvars)
 
         cohorts = sorted([g for g in df[ft].unique() if g > 0])
         years = sorted(df[time].unique())
@@ -430,6 +454,9 @@ class CSDID:
                 f"CSDID requires a balanced panel with one observation per unit-time. "
                 f"Examples: {example_str}"
             )
+
+        # Validate cluster is constant within unit before grouping
+        self._check_cluster_consistency(df, uid, cluster_col)
 
         # Wide format for influence function convenience
         df_wide = df.pivot(index=uid, columns=time, values=y)
@@ -582,9 +609,13 @@ class CSDID:
         self._nobs = len(used_rows)
         self._used_rows = used_rows
         self._df_clean = df.copy()
-        cluster_col = cluster if cluster is not None else uid
-        self._n_clust = int(df[cluster_col].nunique()) if cluster_col in df.columns else n_units
         self._cluster_var = cluster_col
+        # Cluster count is computed from the final estimation sample
+        used_units = {u for u, _ in used_rows}
+        if cluster_col == uid:
+            self._n_clust = len(used_units)
+        else:
+            self._n_clust = int(df.loc[df[uid].isin(used_units), cluster_col].nunique())
         return self._finalize_fit(
             att_gt, if_gt, df, units, cohort_map, has_never_treated
         )
@@ -681,17 +712,19 @@ class CSDID:
             unit_to_cluster = self._df_clean.set_index(uid, drop=False)[cluster_col].to_dict()
             cluster_ids = [unit_to_cluster.get(u) for u in self._units]
             cluster_unique = sorted({c for c in cluster_ids if c is not None})
-            n_clust = len(cluster_unique)
-            if n_clust > 0:
-                C = np.zeros((n_units_total, n_clust))
+            if len(cluster_unique) > 0:
+                C = np.zeros((n_units_total, len(cluster_unique)))
                 for i, c in enumerate(cluster_ids):
                     if c is not None:
                         C[i, cluster_unique.index(c)] = 1.0
+                n_clust = getattr(self, "_n_clust", len(cluster_unique))
             else:
                 use_cluster = False
                 C = None
+                n_clust = getattr(self, "_n_clust", n_units_total)
         else:
             C = None
+            n_clust = getattr(self, "_n_clust", n_units_total)
 
         cov = np.zeros((len(active_names), len(active_names)))
         for i in range(len(active_names)):
@@ -900,17 +933,18 @@ class CSDID:
                 df=0,
             )
 
-        n = self._n_clust
+        n_units_total = len(self._units)
+        n_clust = self._n_clust if self._n_clust > 0 else n_units_total
         pre_est = np.array([self._event_est[e] for e in pre_events])
 
         # Build IF matrix: (n_pre_events, n_units)
-        pre_if = np.zeros((len(pre_events), n))
+        pre_if = np.zeros((len(pre_events), n_units_total))
         for i, e in enumerate(pre_events):
             for j, u in enumerate(self._units):
                 pre_if[i, j] = self._event_rif[e][u] - self._event_est[e]
 
-        # Covariance matrix
-        cov = (pre_if @ pre_if.T) / (n ** 2)
+        # Covariance matrix (cluster-robust scaling by number of clusters)
+        cov = (pre_if @ pre_if.T) / (n_clust ** 2)
 
         try:
             inv_cov = np.linalg.inv(cov)

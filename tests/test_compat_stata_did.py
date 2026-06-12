@@ -1427,3 +1427,35 @@ def test_csdid_rejects_inconsistent_first_treat():
     })
     with pytest.raises(ValueError, match="not constant within unit"):
         csdid(df, y="y", id="id", time="time", first_treat="first_treat")
+
+
+def test_csdid_cluster_missing_dropped():
+    """Rows with missing cluster values must be excluded from the estimation sample."""
+    df = _make_csdid_data(n_units=30, n_periods=5)
+    df["cluster"] = np.repeat(np.arange(30) // 3, 5)
+    # Units 0-4 have missing cluster values for all their rows
+    df.loc[df["id"] < 5, "cluster"] = np.nan
+    model = csdid(
+        df, y="y", id="id", time="time", first_treat="first_treat",
+        cluster="cluster",
+    )
+    res = model.estat("event")
+    missing_rows = df["cluster"].isna()
+    assert len(res.sample.sample_mask) == len(df)
+    assert sum(res.sample.sample_mask) == res.sample.nobs
+    assert all(not m for m in np.array(res.sample.sample_mask)[missing_rows.values])
+    # Cluster count is computed from the final estimation sample
+    assert res.diagnostics.cluster_count <= df.loc[~missing_rows, "cluster"].nunique()
+
+
+def test_csdid_cluster_varies_within_unit():
+    """CSDID must raise ValueError when a unit has varying cluster values."""
+    df = _make_csdid_data(n_units=20, n_periods=4)
+    df["cluster"] = np.repeat(np.arange(20) // 2, 4)
+    # Make unit 0 inconsistent across time
+    df.loc[(df["id"] == 0) & (df["time"] == 1), "cluster"] = 999
+    with pytest.raises(ValueError, match="cluster variable varies within unit"):
+        csdid(
+            df, y="y", id="id", time="time", first_treat="first_treat",
+            cluster="cluster",
+        )
