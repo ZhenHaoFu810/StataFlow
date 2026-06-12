@@ -256,3 +256,32 @@ def test_poisson_cluster_vce_uses_mle_cluster_adjustment():
     g_adj = len(np.unique(groups)) / (len(np.unique(groups)) - 1)
 
     assert np.allclose(np.asarray(res.variance.values), g_adj * bread @ meat @ bread, rtol=1e-12, atol=1e-12)
+
+
+def test_logit_empty_x_no_constant_raises():
+    """Logit with empty x and no constant should raise ValueError."""
+    df = pd.DataFrame({"y": [0.0, 1.0], "x": [1.0, 2.0]})
+    with pytest.raises(ValueError, match="0 columns"):
+        Logit(df, "y", [], add_constant=False).fit()
+
+
+def test_logit_single_cluster_rejected():
+    """VCE-001: single cluster must be rejected for logit."""
+    df = pd.DataFrame({
+        "y": [0, 1, 0, 1, 0, 1],
+        "x": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+        "clust": [1, 1, 1, 1, 1, 1],
+    })
+    with pytest.raises(ValueError, match="at least 2 clusters"):
+        logit(df, y="y", x=["x"], vce="cluster", cluster="clust")
+
+
+def test_poisson_single_cluster_rejected():
+    """VCE-001: single cluster must be rejected for poisson."""
+    df = pd.DataFrame({
+        "y": [1, 2, 0, 3, 1, 2],
+        "x": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+        "clust": [1, 1, 1, 1, 1, 1],
+    })
+    with pytest.raises(ValueError, match="at least 2 clusters"):
+        poisson(df, y="y", x=["x"], vce="cluster", cluster="clust")

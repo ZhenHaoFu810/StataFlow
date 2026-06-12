@@ -179,7 +179,12 @@ class OLS:
             X_cols.append(np.ones(len(df)))
             self._coef_names.append("_cons")
 
-        X = np.column_stack(X_cols)
+        X = np.column_stack(X_cols) if X_cols else np.zeros((len(df), 0))
+
+        if X.shape[0] == 0:
+            raise ValueError("No observations remain after sample screening (all rows have missing values).")
+        if X.shape[1] == 0:
+            raise ValueError("Design matrix has 0 columns after sample screening. No regressors available.")
 
         # Detect collinearity
         X, dropped = self._detect_collinearity(X, self._coef_names)
@@ -323,10 +328,10 @@ class OLS:
             # X' Omega X = sum_i (x_i * e_i^2 * x_i')
             e_sq = residuals ** 2
             if w is not None:
-                # For weighted regression, apply weight adjustment
-                # HC1 with weights: n/(n-k) * (X'WX)^{-1} * (X' W Omega W X) * (X'WX)^{-1}
-                # where the "meat" accounts for the weighting
-                XtOmegaX = (X_w * e_sq[:, np.newaxis]).T @ X_w
+                # Weighted robust VCE aligned with Stata's [aweight] + robust:
+                # score contribution is w_i * x_i * e_i, so the meat is
+                # sum_i (w_i * x_i * e_i) (w_i * x_i * e_i)' = X' W^2 Omega X
+                XtOmegaX = (X * ((w ** 2) * e_sq)[:, np.newaxis]).T @ X
             else:
                 XtOmegaX = (X * e_sq[:, np.newaxis]).T @ X
 
@@ -341,7 +346,9 @@ class OLS:
             XtX_inv = np.linalg.inv(XtX)
 
             n_adj = (n - 1) / (n - k) if n > k else 1.0
-            X_meat = X_w if w is not None else X
+            # Weighted cluster VCE: score contribution is w_i * x_i * e_i.
+            # Use full-weighted design matrix for the meat.
+            X_meat = X * w[:, np.newaxis] if w is not None else X
 
             if isinstance(cluster_arr, list):
                 # Multi-way clustering (Cameron-Gelbach-Miller 2011)
@@ -352,8 +359,12 @@ class OLS:
                 V_parts = []
                 for c_arr in cluster_arr:
                     meat, G = compute_cluster_meat(X_meat, residuals, c_arr)
+                    if G <= 1:
+                        raise ValueError(
+                            f"multi-way cluster-robust VCE requires at least 2 clusters in each dimension, found {G}"
+                        )
                     cluster_counts.append(G)
-                    g_adj = G / (G - 1) if G > 1 else 1.0
+                    g_adj = G / (G - 1)
                     V_i = n_adj * g_adj * XtX_inv @ meat @ XtX_inv
                     V_parts.append(V_i)
 
@@ -377,7 +388,11 @@ class OLS:
                 from stataflow.estimators._vce_utils import compute_cluster_meat
 
                 meat, cluster_count = compute_cluster_meat(X_meat, residuals, cluster_arr)
-                g_adj = cluster_count / (cluster_count - 1) if cluster_count > 1 else 1.0
+                if cluster_count <= 1:
+                    raise ValueError(
+                        f"cluster-robust VCE requires at least 2 clusters, found {cluster_count}"
+                    )
+                g_adj = cluster_count / (cluster_count - 1)
                 cov_beta = n_adj * g_adj * XtX_inv @ meat @ XtX_inv
 
             # For cluster VCE, df_resid based on number of clusters
@@ -406,9 +421,18 @@ class OLS:
         if df_model > 0:
             if vce == "ols":
                 # Conventional F-statistic
-                f_stat = (mss / df_model) / (rss / df_resid)
-                from scipy.stats import f as f_dist
-                f_pvalue = 1 - f_dist.cdf(f_stat, dfn=df_model, dfd=df_resid)
+                if rss == 0:
+                    # Perfect fit: F is +inf, p-value is 0 (Stata behavior)
+                    f_stat = float("inf")
+                    f_pvalue = 0.0
+                elif df_resid == 0:
+                    # No residual degrees of freedom
+                    f_stat = None
+                    f_pvalue = None
+                else:
+                    f_stat = (mss / df_model) / (rss / df_resid)
+                    from scipy.stats import f as f_dist
+                    f_pvalue = 1 - f_dist.cdf(f_stat, dfn=df_model, dfd=df_resid)
             elif vce == "robust":
                 # Wald F-statistic for robust VCE
                 # F = (1/df_model) * beta' * V_rob^{-1} * beta
@@ -531,6 +555,7 @@ class OLS:
         self._result = result
         result._model = self
 
+        result.validate()
         return result
 
     def predict(self, type: str = "xb", newdata: Optional[pd.DataFrame] = None) -> np.ndarray:

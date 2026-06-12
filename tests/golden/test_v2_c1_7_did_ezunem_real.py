@@ -16,7 +16,7 @@ from tests.golden.test_utils import (
 from stataflow import DIDImputation
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
-EZUNEM_DTA = PROJECT_ROOT / "research" / "data" / "public" / "did" / "ezunem_prepared.dta"
+EZUNEM_DTA = PROJECT_ROOT / "research" / "data" / "public" / "did" / "ezunem_prepared_didimp.dta"
 
 
 def _load_data():
@@ -28,16 +28,17 @@ def _run_stata(data: pd.DataFrame, spec: str) -> dict:
     data.to_stata(str(dta_file), write_index=False)
 
     if spec == "basic":
-        cmd = "did_imputation uclms cityid year first_treat, autosample"
+        cmd = "did_imputation uclms city year first_treat, autosample"
     elif spec == "controls":
-        cmd = "did_imputation uclms cityid year first_treat, autosample controls(c1 c2 c3)"
+        cmd = "did_imputation uclms city year first_treat, autosample controls(c1 c2 c3)"
     else:
-        cmd = "did_imputation uclms cityid year first_treat, autosample pretrends(3)"
+        cmd = "did_imputation uclms city year first_treat, autosample pretrends(3)"
 
     do_template = f'''
 clear all
 set more off
 use "{dta_file}", clear
+replace first_treat = . if first_treat < 0
 {cmd}
 display "E_N=" e(N)
 display "Stata C1_7_{spec.upper()} completed"
@@ -46,6 +47,9 @@ display "Stata C1_7_{spec.upper()} completed"
     result = runner.run_do_file(do_template, output_dir=str(PROJECT_STATA_OUTPUT))
     if result.exit_code != 0:
         raise RuntimeError(f"Stata failed ({spec}): {result.error_message}")
+    log = result.output_content or ""
+    if "r(" in log and ";" in log:
+        raise RuntimeError(f"Stata returned error ({spec}). Log:\n{log}")
     return {"ran": True}
 
 

@@ -114,11 +114,8 @@ class TestA2FactorReghdfeBare:
         for py_coef, st_coef in zip(
             python_result.coefficients, stata_result.get("coefficients", [])
         ):
-            # _cons in multi-FE reghdfe has known algorithm-dependent recovery differences
-            # this particular DGP shows a slightly larger constant recovery gap (~4%)
-            rtol = 5e-2 if py_coef.name == "_cons" else 1e-6
             passed, msg = tolerance_close(
-                py_coef.beta, st_coef["beta"], name=f"beta[{py_coef.name}]", rtol=rtol
+                py_coef.beta, st_coef["beta"], name=f"beta[{py_coef.name}]"
             )
             assert passed, msg
 
@@ -126,8 +123,7 @@ class TestA2FactorReghdfeBare:
         for py_coef, st_coef in zip(
             python_result.coefficients, stata_result.get("coefficients", [])
         ):
-            rtol = 5e-2 if py_coef.name == "_cons" else 1e-6
             passed, msg = tolerance_close(
-                py_coef.std_err, st_coef["std_err"], name=f"std_err[{py_coef.name}]", rtol=rtol
+                py_coef.std_err, st_coef["std_err"], name=f"std_err[{py_coef.name}]"
             )
             assert passed, msg

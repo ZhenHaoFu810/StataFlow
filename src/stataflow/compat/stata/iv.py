@@ -53,9 +53,13 @@ def ivregress_2sls(
     if kwargs:
         raise ValueError(f"Unsupported arguments: {list(kwargs.keys())}")
 
-    data_exog, x_exog_exp = expand_factor_terms(data, x_exog)
-    data_endog, x_endog_exp = expand_factor_terms(data_exog, x_endog)
-    data_inst, instruments_exp = expand_factor_terms(data_endog, instruments)
+    screen_vars = [y] + x_exog + x_endog + instruments
+    if cluster is not None:
+        screen_vars.append(cluster)
+    screen_vars = list(dict.fromkeys(screen_vars))
+    data_exog, x_exog_exp = expand_factor_terms(data, x_exog, screen_vars=screen_vars)
+    data_endog, x_endog_exp = expand_factor_terms(data_exog, x_endog, screen_vars=screen_vars)
+    data_inst, instruments_exp = expand_factor_terms(data_endog, instruments, screen_vars=screen_vars)
 
     model = IV2SLS(
         data=data_inst,
@@ -143,10 +147,21 @@ def ivreghdfe(
     if isinstance(cluster, str) and ' ' in cluster:
         cluster = [c.strip() for c in cluster.split()]
 
-    data_exog, x_exog_exp = expand_factor_terms(data, x_exog)
-    data_endog, x_endog_exp = expand_factor_terms(data_exog, x_endog)
-    data_inst, instruments_exp = expand_factor_terms(data_endog, instruments)
     absorb_vars = parse_absorb(absorb)
+    screen_vars = [y] + x_exog + x_endog + instruments
+    if cluster is not None:
+        if isinstance(cluster, str):
+            screen_vars.append(cluster)
+        else:
+            screen_vars.extend(cluster)
+    for spec in absorb_vars:
+        screen_vars.append(spec.var)
+        for s in spec.slopes:
+            screen_vars.append(s)
+    screen_vars = list(dict.fromkeys(screen_vars))
+    data_exog, x_exog_exp = expand_factor_terms(data, x_exog, screen_vars=screen_vars)
+    data_endog, x_endog_exp = expand_factor_terms(data_exog, x_endog, screen_vars=screen_vars)
+    data_inst, instruments_exp = expand_factor_terms(data_endog, instruments, screen_vars=screen_vars)
 
     model = IVAbsorbingOLS(
         data=data_inst,

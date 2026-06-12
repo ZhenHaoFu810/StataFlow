@@ -83,6 +83,11 @@ class EventStudyInteract:
             raise ValueError(f"vce='{vce}' not supported. Use 'ols' or 'cluster'.")
         if vce == "cluster" and cluster is None:
             raise ValueError("cluster variable required when vce='cluster'.")
+        if len(self.absorb_vars) != 2:
+            raise ValueError(
+                f"EventStudyInteract requires exactly 2 absorb variables (e.g., unit and time), "
+                f"got {len(self.absorb_vars)}: {self.absorb_vars}."
+            )
 
         df = self.data.copy()
 
@@ -97,7 +102,9 @@ class EventStudyInteract:
             key_vars.append(cluster)
         if self.weights_var is not None and self.weights_var not in key_vars:
             key_vars.append(self.weights_var)
+        n_input_rows = len(df)
         mask = df[key_vars].notna().all(axis=1)
+        sample_mask = mask.tolist()
         df = df.loc[mask].copy()
 
         nobs_all = len(df)
@@ -168,7 +175,8 @@ class EventStudyInteract:
         # Residualize y and interaction columns by iterative weighted demeaning within absorb_vars
         def _twfe_residualize(values: np.ndarray, wgt: np.ndarray) -> np.ndarray:
             resid = values.copy()
-            for _ in range(10000):
+            converged = False
+            for iteration in range(10000):
                 max_diff = 0.0
                 for fe_var in self.absorb_vars:
                     df_tmp = pd.DataFrame({'resid': resid, 'w': wgt, 'fe': df[fe_var].values})
@@ -180,7 +188,16 @@ class EventStudyInteract:
                     resid -= means
                     max_diff = max(max_diff, np.nanmax(np.abs(means)))
                 if max_diff < 1e-14:
+                    converged = True
                     break
+            if not converged:
+                import warnings
+                warnings.warn(
+                    f"Iterative demeaning did not converge within 10000 iterations "
+                    f"(last max_diff={max_diff:.3e}). Results may be inaccurate.",
+                    UserWarning,
+                    stacklevel=3,
+                )
             return resid
 
         y_resid = _twfe_residualize(df[self.y_var].values.astype(np.float64), w)
@@ -227,9 +244,9 @@ class EventStudyInteract:
 
         n = len(y_resid)
         k_total = len(interaction_cols)
-        n_id_levels = df[self.absorb_vars[0]].nunique()
-        n_year_levels = df[self.absorb_vars[1]].nunique()
-        k_full = k_total + n_cov + n_id_levels - 1 + n_year_levels - 1
+        # Compute absorbed DOF dynamically for all absorb_vars
+        absorb_dof = sum(int(df[av].nunique()) - 1 for av in self.absorb_vars)
+        k_full = k_total + n_cov + absorb_dof
         k_kept = len(independent)
 
         if vce == "ols":
@@ -253,8 +270,9 @@ class EventStudyInteract:
                 Xe_g = X_g.T @ (sw_g * e_g)
                 meat += np.outer(Xe_g, Xe_g)
 
-            # Small-sample adjustment: id FEs are nested in cluster
-            k_eff = k_kept + n_year_levels - 1
+            # Small-sample adjustment: first absorb_var FEs are nested in cluster
+            nested_dof = sum(int(df[av].nunique()) - 1 for av in self.absorb_vars[1:])
+            k_eff = k_kept + nested_dof
             n_adj = (n - 1) / (n - k_eff) if n > k_eff else 1.0
             g_adj = G / (G - 1) if G > 1 else 1.0
             VV_kept = n_adj * g_adj * XtX_inv @ meat @ XtX_inv
@@ -328,7 +346,7 @@ class EventStudyInteract:
             cluster_var=cluster if cluster else None,
         )
 
-        sample_info = SampleInfo(nobs=nobs_all, n_input_rows=nobs_all)
+        sample_info = SampleInfo(nobs=nobs_all, n_input_rows=n_input_rows, sample_mask=sample_mask)
 
         fit_info = FitInfo(
             df_model=float(n_rel),
@@ -348,7 +366,7 @@ class EventStudyInteract:
             ),
         )
 
-        return ResultSchema(
+        result = ResultSchema(
             model=model_info,
             sample=sample_info,
             fit=fit_info,
@@ -357,3 +375,5 @@ class EventStudyInteract:
             diagnostics=DiagnosticsInfo(),
             provenance=provenance,
         )
+        result.validate()
+        return result

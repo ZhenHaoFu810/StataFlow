@@ -41,7 +41,7 @@ The wrapper layer automatically expands Stata-style factor terms in `x`:
 - `i.g1#i.g2`, `i.g1##i.g2`
 - `i.g1#c.x1`, `i.g1##c.x1`
 
-Unsupported factor syntax (`ib.` without level, `o.` without level, `b.` without level, time-series operators, three-way+ interactions) is hard-rejected with `ValueError`.
+Unsupported factor syntax (`ib.` without level, `o.` without level, `b.` without level, time-series operators are supported). The following remain hard-rejected with `ValueError`.
 
 ## Postestimation (Core Estimator Layer Only)
 

@@ -263,3 +263,23 @@ def test_ivreghdfe_card_cluster_f_stat_matches_stata_small_cluster_path():
     assert np.isclose(one_way.fit.f_stat, 0.36, atol=0.01)
     assert np.isclose(two_way.fit.f_stat, 0.36, atol=0.01)
     assert np.isclose(one_way.fit.f_stat, two_way.fit.f_stat, rtol=1e-10)
+
+
+def test_iv2sls_empty_x_no_constant_raises():
+    """IV2SLS with empty x and no constant should raise ValueError."""
+    df = pd.DataFrame({
+        "y": [1.0, 2.0, 3.0],
+        "z": [1.0, 2.0, 3.0],
+    })
+    with pytest.raises(ValueError, match="0 columns"):
+        IV2SLS(df, "y", [], [], ["z"], add_constant=False).fit()
+
+
+def test_iv2sls_single_cluster_rejected():
+    """VCE-001: single cluster should raise ValueError, not produce pseudo-exact SEs."""
+    df = _make_iv_data(n=50, seed=99)
+    df["cl"] = 1  # all observations in one cluster
+    with pytest.raises(ValueError, match="at least 2 clusters"):
+        IV2SLS(df, "y", x_exog=["x1"], x_endog=["x2"], instruments=["z1"]).fit(
+            vce="cluster", cluster="cl"
+        )

@@ -227,7 +227,7 @@ StataFlow supports Stata-style factor variable notation in all `x` arguments:
 - Bare variables (without `i.` or `c.` prefix) inside `#` / `##` are treated as **continuous**, matching common Stata usage.
 - A bare variable as a main effect (e.g., `x=["x1"]`) is treated according to its dtype.
 
-**Not supported:** `L.x` / `F.x` time-series operators, `ib.` without a level, three-way interactions (`i.g1#i.g2#c.x3`).
+**Not supported:** `L.x` / `F.x` time-series operators, `ib.` without a level. Three-way and higher-order interactions (e.g., `i.g1#i.g2#c.x3`) are supported.
 
 ## 8. Post-Estimation
 

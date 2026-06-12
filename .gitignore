@@ -33,6 +33,15 @@ htmlcov/
 *.gph
 *.lyg
 stata/output/
+stata/cases/*probe*.py
+
+# Temporary build/diagnostic outputs
+dist_tmp/
+Rplots.pdf
+golden_output.txt
+golden_full_output.txt
+vce005_output.txt
+kimi-export-session_*.md
 
 # Workspace reports
 workspace/qwencode-current/*report*.md

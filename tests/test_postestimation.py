@@ -66,7 +66,7 @@ class TestEstatSummarize:
         })
         mask = pd.Series([True, True, False, False, True])
         result = SimpleNamespace(
-            sample=SimpleNamespace(mask=mask),
+            sample=SimpleNamespace(sample_mask=mask),
             coefficients=[SimpleNamespace(name="x1")],
         )
         summary = estat_summarize(result, data, dep_var="y")

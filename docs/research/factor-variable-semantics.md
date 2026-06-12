@@ -43,8 +43,9 @@ The parser hard-rejects the following with a descriptive `ValueError`:
 - `b.<var>` 鈥?base levels without a level number
 - `o.<var>` 鈥?omitted levels without a level number
 - `L.x`, `F.x`, etc. 鈥?time-series operators
-- Three-way or higher-order interactions (e.g., `c.x1#c.x2#c.x3`)
 - Any other unsupported factor term structure
+
+Three-way and higher-order interactions (e.g., `c.x1#c.x2#c.x3`) are supported.
 
 Note: bare variables **inside `#` / `##` are now treated as continuous variables** (`c.`) rather than rejected. This aligns with the most common Stata usage pattern (e.g., `x1##x2` is interpreted as `c.x1##c.x2`).
 

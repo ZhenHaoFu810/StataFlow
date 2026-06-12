@@ -135,3 +135,13 @@ def test_ppmlhdfe_weighted_changes_coefficients():
     betas_u = np.array([c.beta for c in unweighted.coefficients])
     betas_w = np.array([c.beta for c in weighted.coefficients])
     assert not np.allclose(betas_u, betas_w, rtol=1e-6)
+
+
+def test_ppmlhdfe_single_cluster_rejected():
+    """VCE-001: single cluster should raise ValueError, not produce pseudo-exact SEs."""
+    df = _make_ppml_data(n=50, seed=99)
+    df["cl"] = 1  # all observations in one cluster
+    with pytest.raises(ValueError, match="at least 2 clusters"):
+        PPMLHDFE(df, y="y", x=["x1", "x2"], absorb=["g1"]).fit(
+            vce="cluster", cluster="cl"
+        )

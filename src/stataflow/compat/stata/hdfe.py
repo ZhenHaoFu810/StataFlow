@@ -54,8 +54,20 @@ def reghdfe(
     if kwargs:
         raise ValueError(f"Unsupported arguments: {list(kwargs.keys())}")
 
-    data_expanded, x_expanded = expand_factor_terms(data, x)
     absorb_vars = parse_absorb(absorb)
+    screen_vars = [y] + x
+    if cluster is not None:
+        if isinstance(cluster, str):
+            screen_vars.append(cluster)
+        else:
+            screen_vars.extend(cluster)
+    if aweight is not None:
+        screen_vars.append(aweight)
+    for spec in absorb_vars:
+        screen_vars.append(spec.var)
+        for s in spec.slopes:
+            screen_vars.append(s)
+    data_expanded, x_expanded = expand_factor_terms(data, x, screen_vars=list(dict.fromkeys(screen_vars)))
 
     weight_type = None
     weights = None

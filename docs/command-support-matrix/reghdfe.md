@@ -54,7 +54,7 @@ The wrapper layer automatically expands Stata-style factor terms in `x`:
 
 `absorb` also accepts Stata-style space-separated strings (e.g., `absorb="firm year"`) in addition to Python lists.
 
-Unsupported factor syntax (`ib.` without level, `o.` without level, `b.` without level, time-series operators, three-way+ interactions) is hard-rejected with `ValueError`.
+Unsupported factor syntax (`ib.` without level, `o.` without level, `b.` without level, time-series operators are supported). The following remain hard-rejected with `ValueError`.
 
 ## Predict Post-estimation
 

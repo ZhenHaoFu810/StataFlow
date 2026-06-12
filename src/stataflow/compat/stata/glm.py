@@ -35,7 +35,12 @@ def logit(
     if kwargs:
         raise ValueError(f"Unsupported arguments: {list(kwargs.keys())}")
 
-    data_expanded, x_expanded = expand_factor_terms(data, x)
+    screen_vars = [y] + x
+    if cluster is not None:
+        screen_vars.append(cluster)
+    if aweight is not None:
+        screen_vars.append(aweight)
+    data_expanded, x_expanded = expand_factor_terms(data, x, screen_vars=list(dict.fromkeys(screen_vars)))
 
     weights = data[aweight].values if aweight is not None else None
     model = Logit(
@@ -69,7 +74,12 @@ def probit(
     if kwargs:
         raise ValueError(f"Unsupported arguments: {list(kwargs.keys())}")
 
-    data_expanded, x_expanded = expand_factor_terms(data, x)
+    screen_vars = [y] + x
+    if cluster is not None:
+        screen_vars.append(cluster)
+    if aweight is not None:
+        screen_vars.append(aweight)
+    data_expanded, x_expanded = expand_factor_terms(data, x, screen_vars=list(dict.fromkeys(screen_vars)))
 
     weights = data[aweight].values if aweight is not None else None
     model = Probit(
@@ -120,7 +130,12 @@ def poisson(
     if offset is not None:
         raise NotImplementedError("offset is not yet supported in stataflow.poisson")
 
-    data_expanded, x_expanded = expand_factor_terms(data, x)
+    screen_vars = [y] + x
+    if cluster is not None:
+        screen_vars.append(cluster)
+    if aweight is not None:
+        screen_vars.append(aweight)
+    data_expanded, x_expanded = expand_factor_terms(data, x, screen_vars=list(dict.fromkeys(screen_vars)))
 
     weights = data[aweight].values if aweight is not None else None
     model = Poisson(

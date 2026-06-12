@@ -16,7 +16,6 @@ from stataflow.estimators.absorbing_ols import AbsorbingOLS
 
 
 RTOL_SLOPES = 1e-10
-ATOL_CONS_SE_2WAY = 5e-5  # p-vector approximation residual ~0.05%
 
 
 def _make_1way_data(n=10000, seed=42):
@@ -60,7 +59,7 @@ def _make_3way_data(n=10000, seed=456):
     return df
 
 
-def _compare_results(res_lsdv, res_map, rtol=RTOL_SLOPES, atol_cons_se_2way=0.0):
+def _compare_results(res_lsdv, res_map, rtol=RTOL_SLOPES):
     """Compare LSDV and MAP results field by field."""
     # Coefficients
     b_lsdv = np.array([c.beta for c in res_lsdv.coefficients])
@@ -70,7 +69,7 @@ def _compare_results(res_lsdv, res_map, rtol=RTOL_SLOPES, atol_cons_se_2way=0.0)
     # Standard errors
     se_lsdv = np.array([c.std_err for c in res_lsdv.coefficients])
     se_map = np.array([c.std_err for c in res_map.coefficients])
-    assert np.allclose(se_lsdv, se_map, rtol=rtol, atol=atol_cons_se_2way), \
+    assert np.allclose(se_lsdv, se_map, rtol=rtol), \
         f"SE diff={np.max(np.abs(se_lsdv-se_map))}"
 
     # R-squared
@@ -103,43 +102,39 @@ class TestW12Map1Way:
         df = _make_1way_data()
         res_lsdv = AbsorbingOLS(df, "y", ["x1", "x2"], absorb="group", technique="lsdv").fit(vce="cluster", cluster="group")
         res_map = AbsorbingOLS(df, "y", ["x1", "x2"], absorb="group", technique="map").fit(vce="cluster", cluster="group")
-        # Cluster VCE meat matrices differ between LSDV (built on full design
-        # matrix) and MAP (built on partialled-out data).  The slope SEs differ
-        # by ~0.5% for 1-way FE when cluster nests the FE; coefficients and
-        # _cons SE remain exact.  This is a known mathematical gap, not a bug.
-        _compare_results(res_lsdv, res_map, rtol=5e-3)
+        _compare_results(res_lsdv, res_map)
 
 
 class TestW12Map2Way:
-    """2-way FE: p-vector constant variance (slopes exact, _cons SE ~0.05%)."""
+    """2-way FE: MAP and LSDV constant variance now agree to machine precision."""
 
     def test_ols(self):
         df = _make_2way_data()
         res_lsdv = AbsorbingOLS(df, "y", ["x1"], absorb=["worker", "firm"], technique="lsdv").fit(vce="ols")
         res_map = AbsorbingOLS(df, "y", ["x1"], absorb=["worker", "firm"], technique="map").fit(vce="ols")
-        _compare_results(res_lsdv, res_map, atol_cons_se_2way=ATOL_CONS_SE_2WAY)
+        _compare_results(res_lsdv, res_map)
 
     def test_robust(self):
         df = _make_2way_data()
         res_lsdv = AbsorbingOLS(df, "y", ["x1"], absorb=["worker", "firm"], technique="lsdv").fit(vce="robust")
         res_map = AbsorbingOLS(df, "y", ["x1"], absorb=["worker", "firm"], technique="map").fit(vce="robust")
-        _compare_results(res_lsdv, res_map, atol_cons_se_2way=ATOL_CONS_SE_2WAY)
+        _compare_results(res_lsdv, res_map)
 
     def test_cluster(self):
         df = _make_2way_data()
         res_lsdv = AbsorbingOLS(df, "y", ["x1"], absorb=["worker", "firm"], technique="lsdv").fit(vce="cluster", cluster="cluster")
         res_map = AbsorbingOLS(df, "y", ["x1"], absorb=["worker", "firm"], technique="map").fit(vce="cluster", cluster="cluster")
-        _compare_results(res_lsdv, res_map, atol_cons_se_2way=ATOL_CONS_SE_2WAY)
+        _compare_results(res_lsdv, res_map)
 
 
 class TestW12Map3Way:
-    """3-way FE: p-vector constant variance (slopes exact, _cons SE ~0.001%)."""
+    """3-way FE: MAP and LSDV constant variance now agree to machine precision."""
 
     def test_ols(self):
         df = _make_3way_data()
         res_lsdv = AbsorbingOLS(df, "y", ["x1"], absorb=["a", "b", "c"], technique="lsdv").fit(vce="ols")
         res_map = AbsorbingOLS(df, "y", ["x1"], absorb=["a", "b", "c"], technique="map").fit(vce="ols")
-        _compare_results(res_lsdv, res_map, atol_cons_se_2way=ATOL_CONS_SE_2WAY)
+        _compare_results(res_lsdv, res_map)
 
 
 if __name__ == "__main__":

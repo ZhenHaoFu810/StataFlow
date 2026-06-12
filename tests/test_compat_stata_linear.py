@@ -248,3 +248,39 @@ def test_regress_vce_cluster_string_syntax():
     res = regress(df, y="y", x=["x1", "x2"], vce="cluster group")
     assert res.model.vcetype == "cluster"
     assert res.model.cluster_var == "group"
+
+
+def test_regress_empty_x_no_constant_raises():
+    """OLS with empty x and no constant should raise ValueError."""
+    df = pd.DataFrame({"y": [1.0, 2.0], "x": [1.0, 2.0]})
+    with pytest.raises(ValueError, match="0 columns"):
+        OLS(df, "y", [], add_constant=False).fit()
+
+
+def test_regress_all_missing_x_raises():
+    """OLS where all x are missing should raise ValueError."""
+    import numpy as np
+    df = pd.DataFrame({"y": [1.0, 2.0], "x": [np.nan, np.nan]})
+    with pytest.raises(ValueError, match="No observations remain"):
+        OLS(df, "y", ["x"]).fit()
+
+
+def test_fe_empty_x_raises():
+    """FE with empty x should raise ValueError."""
+    df = pd.DataFrame({
+        "y": [1.0, 2.0, 3.0],
+        "id": [1, 1, 2],
+    })
+    with pytest.raises(ValueError, match="0 columns"):
+        FixedEffectsOLS(df, "y", [], "id").fit()
+
+
+def test_regress_single_cluster_rejected():
+    """VCE-001: cluster-robust VCE requires at least 2 clusters."""
+    df = pd.DataFrame({
+        "y": [1.0, 2.0, 3.0, 4.0],
+        "x": [1.0, 2.0, 3.0, 4.0],
+        "clust": [1, 1, 1, 1],
+    })
+    with pytest.raises(ValueError, match="at least 2 clusters"):
+        regress(df, y="y", x=["x"], vce="cluster clust")

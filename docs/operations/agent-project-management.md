@@ -508,6 +508,9 @@ pytest tests/ -v --ignore=tests/golden/ --ignore=tests/benchmarks/
 
 需要本地 Stata 17：
 
+本机 Stata 的发现、调用、smoke test、日志判定和故障排查，统一遵循
+[`local-stata-invocation.md`](./local-stata-invocation.md)。不要让 Agent 自行猜测安装路径或重写启动逻辑。
+
 ```powershell
 Set-Location "D:/OneDrive - SAIF/PhD3/StataFlow"
 $env:PYTHONPATH='D:\OneDrive - SAIF\PhD3\StataFlow\src'

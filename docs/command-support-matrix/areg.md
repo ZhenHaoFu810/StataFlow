@@ -37,7 +37,7 @@ The wrapper layer automatically expands Stata-style factor terms in `x`:
 - `i.g1#i.g2`, `i.g1##i.g2`
 - `i.g1#c.x1`, `i.g1##c.x1`
 
-Unsupported factor syntax (`ib#.`, `o.`, `b.`, time-series operators, three-way+ interactions) is hard-rejected with `ValueError`.
+Unsupported factor syntax (`ib#.`, `o.`, `b.`, time-series operators are supported). The following remain hard-rejected with `ValueError`.
 
 ## Planned Parameters
 

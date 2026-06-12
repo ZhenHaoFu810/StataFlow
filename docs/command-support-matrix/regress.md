@@ -53,7 +53,7 @@ The wrapper layer automatically expands Stata-style factor terms in `x`:
 - `x1#x2`, `x1##x2` (bare variables inside `#` / `##` are treated as continuous)
 - `x1##i.g`, `i.g##x1` (mixed bare continuous and categorical)
 
-Unsupported factor syntax (`ib.` without level, `o.` without level, `b.` without level, time-series operators, three-way+ interactions) is hard-rejected with `ValueError`.
+Unsupported factor syntax (`ib.` without level, `o.` without level, `b.` without level, time-series operators are supported). The following remain hard-rejected with `ValueError`.
 
 ## Alignment Evidence
 

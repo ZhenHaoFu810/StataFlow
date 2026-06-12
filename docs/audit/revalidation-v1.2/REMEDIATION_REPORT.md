@@ -25,11 +25,12 @@
 | VCE-003 | P1 | Open / Known limitation | HDFE 2-way cluster `_cons` 标准误偏差（LSDV/MAP 框架与 Stata reghdfe 迭代去均值框架的结构性差异） | `docs/adr/vce-003-2way-cluster-cons-se-known-limitation.md`；`tests/golden/test_w7_reghdfe_2way_cluster.py`；`tests/golden/test_w7_reghdfe_2way_cluster_real.py` | 合成 7.98%，真实 6.44% | 已 xfail，待 Wave 12 / MAP-LSMR 内核重构 |
 | VCE-004 | P1 | Open / Known limitation | HDFE MAP cluster 差异 | `docs/adr/vce-003-2way-cluster-cons-se-known-limitation.md` | — | 需内核重构 |
 | VCE-005 | P1 | **Fixed** | 加权 sandwich 权重阶数：OLS/HDFE robust meat 用 `w*e²` 而非 `w²*e²`；MAP 路径忽略权重 | `src/stataflow/estimators/ols.py`, `absorbing_ols.py`; 新增 `scripts/verify_vce005_weighted.py` | <1e-7 | PPMLHDFE aweight 未完全双跑 |
+| HDFE-fit (P1-9) | P1 | **Fixed** | reghdfe/areg 的 `rmse_df` / 调整 R² / fit-statistics 与 Stata `used_df_r` 对齐 | `src/stataflow/estimators/absorbing_ols.py`; `tests/golden/test_p3_reghdfe_cluster.py`, `test_p3_reghdfe_real_panel.py`, `test_w7_reghdfe_2way_cluster.py`, `test_w7_reghdfe_2way_cluster_real.py`, `test_w12_map_small_sample.py` | <1e-6 | 无 |
 | IV-001 | P1 | **Fixed** | 欠识别模型缺少 rank gate，抛出 IndexError | `src/stataflow/estimators/iv.py` | — | 无 |
 | IV-002 | P1 | **Fixed** | 与 SAMP-001 同源 | `src/stataflow/estimators/iv.py` | — | 无 |
 | GLM-001 | P1 | **Fixed** | Logit/Probit/Poisson 未校验因变量支持域 | `src/stataflow/estimators/glm.py` | — | 无 |
 | GLM-002 | P1 | **Fixed** | IRLS 不收敛仍返回正常 ResultSchema | `src/stataflow/estimators/glm.py` | — | 无 |
-| GLM-003 | P2 | Open | margins 虚拟变量按连续变量处理 | — | — | — |
+| GLM-003 | P2 | Open / Known limitation | margins 虚拟变量按连续变量处理（未实现 Stata 离散变化；需公共 API 设计） | — | — | 需单独立项设计 factor 元数据传递 |
 | DID-001 | P1 | **Fixed** | `first_treat=0` 被当作从未处理 | `src/stataflow/estimators/did_imputation.py`, `csdid.py`, `tests/test_compat_stata_did.py` | — | 无 |
 | DID-002 | P1 | **Fixed** | CSDID 自定义 cluster 只改元数据，未聚合 IF | `src/stataflow/estimators/csdid.py` | — | 无 |
 | DID-003 | P2 | **Fixed** | `estat_event()` 只构造对角 VCE，丢失事件期估计间协方差 | `src/stataflow/estimators/csdid.py` | — | 无 |
@@ -453,12 +454,35 @@ rdplot margin vote, c(50.0) binselect(qsmv)
 
 ---
 
+### HDFE-fit (P1-9)：reghdfe/areg `rmse_df` 与 fit-statistics
+
+**根因**：`AbsorbingOLS` 在 LSDV/MAP 路径使用统一的 `n - df_model - df_a - cons_penalty` 近似 `rmse_df`，未区分 areg 与 reghdfe 的 Stata 语义：
+- areg 模式 + cluster 嵌套 FE：`used_df_r = N - k_x - 1`（FE 视为冗余）。
+- reghdfe 模式：`used_df_r = N - df_a - df_m - df_a_nested`（与 Stata `reghdfe` 源码一致）。
+这导致 cluster 路径的 RMSE、调整 R² 与 Stata 存在系统性偏差。
+
+**修改**：在 `src/stataflow/estimators/absorbing_ols.py` 中分别实现 areg 与 reghdfe 的 `rmse_df`：
+- areg 无 cluster：`N - k_full`；cluster 嵌套 FE：`N - k_x - 1`。
+- reghdfe：`N - df_a - df_m - df_a_nested`，其中 `df_a_nested` 为嵌套在 cluster 中的 FE levels 数。
+- 同步复核 `_cluster_k_eff()` 的 nested adjustment，使 2-way cluster small-sample 调整使用 `k_x + df_a + nested_adj`。
+
+**Stata 双跑**：
+- `test_p3_reghdfe_cluster.py` / `test_p3_reghdfe_real_panel.py`
+- `test_w7_reghdfe_2way_cluster.py` / `test_w7_reghdfe_2way_cluster_real.py`
+- `test_w12_map_small_sample.py`
+
+系数、标准误（xfail 的 VCE-003 `_cons` SE 除外）、R²、调整 R²、RMSE、F 统计量、自由度均满足 `<1e-6`。
+
+**残余风险**：无（slope 与 fit-statistics 已闭环；`_cons` SE 的 VCE-003 偏差单独列为 Open）。
+
+---
+
 ## 全局验证结果
 
 | 验证项 | 状态 | 结果 |
 |---|---|---|
-| pytest non-golden | **Pass** | 322 passed, 0 failed |
-| pytest golden | **Pass** | 812 passed, 4 skipped, 0 failed, 0 errors in ~20 min 45 s |
+| pytest non-golden (Task 8.1 交付卫生回归) | **Pass** | 339 passed, 0 failed |
+| pytest golden (前期完整双跑) | **Pass** | 812 passed, 4 skipped, 0 failed, 0 errors in ~20 min 45 s |
 | compileall | **Pass** | 无编译错误 |
 | wheel build | **Pass** | 成功构建 wheel |
 | git diff --check | **Pass** | 仅 LF/CRLF 警告，无 trailing whitespace |
@@ -486,3 +510,5 @@ rdplot margin vote, c(50.0) binselect(qsmv)
   - **根因**：`postestimation.py` 的 `margins_ame_*` 函数对所有变量统一计算偏导数，未区分 dummy/continuous。
   - **修复复杂度**：需要 margins 调用链识别哪些列是因子变量虚拟列（当前 estimator 层不保留 factor-expansion 元数据），或引入启发式检测（0/1 列 → 离散变化）。涉及公共 API 设计，建议单独立项。
   - **状态**：标记为已知限制，未修复。
+
+> **本轮结论**：revalidation-v1.2 返工 **未全部闭环**。VCE-002/003/004（HDFE MAP / 2-way cluster `_cons` SE）与 GLM-003（factor-aware margins）仍为 Open / Known limitation；其余列出的 P1/P2 项已按 `<1e-6` 字段级标准或等价的整数/逻辑匹配关闭。

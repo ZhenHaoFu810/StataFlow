@@ -300,11 +300,10 @@ class PPMLHDFE:
             # Conventional VCE: inverse of expected Hessian (Fisher information)
             cov_full = XtX_inv
         elif vce == "robust":
-            # Robust sandwich with N/(N-1) small-sample adjustment
-            sqrt_p = np.sqrt(p)
-            meat = (X_full * sqrt_p[:, np.newaxis] * residuals[:, np.newaxis]).T @ (
-                X_full * sqrt_p[:, np.newaxis] * residuals[:, np.newaxis]
-            )
+            # Robust sandwich: score = p * (y - mu) * X_full (Poisson log-link)
+            # N/(N-1) small-sample adjustment
+            score = X_full * (p * residuals)[:, np.newaxis]
+            meat = score.T @ score
             cov_full = XtX_inv @ meat @ XtX_inv
             if n > 1:
                 cov_full *= n / (n - 1)
@@ -312,12 +311,19 @@ class PPMLHDFE:
             if cluster_arrs is None or len(cluster_arrs) == 0:
                 raise ValueError("cluster_arrs required for cluster VCE.")
             if len(cluster_arrs) == 1:
-                from stataflow.estimators._vce_utils import compute_cluster_meat
-                meat, cluster_count = compute_cluster_meat(
-                    X_full, residuals, cluster_arrs[0], weights=p
-                )
+                unique_clusters = np.unique(cluster_arrs[0])
+                cluster_count = len(unique_clusters)
+                if cluster_count <= 1:
+                    raise ValueError(
+                        f"cluster-robust VCE requires at least 2 clusters, found {cluster_count}"
+                    )
+                meat = np.zeros((k_full, k_full))
+                for g_val in unique_clusters:
+                    mask = cluster_arrs[0] == g_val
+                    score_g = X_full[mask].T @ (p[mask] * residuals[mask])
+                    meat += np.outer(score_g, score_g)
                 # PPMLHDFE uses vce_asymptotic mode, so only G/(G-1) adjustment applies
-                g_adj = cluster_count / (cluster_count - 1) if cluster_count > 1 else 1.0
+                g_adj = cluster_count / (cluster_count - 1)
                 cov_full = g_adj * XtX_inv @ meat @ XtX_inv
             else:
                 # Multi-way clustering (2-way) via shared utility (ADR-0004)
@@ -569,6 +575,7 @@ class PPMLHDFE:
         self._result = result
         result._model = self
 
+        result.validate()
         return result
 
     def predict(self, type: str = "xb", newdata: Optional[pd.DataFrame] = None) -> np.ndarray:

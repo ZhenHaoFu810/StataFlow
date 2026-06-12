@@ -182,6 +182,10 @@ class IV2SLS:
         self._collinear_dropped = dropped_x + dropped_z
         self._inst_names = [z_names[i] for i in kept_z]
 
+        # Filter Z to remove collinear columns before returning
+        if kept_z:
+            Z = Z[:, kept_z]
+
         self._design_matrix = X
         self._dep_var = y
         self._sample_mask = sample_mask
@@ -229,6 +233,10 @@ class IV2SLS:
             raise ValueError("cluster only used when vce='cluster'.")
 
         X, Z, y, sample_mask, cluster_arr = self._prepare_data(cluster_var=cluster)
+        if len(y) == 0:
+            raise ValueError("No observations remain after sample screening (all rows have missing values).")
+        if X.shape[1] == 0:
+            raise ValueError("Design matrix has 0 columns after sample screening. No regressors available.")
         n = len(y)
         k_x = X.shape[1]
         k_z = Z.shape[1]
@@ -236,7 +244,7 @@ class IV2SLS:
         if k_z < k_x:
             raise ValueError(f"Underidentified: need at least {k_x} instruments, have {k_z}")
 
-        # First stage: project X onto Z
+        #        # First stage: project X onto Z
         ZtZ = Z.T @ Z
         ZtX = Z.T @ X
         Pi = np.linalg.solve(ZtZ, ZtX)
@@ -295,6 +303,10 @@ class IV2SLS:
         else:  # cluster
             unique_clusters = np.unique(cluster_arr)
             cluster_count = len(unique_clusters)
+            if cluster_count <= 1:
+                raise ValueError(
+                    f"cluster-robust VCE requires at least 2 clusters, found {cluster_count}"
+                )
 
             meat = np.zeros((k_x, k_x))
             for g in unique_clusters:
@@ -345,12 +357,16 @@ class IV2SLS:
             from scipy.stats import f as f_dist
             # Number of excluded instruments
             k_excl = len(self.instruments)
-            k_exog = len(self.x_exog)
+            # Use coef_names to locate variables after collinearity drops
+            exog_kept = [name for name in self.x_exog if name in self._coef_names]
+            endog_kept = [name for name in self.x_endog if name in self._coef_names]
+            k_exog = len(exog_kept)
             # Endogenous variable indices in X (after constant if present)
             endog_start = k_exog + (1 if self.add_constant else 0)
-            for j, endog_name in enumerate(self.x_endog):
-                x_j = X[:, endog_start + j]
-                x_hat_j = X_proj[:, endog_start + j]
+            for j, endog_name in enumerate(endog_kept):
+                endog_idx = self._coef_names.index(endog_name)
+                x_j = X[:, endog_idx]
+                x_hat_j = X_proj[:, endog_idx]
                 # First-stage regression of x_j on Z
                 beta_fs = np.linalg.solve(ZtZ, Z.T @ x_j)
                 resid_fs = x_j - Z @ beta_fs
@@ -362,7 +378,7 @@ class IV2SLS:
                     W_cols = []
                     if self.add_constant:
                         W_cols.append(np.ones(n))
-                    for exog_name in self.x_exog:
+                    for exog_name in exog_kept:
                         idx = self._coef_names.index(exog_name)
                         W_cols.append(X[:, idx])
                     W = np.column_stack(W_cols)
@@ -374,7 +390,7 @@ class IV2SLS:
                 R2_r = 1.0 - RSS_r / TSS if TSS > 0 else 0.0
                 partial_R2 = (R2 - R2_r) / (1.0 - R2_r) if R2_r < 1.0 else 0.0
                 # Shea partial R2
-                if len(self.x_endog) == 1:
+                if len(endog_kept) == 1:
                     shea_R2 = partial_R2
                 else:
                     var_x_hat = np.var(x_hat_j, ddof=0)
@@ -494,6 +510,7 @@ class IV2SLS:
         for key, value in extra_stats.items():
             setattr(result, key, value)
 
+        result.validate()
         return result
 
 
@@ -631,6 +648,9 @@ class IVAbsorbingOLS:
         df = self.data[all_vars].copy()
         self._n_input_rows = len(df)
 
+        # Add a unique row identifier to track observations through drops
+        df["_stataflow_row_id"] = np.arange(len(df))
+
         # Drop missing values
         if self.missing == "drop":
             mask = df.notna().all(axis=1)
@@ -645,8 +665,12 @@ class IVAbsorbingOLS:
             num_singletons = 0
         self._num_singletons = num_singletons
 
-        # Build sample mask
-        sample_mask = [idx in df.index for idx in self.data.index]
+        # Build sample mask using unique row ids (immune to duplicate index labels)
+        kept_ids = set(df["_stataflow_row_id"].values)
+        sample_mask = [i in kept_ids for i in range(self._n_input_rows)]
+
+        # Drop helper column from further processing
+        df = df.drop(columns=["_stataflow_row_id"])
 
         y = df[self.y].values.astype(np.float64)
         n = len(y)
@@ -1243,7 +1267,11 @@ class IVAbsorbingOLS:
                 meat, cluster_count = compute_cluster_meat(
                     X_proj, residuals, self._cluster_arrs[0]
                 )
-                g_adj = cluster_count / (cluster_count - 1) if cluster_count > 1 else 1.0
+                if cluster_count <= 1:
+                    raise ValueError(
+                        f"cluster-robust VCE requires at least 2 clusters, found {cluster_count}"
+                    )
+                g_adj = cluster_count / (cluster_count - 1)
                 n_adj = (n - 1) / (n - k_eff) if n > k_eff else 1.0
                 cov_full = n_adj * g_adj * M_inv @ meat @ M_inv
             else:
@@ -1650,6 +1678,10 @@ class IVAbsorbingOLS:
 
         cluster_vars = [cluster] if isinstance(cluster, str) else cluster
         X_full, Z_full, y, sample_mask, n_input_rows = self._prepare_data(cluster_vars=cluster_vars)
+        if len(y) == 0:
+            raise ValueError("No observations remain after sample screening (all rows have missing values).")
+        if X_full.shape[1] == 0:
+            raise ValueError("Design matrix has 0 columns after sample screening. No regressors available.")
         n = len(y)
         k_x_full = X_full.shape[1]
         k_z_full = Z_full.shape[1]
@@ -1657,7 +1689,7 @@ class IVAbsorbingOLS:
         if k_z_full < k_x_full:
             raise ValueError(f"Underidentified: need at least {k_x_full} instruments, have {k_z_full}")
 
-        # First stage: project X_full onto Z_full (needed for all estimators)
+        #        # First stage: project X_full onto Z_full (needed for all estimators)
         ZtZ = Z_full.T @ Z_full
         ZtX = Z_full.T @ X_full
         Pi = np.linalg.solve(ZtZ, ZtX)
@@ -2050,6 +2082,7 @@ class IVAbsorbingOLS:
             setattr(result, key, value)
         result._model = self
 
+        result.validate()
         return result
 
     def predict(self, type: str = "xb") -> np.ndarray:

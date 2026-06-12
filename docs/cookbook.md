@@ -1120,7 +1120,7 @@ result = regress(df, y="y", x=["c.x1##c.x2"])
 result = regress(df, y="y", x=["x1##x2"])
 ```
 
-> **Not supported** (raises `ValueError`): `ib.group` without a base level, `L.x` / `F.x` time-series operators, and three-way interactions such as `i.g1#i.g2#c.x3`.
+> **Not supported** (raises `ValueError`): `ib.group` without a base level, `L.x` / `F.x` time-series operators. Three-way and higher-order interactions (e.g., `i.g1#i.g2#c.x3`) are supported.
 
 ---
 
