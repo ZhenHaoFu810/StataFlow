@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Optional
 
 from stataflow.estimators import Logit, Probit, Poisson
-from stataflow.compat.stata.factor_variables import expand_factor_terms
+from stataflow.compat.stata.factor_variables import expand_factor_terms, get_underlying_vars
 
 
 def logit(
@@ -35,7 +35,9 @@ def logit(
     if kwargs:
         raise ValueError(f"Unsupported arguments: {list(kwargs.keys())}")
 
-    screen_vars = [y] + x
+    screen_vars = [y]
+    for term in x:
+        screen_vars.extend(get_underlying_vars(term))
     if cluster is not None:
         screen_vars.append(cluster)
     if aweight is not None:
@@ -74,7 +76,9 @@ def probit(
     if kwargs:
         raise ValueError(f"Unsupported arguments: {list(kwargs.keys())}")
 
-    screen_vars = [y] + x
+    screen_vars = [y]
+    for term in x:
+        screen_vars.extend(get_underlying_vars(term))
     if cluster is not None:
         screen_vars.append(cluster)
     if aweight is not None:
@@ -130,7 +134,9 @@ def poisson(
     if offset is not None:
         raise NotImplementedError("offset is not yet supported in stataflow.poisson")
 
-    screen_vars = [y] + x
+    screen_vars = [y]
+    for term in x:
+        screen_vars.extend(get_underlying_vars(term))
     if cluster is not None:
         screen_vars.append(cluster)
     if aweight is not None:

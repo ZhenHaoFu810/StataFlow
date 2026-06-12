@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Optional
 
 from stataflow.estimators import AbsorbingOLS, PPMLHDFE
-from stataflow.compat.stata.factor_variables import expand_factor_terms, parse_absorb
+from stataflow.compat.stata.factor_variables import expand_factor_terms, get_underlying_vars, parse_absorb
 
 
 def reghdfe(
@@ -55,7 +55,9 @@ def reghdfe(
         raise ValueError(f"Unsupported arguments: {list(kwargs.keys())}")
 
     absorb_vars = parse_absorb(absorb)
-    screen_vars = [y] + x
+    screen_vars = [y]
+    for term in x:
+        screen_vars.extend(get_underlying_vars(term))
     if cluster is not None:
         if isinstance(cluster, str):
             screen_vars.append(cluster)
@@ -117,7 +119,15 @@ def ppmlhdfe(
     if kwargs:
         raise ValueError(f"Unsupported arguments: {list(kwargs.keys())}")
 
-    data_expanded, x_expanded = expand_factor_terms(data, x)
+    screen_vars = [y]
+    for term in x:
+        screen_vars.extend(get_underlying_vars(term))
+    if cluster is not None:
+        if isinstance(cluster, str):
+            screen_vars.append(cluster)
+        else:
+            screen_vars.extend(cluster)
+    data_expanded, x_expanded = expand_factor_terms(data, x, screen_vars=list(dict.fromkeys(screen_vars)))
     absorb_vars = parse_absorb(absorb)
 
     model = PPMLHDFE(

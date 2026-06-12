@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Optional
 
 from stataflow.estimators import IV2SLS, IVAbsorbingOLS
-from stataflow.compat.stata.factor_variables import expand_factor_terms, parse_absorb
+from stataflow.compat.stata.factor_variables import expand_factor_terms, get_underlying_vars, parse_absorb
 
 
 def ivregress_2sls(
@@ -53,7 +53,9 @@ def ivregress_2sls(
     if kwargs:
         raise ValueError(f"Unsupported arguments: {list(kwargs.keys())}")
 
-    screen_vars = [y] + x_exog + x_endog + instruments
+    screen_vars = [y]
+    for term in x_exog + x_endog + instruments:
+        screen_vars.extend(get_underlying_vars(term))
     if cluster is not None:
         screen_vars.append(cluster)
     screen_vars = list(dict.fromkeys(screen_vars))
@@ -148,7 +150,9 @@ def ivreghdfe(
         cluster = [c.strip() for c in cluster.split()]
 
     absorb_vars = parse_absorb(absorb)
-    screen_vars = [y] + x_exog + x_endog + instruments
+    screen_vars = [y]
+    for term in x_exog + x_endog + instruments:
+        screen_vars.extend(get_underlying_vars(term))
     if cluster is not None:
         if isinstance(cluster, str):
             screen_vars.append(cluster)
