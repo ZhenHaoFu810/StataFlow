@@ -5,10 +5,10 @@ import pytest
 import pandas as pd
 from pathlib import Path
 from stataflow.estimators.csdid import CSDID
-from tests.golden.test_utils import tolerance_close
+from tests.golden.test_utils import StataRunner, tolerance_close
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
-STATA_LOG = PROJECT_ROOT / "stata" / "output" / "realdata_csdid_dr_ezunem.log"
+PROJECT_STATA_OUTPUT = PROJECT_ROOT / "stata" / "output"
 DATA_FILE = PROJECT_ROOT / "research" / "data" / "public" / "did" / "ezunem_prepared.dta"
 
 
@@ -74,8 +74,23 @@ class TestW9CSDIDDrRealEzunem:
 
     @pytest.fixture(scope="class")
     def stata_result(self):
-        log_content = STATA_LOG.read_text(encoding='utf-8', errors='replace')
-        return _parse_csdid_event_study_log(log_content)
+        do_content = f'''
+clear all
+set more off
+use "{DATA_FILE.as_posix()}", clear
+csdid uclms c1 c2 c3, ivar(city) time(year) gvar(first_treat) method(drimp) vce(cluster city)
+csdid_estat event
+display "E_N=" e(N)
+display "STATAFLOW_CASE_EVID001_CSDID_DR_OK"
+exit, clear
+'''
+        runner = StataRunner()
+        result = runner.run_do_file(do_content, output_dir=str(PROJECT_STATA_OUTPUT))
+        if result.exit_code != 0:
+            raise RuntimeError(f"Stata failed: {result.error_message}")
+        if not result.output_content:
+            raise RuntimeError("Stata produced no output")
+        return _parse_csdid_event_study_log(result.output_content)
 
     def test_coefficients_count(self, python_result, stata_result):
         py_names = [c.name for c in python_result.coefficients]

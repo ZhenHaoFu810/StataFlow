@@ -6,10 +6,10 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 from stataflow.estimators.eventstudyinteract import EventStudyInteract
-from tests.golden.test_utils import tolerance_close
+from tests.golden.test_utils import StataRunner, tolerance_close
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
-STATA_LOG = PROJECT_ROOT / "stata" / "output" / "realdata_eventstudyinteract_fixed.log"
+PROJECT_STATA_OUTPUT = PROJECT_ROOT / "stata" / "output"
 DATA_FILE = PROJECT_ROOT / "research" / "data" / "public" / "did" / "ezunem_prepared.dta"
 
 
@@ -91,8 +91,32 @@ class TestW4EventStudyInteractRealEzunem:
 
     @pytest.fixture(scope="class")
     def stata_result(self):
-        log_content = STATA_LOG.read_text(encoding='utf-8', errors='replace')
-        return _parse_eventstudyinteract_log(log_content)
+        do_content = '''
+clear all
+set more off
+use "%s", clear
+gen cohort = first_treat
+gen rel_time = cond(first_treat > 0, year - first_treat, -1000)
+gen never_treated = (first_treat == 0)
+tab rel_time, gen(Dm)
+eventstudyinteract uclms Dm2-Dm10, cohort(cohort) control_cohort(never_treated) absorb(city year) vce(cluster city)
+matrix b = e(b_iw)
+matrix V = e(V_iw)
+forvalues i = 2/10 {
+    display "B_Dm`i'=" b[1, `=`i'-1']
+    display "SE_Dm`i'=" sqrt(V[`=`i'-1', `=`i'-1'])
+}
+display "E_N=" e(N)
+display "STATAFLOW_CASE_EVID001_ESI_OK"
+exit, clear
+''' % (DATA_FILE.as_posix(),)
+        runner = StataRunner()
+        result = runner.run_do_file(do_content, output_dir=str(PROJECT_STATA_OUTPUT))
+        if result.exit_code != 0:
+            raise RuntimeError(f"Stata failed: {result.error_message}")
+        if not result.output_content:
+            raise RuntimeError("Stata produced no output")
+        return _parse_eventstudyinteract_log(result.output_content)
 
     def test_coefficients_count(self, python_result, stata_result):
         py_names = [c.name for c in python_result.coefficients]

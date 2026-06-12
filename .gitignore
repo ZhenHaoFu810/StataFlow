@@ -26,7 +26,7 @@ QWEN.md
 .coverage
 htmlcov/
 
-# Stata temporary files
+# Stata temporary files (tests generate these dynamically; do not track realdata_*.log)
 *.dta
 *.log
 *.raw

@@ -516,3 +516,35 @@ stata/output/phase2/
 - **Git commit**:
   - SHA: `a90647e`
   - Message: `fix(csdid): include cluster in missing screening, enforce within-unit constancy, align nobs/mask/cluster count`
+
+
+---
+
+## Task 5.1 (P1-5 EVID-001) — Reproducible DID Golden Fixtures
+
+**Date**: 2026-06-12
+**Status**: ✅ Completed
+
+### Goal
+Make the four DID real-data golden tests dynamically generate their Stata evidence instead of reading static logs from `stata/output/`.
+
+### Modified files
+- `.gitignore` — clarified that `stata/output/` is transient and `realdata_*.log` logs are generated dynamically.
+- `tests/golden/test_w4_csdid_real_ezunem.py`
+- `tests/golden/test_w4_did_imputation_real_ezunem.py`
+- `tests/golden/test_w4_eventstudyinteract_real_ezunem.py`
+- `tests/golden/test_w9_csdid_dr_real_ezunem.py`
+
+### Changes
+- Replaced static `STATA_LOG` paths with `PROJECT_STATA_OUTPUT`.
+- Each `stata_result` fixture now builds a Stata `.do` file and runs it via `StataRunner.run_do_file()`.
+- The generated log is parsed with the existing `_parse_*` helpers and compared to the Python estimator result.
+- Stable public fixtures (`research/data/public/did/ezunem_prepared.dta` / `ezunem_prepared_didimp.dta`) remain tracked.
+
+### Verification
+- Golden tests pass with Stata 17 generating logs on demand: 19 passed.
+- Clean-checkout simulation: moved the four static `stata/output/realdata_*.log` files out of the project; tests still pass by regenerating evidence.
+- Non-golden regression suite: `pytest tests/ --ignore=tests/golden/ --ignore=tests/benchmarks/ -q` — 339 passed.
+
+### Concerns / Blockers
+- None. The static logs were untracked, so no repository content needed removal beyond dropping the test references.

@@ -5,10 +5,10 @@ import pytest
 import pandas as pd
 from pathlib import Path
 from stataflow.estimators.did_imputation import DIDImputation
-from tests.golden.test_utils import tolerance_close
+from tests.golden.test_utils import StataRunner, tolerance_close
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
-STATA_LOG = PROJECT_ROOT / "stata" / "output" / "realdata_did_imputation_ezunem.log"
+PROJECT_STATA_OUTPUT = PROJECT_ROOT / "stata" / "output"
 DATA_FILE = PROJECT_ROOT / "research" / "data" / "public" / "did" / "ezunem_prepared_didimp.dta"
 
 
@@ -48,8 +48,32 @@ class TestW4DIDImputationRealEzunem:
 
     @pytest.fixture(scope="class")
     def stata_result(self):
-        log_content = STATA_LOG.read_text(encoding='utf-8', errors='replace')
-        return _parse_did_imputation_log(log_content)
+        do_content = '''
+clear all
+set more off
+use "%s", clear
+replace first_treat = . if first_treat < 0
+did_imputation uclms city year first_treat, cluster(city) allhorizons autosample minn(0)
+matrix b = e(b)
+matrix V = e(V)
+local names : colfullnames b
+local i = 1
+foreach name of local names {
+    display "B_`name'=" b[1, `i']
+    display "SE_`name'=" sqrt(V[`i', `i'])
+    local ++i
+}
+display "E_N=" e(N)
+display "STATAFLOW_CASE_EVID001_DIDIMP_OK"
+exit, clear
+''' % (DATA_FILE.as_posix(),)
+        runner = StataRunner()
+        result = runner.run_do_file(do_content, output_dir=str(PROJECT_STATA_OUTPUT))
+        if result.exit_code != 0:
+            raise RuntimeError(f"Stata failed: {result.error_message}")
+        if not result.output_content:
+            raise RuntimeError("Stata produced no output")
+        return _parse_did_imputation_log(result.output_content)
 
     def test_coefficients_count(self, python_result, stata_result):
         py_names = [c.name for c in python_result.coefficients]
