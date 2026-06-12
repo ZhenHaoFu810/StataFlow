@@ -40,6 +40,38 @@ class CSDID:
         self._event_se = {}
         self._nobs = 0
         self._n_clust = 0
+        self._n_input_rows = len(data)
+        self._used_rows: set = set()
+        self._df_clean: Optional[pd.DataFrame] = None
+
+    def _check_first_treat_consistency(self, df, uid, ft):
+        """Raise ValueError if any unit has varying first_treat values."""
+        nunique = df.groupby(uid)[ft].nunique()
+        inconsistent = nunique[nunique > 1]
+        if len(inconsistent) > 0:
+            bad_ids = list(inconsistent.index[:5])
+            raise ValueError(
+                f"first_treat variable '{ft}' is not constant within unit. "
+                f"Offending units (showing first 5): {bad_ids}. "
+                "Each unit must have a single first_treat value."
+            )
+
+    def _build_sample_mask(self) -> list[bool]:
+        """Build sample mask from used_rows and cleaned dataframe."""
+        if self._df_clean is None:
+            return [True] * self._n_input_rows
+        if not self._used_rows:
+            return [False] * self._n_input_rows
+        uid = self.id_name
+        time = self.time_name
+        used_set = self._used_rows
+        mask = [False] * self._n_input_rows
+        for _, row in self._df_clean.iterrows():
+            if (row[uid], row[time]) in used_set:
+                orig_idx = int(row.get("_stataflow_row_id", 0))
+                if 0 <= orig_idx < self._n_input_rows:
+                    mask[orig_idx] = True
+        return mask
 
     def fit(self, method="reg", vce=None, cluster=None, xvars=None, notyet=False):
         """Fit the CSDID estimator.
@@ -82,6 +114,7 @@ class CSDID:
         ft = self.first_treat_name
 
         # Drop missings in key variables
+        df["_stataflow_row_id"] = np.arange(len(df))
         df = df.dropna(subset=[y, uid, time, ft])
 
         cohorts = sorted([g for g in df[ft].unique() if g > 0])
@@ -107,6 +140,7 @@ class CSDID:
 
         # Wide format for influence function convenience
         df_wide = df.pivot(index=uid, columns=time, values=y)
+        self._check_first_treat_consistency(df, uid, ft)
         cohort_map = df.groupby(uid)[ft].first()
 
         # Compute ATT(g,t) and unit-level IFs
@@ -195,6 +229,7 @@ class CSDID:
                 att_gt[(g, t)] = (att, N_g)
 
         # Effective observations: all unit-year rows that appear in any (g,t) estimation
+        available_pairs = set(zip(df[uid], df[time]))
         used_rows = set()
         for (g, t), (att, N_g) in att_gt.items():
             if has_never_treated:
@@ -203,17 +238,21 @@ class CSDID:
                 ctrl_ids = df.loc[df[ft] > max(g, t), uid].unique()
             treat_ids = df.loc[df[ft] == g, uid].unique()
             for u in treat_ids:
-                used_rows.add((u, t))
+                if (u, t) in available_pairs:
+                    used_rows.add((u, t))
                 base = t - 1 if t < g else g - 1
-                if base >= min_year:
+                if base >= min_year and (u, base) in available_pairs:
                     used_rows.add((u, base))
             for u in ctrl_ids:
-                used_rows.add((u, t))
+                if (u, t) in available_pairs:
+                    used_rows.add((u, t))
                 base = t - 1 if t < g else g - 1
-                if base >= min_year:
+                if base >= min_year and (u, base) in available_pairs:
                     used_rows.add((u, base))
 
         self._nobs = len(used_rows)
+        self._used_rows = used_rows
+        self._df_clean = df.copy()
         cluster_col = cluster if cluster is not None else uid
         self._n_clust = int(df[cluster_col].nunique()) if cluster_col in df.columns else n_units
         self._cluster_var = cluster_col
@@ -224,11 +263,47 @@ class CSDID:
         uid = self.id_name
         n_units_total = len(units)
 
+        # Determine clustering level
+        cluster_col = getattr(self, '_cluster_var', uid)
+        use_cluster = cluster_col != uid and cluster_col in df.columns
+        if use_cluster:
+            unit_to_cluster = df.set_index(uid)[cluster_col].to_dict()
+            cluster_ids = [unit_to_cluster.get(u) for u in units]
+            cluster_unique = sorted({c for c in cluster_ids if c is not None})
+            n_clust = len(cluster_unique)
+            # Build cluster indicator matrix for vectorised aggregation
+            if n_clust > 0:
+                C = np.zeros((n_units_total, n_clust))
+                for i, c in enumerate(cluster_ids):
+                    if c is not None:
+                        C[i, cluster_unique.index(c)] = 1.0
+            else:
+                C = None
+                use_cluster = False
+        else:
+            C = None
+
+        def _se_from_if(if_vals):
+            """Compute SE from influence-function values."""
+            if C is not None:
+                # Cluster-robust: sum IFs within each cluster, then square-sum
+                return np.sqrt(np.sum((C.T @ if_vals) ** 2)) / n_units_total
+            else:
+                return np.sqrt(np.sum(if_vals ** 2)) / n_units_total
+
         # Group-time SEs
         se_gt = {}
         for k, ifs in if_gt.items():
-            vals = np.array(list(ifs.values()))
-            se_gt[k] = np.sqrt(np.sum(vals ** 2))
+            if use_cluster:
+                cluster_sums = {}
+                for u, val in ifs.items():
+                    c = unit_to_cluster.get(u)
+                    if c is not None:
+                        cluster_sums[c] = cluster_sums.get(c, 0.0) + val
+                se_gt[k] = np.sqrt(sum(v ** 2 for v in cluster_sums.values()))
+            else:
+                vals = np.array(list(ifs.values()))
+                se_gt[k] = np.sqrt(np.sum(vals ** 2))
 
         self._group_time_att = att_gt
         self._group_time_se = se_gt
@@ -255,6 +330,12 @@ class CSDID:
         event_est = {}
         event_rif = {}
         event_se = {}
+        event_if = {}
+
+        # Pre_avg and Post_avg using aggte on event-time RIFs with equal weights
+        # Stata uses J(rows(aux), n, 1) as weight matrix for Pre_avg/Post_avg
+        pre_es = sorted([e for e in event_map if e < 0])
+        post_es = sorted([e for e in event_map if e >= 0])
 
         for e, pairs in event_map.items():
             k = len(pairs)
@@ -264,19 +345,12 @@ class CSDID:
                 for i, u in enumerate(units):
                     ag_rif[i, j] = rifgt[p][u]
                     ag_wt[i, j] = rifwt[p][u]
-
             atte, rif_event = self._aggte(ag_rif, ag_wt)
             if_event = rif_event - atte
-
             event_est[e] = atte
             event_rif[e] = {u: float(rif_event[idx]) for idx, u in enumerate(units)}
-            # Stata's SE formula divides by n^2 for unit-level RIF data
-            event_se[e] = np.sqrt(np.sum(if_event ** 2)) / n_units_total
-
-        # Pre_avg and Post_avg using aggte on event-time RIFs with equal weights
-        # Stata uses J(rows(aux), n, 1) as weight matrix for Pre_avg/Post_avg
-        pre_es = sorted([e for e in event_est if e < 0])
-        post_es = sorted([e for e in event_est if e >= 0])
+            event_if[e] = {u: float(if_event[idx]) for idx, u in enumerate(units)}
+            event_se[e] = _se_from_if(if_event)
 
         if pre_es:
             k = len(pre_es)
@@ -288,7 +362,9 @@ class CSDID:
             atte, rif_pre = self._aggte(ag_rif, ag_wt)
             if_pre = rif_pre - atte
             event_est["Pre_avg"] = atte
-            event_se["Pre_avg"] = np.sqrt(np.sum(if_pre ** 2)) / n_units_total
+            event_se["Pre_avg"] = _se_from_if(if_pre)
+            event_rif["Pre_avg"] = {u: float(rif_pre[idx]) for idx, u in enumerate(units)}
+            event_if["Pre_avg"] = {u: float(if_pre[idx]) for idx, u in enumerate(units)}
 
         if post_es:
             k = len(post_es)
@@ -300,11 +376,14 @@ class CSDID:
             atte, rif_post = self._aggte(ag_rif, ag_wt)
             if_post = rif_post - atte
             event_est["Post_avg"] = atte
-            event_se["Post_avg"] = np.sqrt(np.sum(if_post ** 2)) / n_units_total
+            event_se["Post_avg"] = _se_from_if(if_post)
+            event_rif["Post_avg"] = {u: float(rif_post[idx]) for idx, u in enumerate(units)}
+            event_if["Post_avg"] = {u: float(if_post[idx]) for idx, u in enumerate(units)}
 
         self._event_est = event_est
         self._event_se = event_se
         self._event_rif = event_rif
+        self._event_if = event_if
         self._rifgt = rifgt
         self._rifwt = rifwt
         self._units = units
@@ -328,6 +407,7 @@ class CSDID:
             )
 
         # Drop missings in key variables
+        df["_stataflow_row_id"] = np.arange(len(df))
         df = df.dropna(subset=[y, uid, time, ft] + xvars)
 
         cohorts = sorted([g for g in df[ft].unique() if g > 0])
@@ -353,6 +433,7 @@ class CSDID:
 
         # Wide format for influence function convenience
         df_wide = df.pivot(index=uid, columns=time, values=y)
+        self._check_first_treat_consistency(df, uid, ft)
         cohort_map = df.groupby(uid)[ft].first()
 
         # Covariates in wide format (unit-level, first observation)
@@ -477,6 +558,7 @@ class CSDID:
                 att_gt[(g, t)] = (att, N_g)
 
         # Effective observations
+        available_pairs = set(zip(df[uid], df[time]))
         used_rows = set()
         for (g, t), (att, N_g) in att_gt.items():
             if has_never_treated:
@@ -485,17 +567,21 @@ class CSDID:
                 ctrl_ids = df.loc[df[ft] > max(g, t), uid].unique()
             treat_ids = df.loc[df[ft] == g, uid].unique()
             for u in treat_ids:
-                used_rows.add((u, t))
+                if (u, t) in available_pairs:
+                    used_rows.add((u, t))
                 base = t - 1 if t < g else g - 1
-                if base >= min_year:
+                if base >= min_year and (u, base) in available_pairs:
                     used_rows.add((u, base))
             for u in ctrl_ids:
-                used_rows.add((u, t))
+                if (u, t) in available_pairs:
+                    used_rows.add((u, t))
                 base = t - 1 if t < g else g - 1
-                if base >= min_year:
+                if base >= min_year and (u, base) in available_pairs:
                     used_rows.add((u, base))
 
         self._nobs = len(used_rows)
+        self._used_rows = used_rows
+        self._df_clean = df.copy()
         cluster_col = cluster if cluster is not None else uid
         self._n_clust = int(df[cluster_col].nunique()) if cluster_col in df.columns else n_units
         self._cluster_var = cluster_col
@@ -571,16 +657,60 @@ class CSDID:
                 ci_high=float(conf_int[i, 1]),
             ))
 
-        active_names = [c.name for c in coefficients if c.std_err > 0]
+        active_coeffs = [c for c in coefficients if c.std_err > 0]
+        active_names = [c.name for c in active_coeffs]
+        active_keys = [_to_param_key(k) for k in active_names]
+        n_units_total = len(self._units)
+
+        # Build IF vectors for active estimates
+        if_vecs = []
+        for k in active_keys:
+            if_dict = self._event_if.get(k, {})
+            vec = np.array([if_dict.get(u, 0.0) for u in self._units])
+            if_vecs.append(vec)
+
+        # Determine clustering
+        cluster_col = getattr(self, "_cluster_var", None)
+        use_cluster = (
+            cluster_col is not None
+            and self._df_clean is not None
+            and cluster_col in self._df_clean.columns
+        )
+        if use_cluster:
+            uid = self.id_name
+            unit_to_cluster = self._df_clean.set_index(uid, drop=False)[cluster_col].to_dict()
+            cluster_ids = [unit_to_cluster.get(u) for u in self._units]
+            cluster_unique = sorted({c for c in cluster_ids if c is not None})
+            n_clust = len(cluster_unique)
+            if n_clust > 0:
+                C = np.zeros((n_units_total, n_clust))
+                for i, c in enumerate(cluster_ids):
+                    if c is not None:
+                        C[i, cluster_unique.index(c)] = 1.0
+            else:
+                use_cluster = False
+                C = None
+        else:
+            C = None
+
         cov = np.zeros((len(active_names), len(active_names)))
-        for i, c in enumerate([c for c in coefficients if c.std_err > 0]):
-            cov[i, i] = c.std_err ** 2
+        for i in range(len(active_names)):
+            for j in range(i + 1):
+                if C is not None:
+                    ci = C.T @ if_vecs[i]
+                    cj = C.T @ if_vecs[j]
+                    cov_ij = float(np.dot(ci, cj)) / (n_units_total ** 2)
+                else:
+                    cov_ij = float(np.dot(if_vecs[i], if_vecs[j])) / (n_units_total ** 2)
+                cov[i, j] = cov_ij
+                if i != j:
+                    cov[j, i] = cov_ij
 
         n_active = len(active_names)
         df_model = float(n_active) if n_active > 0 else 0.0
         df_resid = float(self._n_clust - 1) if self._n_clust > 1 else float(self._nobs - n_active)
 
-        return ResultSchema(
+        result = ResultSchema(
             model=ModelInfo(
                 command="csdid",
                 estimator_family="csdid",
@@ -589,7 +719,8 @@ class CSDID:
             ),
             sample=SampleInfo(
                 nobs=self._nobs,
-                n_input_rows=self._nobs,
+                n_input_rows=self._n_input_rows,
+                sample_mask=self._build_sample_mask(),
             ),
             fit=FitInfo(
                 df_model=df_model,
@@ -607,6 +738,8 @@ class CSDID:
                 stata_command=f"csdid y, ivar(id) time(time) gvar(first_treat) method({getattr(self, '_method', 'reg')})",
             ),
         )
+        result.validate()
+        return result
 
     @staticmethod
     def _aggte(ag_rif, ag_wt):
@@ -815,7 +948,8 @@ class CSDID:
             ),
             sample=SampleInfo(
                 nobs=self._nobs,
-                n_input_rows=self._nobs,
+                n_input_rows=self._n_input_rows,
+                sample_mask=self._build_sample_mask(),
             ),
             fit=FitInfo(
                 df_model=float(df),
@@ -870,7 +1004,8 @@ class CSDID:
             ),
             sample=SampleInfo(
                 nobs=self._nobs,
-                n_input_rows=self._nobs,
+                n_input_rows=self._n_input_rows,
+                sample_mask=self._build_sample_mask(),
             ),
             fit=FitInfo(
                 df_model=df_model,

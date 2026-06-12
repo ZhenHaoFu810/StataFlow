@@ -788,6 +788,8 @@ class RDRobust:
             cols.append(self.cluster)
 
         df = self.data[cols].copy()
+        n_input = len(df)
+        df["_stataflow_row_id"] = np.arange(n_input)
         df = df.dropna()
         y = df[self.y_var].to_numpy(dtype=float)
         x = df[self.x_var].to_numpy(dtype=float)
@@ -815,6 +817,7 @@ class RDRobust:
                 y = y[valid]
                 x = x[valid]
                 fw = fw[valid]
+                df = df.iloc[valid].copy()
                 if covs_all is not None:
                     covs_all = covs_all[valid, :]
                 if T_all is not None:
@@ -825,7 +828,11 @@ class RDRobust:
             if fw is not None and fw.sum() > 0:
                 fw = fw / fw.sum() * len(fw)
 
-        n_input = len(self.data)
+        # Build sample mask after all row-level drops.
+        kept_ids = set(df["_stataflow_row_id"].values)
+        sample_mask = [i in kept_ids for i in range(n_input)]
+        df = df.drop(columns=["_stataflow_row_id"])
+
         nobs = len(y)
 
         if self.c <= np.min(x) or self.c >= np.max(x):
@@ -1254,6 +1261,7 @@ class RDRobust:
             sample=SampleInfo(
                 nobs=nobs,
                 n_input_rows=n_input,
+                sample_mask=sample_mask,
             ),
             fit=FitInfo(
                 df_model=float(2 * (self.p + 1)),
@@ -1261,8 +1269,12 @@ class RDRobust:
             ),
             coefficients=coefficients,
             variance=VarianceInfo(
-                row_names=["RD_Estimate"],
-                values=[[V_tau_rb]],
+                row_names=[c.name for c in coefficients],
+                values=[
+                    [V_tau_cl, 0.0, 0.0],
+                    [0.0, V_tau_cl, 0.0],
+                    [0.0, 0.0, V_tau_rb],
+                ],
             ),
             diagnostics=DiagnosticsInfo(
                 warnings=[],
@@ -1305,4 +1317,5 @@ class RDRobust:
             "level": self.level,
         }
 
+        result.validate()
         return result
