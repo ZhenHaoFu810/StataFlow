@@ -37,6 +37,7 @@ stata/cases/*probe*.py
 
 # Temporary build/diagnostic outputs
 dist_tmp/
+dist_acceptance/
 Rplots.pdf
 golden_output.txt
 golden_full_output.txt
