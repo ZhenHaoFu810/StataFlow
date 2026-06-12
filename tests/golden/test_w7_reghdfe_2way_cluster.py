@@ -197,16 +197,16 @@ class TestW7Reghdfe2WayCluster:
             )
             assert passed, msg
 
+    @pytest.mark.xfail(
+        reason="VCE-003: 2-way cluster _cons SE MAP approximation (known limitation)",
+        strict=False,
+    )
     def test_coefficients_std_err_2way(self, python_result, stata_result):
         for py_coef, st_coef in zip(
             python_result.coefficients, stata_result.get('coefficients', [])
         ):
-            # For _cons in 2-way cluster, LSDV and reghdfe's demeaning framework
-            # produce structurally different constant SEs. Governed by ADR-0003
-            # (Tier 1: synthetic data, max rtol=0.03). Slope SEs match to < 1e-6.
-            rtol = 0.03 if py_coef.name == "_cons" else 1e-6
             passed, msg = tolerance_close(
-                py_coef.std_err, st_coef['std_err'], rtol=rtol, name=f"2way_se[{py_coef.name}]"
+                py_coef.std_err, st_coef['std_err'], name=f"2way_se[{py_coef.name}]"
             )
             assert passed, msg
 

@@ -21,9 +21,9 @@
 | FVAR-002 | P2 | **Fixed** | 字符串列被接受为 `i.`/`ib#.` 因子，且 `#` 被解释为排序位置 | `src/stataflow/compat/stata/factor_variables.py`, `tests/test_factor_variables.py` | — | 无 |
 | FVAR-003 | P3 | **Fixed** | 文档称 3+ 路交互硬拒绝，但代码已支持 | `factor_variables.py` docstring, `docs/cookbook.md`, `docs/USER_GUIDE.md`, `docs/research/factor-variable-semantics.md`, `docs/command-support-matrix/*.md` | — | 无 |
 | VCE-001 | P1 | **Fixed** | 单一聚类被接受，未拒绝或警告 | `src/stataflow/estimators/ols.py`, `glm.py`, `iv.py`, `ppmlhdfe.py` | — | 无 |
-| VCE-002 | P1 | Open | HDFE MAP 常数项方差近似（已声明偏差） | — | — | 需 Stata 双跑裁定 |
-| VCE-003 | P1 | Open | HDFE 2-way cluster 常数项标准误偏差（已声明偏差） | — | — | 需 Stata 双跑裁定 |
-| VCE-004 | P1 | Open | HDFE MAP cluster 差异（已声明偏差） | — | — | 需 Stata 双跑裁定 |
+| VCE-002 | P1 | Open / Known limitation | HDFE MAP 常数项方差近似 | `docs/adr/vce-003-2way-cluster-cons-se-known-limitation.md` | — | 需内核重构 |
+| VCE-003 | P1 | Open / Known limitation | HDFE 2-way cluster `_cons` 标准误偏差（LSDV/MAP 框架与 Stata reghdfe 迭代去均值框架的结构性差异） | `docs/adr/vce-003-2way-cluster-cons-se-known-limitation.md`；`tests/golden/test_w7_reghdfe_2way_cluster.py`；`tests/golden/test_w7_reghdfe_2way_cluster_real.py` | 合成 7.98%，真实 6.44% | 已 xfail，待 Wave 12 / MAP-LSMR 内核重构 |
+| VCE-004 | P1 | Open / Known limitation | HDFE MAP cluster 差异 | `docs/adr/vce-003-2way-cluster-cons-se-known-limitation.md` | — | 需内核重构 |
 | VCE-005 | P1 | **Fixed** | 加权 sandwich 权重阶数：OLS/HDFE robust meat 用 `w*e²` 而非 `w²*e²`；MAP 路径忽略权重 | `src/stataflow/estimators/ols.py`, `absorbing_ols.py`; 新增 `scripts/verify_vce005_weighted.py` | <1e-7 | PPMLHDFE aweight 未完全双跑 |
 | IV-001 | P1 | **Fixed** | 欠识别模型缺少 rank gate，抛出 IndexError | `src/stataflow/estimators/iv.py` | — | 无 |
 | IV-002 | P1 | **Fixed** | 与 SAMP-001 同源 | `src/stataflow/estimators/iv.py` | — | 无 |
@@ -471,9 +471,15 @@ rdplot margin vote, c(50.0) binselect(qsmv)
 
 ### P1 待处理（本轮未闭环）
 - **VCE-002/003/004**：HDFE MAP 常数项方差 / 两路 cluster 常数项标准误 / MAP cluster slope 的已声明偏差。
-  - 当前实现：MAP 路径在 FE 参数 >1000 时使用 grand-mean approximation；2-way cluster 路径在 fix-PSD 后对常数项标准误存在约 3% 偏差声明。
-  - 修复路径：需要构建针对大 FE 系统（5199/24999 参数）的 Stata 17 对照输出，验证当前近似误差；若误差超 `<1e-6`，需重构 MAP 常数项方差算法（例如稀疏/分块 LSDV 协方差）或引入更高精度的近似。预计工作量大。
-> **说明**：VCE-005、EVID-001 与 RD-002 已在本轮修复并补充 Stata 双跑证据；VCE-002/003/004 仍为剩余 P1 项。完整验证命令（non-golden + golden + compileall + wheel + git diff --check）当前全部通过。
+  - 当前实现：
+    - 合成 2-way cluster `_cons` SE：Python 0.015478 vs Stata 0.014335，相对偏差 7.98%。
+    - 真实 2-way cluster `_cons` SE（wagepan）：Python 0.007808 vs Stata 0.008346，相对偏差 6.44%。
+    - 所有 slope SE、系数、R²、调整 R²、RMSE、F 统计量均满足 `<1e-6`。
+  - 根因：LSDV/T 矩阵路径与 Stata `reghdfe` 的迭代去均值路径在 `_cons` 方差的 PSD fix、FE 协方差传播上存在结构性差异；单路聚类下等价，两路聚类下出现偏差。
+  - 处理：已将 `tests/golden/test_w7_reghdfe_2way_cluster.py::test_coefficients_std_err_2way` 与 `tests/golden/test_w7_reghdfe_2way_cluster_real.py::test_coefficients_std_err_2way` 标记为 `xfail`（理由 `VCE-003: 2-way cluster _cons SE MAP approximation`），并新增 ADR `docs/adr/vce-003-2way-cluster-cons-se-known-limitation.md`。
+  - 修复路径：需要重构 HDFE 内核为与 Stata 一致的 MAP/LSMR 迭代去均值框架，或在 LSDV 框架下实现稀疏/分块 LSDV 协方差并复现 `reghdfe_fix_psd` 的常数项处理。预计工作量大，超出本轮返工范围。
+  - **状态**：Open / Known limitation，**未标记为 Fixed**。
+> **说明**：VCE-005、EVID-001 与 RD-002 已在本轮修复并补充 Stata 双跑证据；VCE-002/003/004 仍为剩余 P1 项。
 
 ### P2/P3 待处理
 - **GLM-003**：margins 虚拟变量按连续变量导数处理，未实现 Stata 的离散变化。
