@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 from stataflow.estimators import OLS, FixedEffectsOLS, AbsorbingOLS
-from stataflow.compat.stata.factor_variables import expand_factor_terms, parse_absorb
+from stataflow.compat.stata.factor_variables import expand_factor_terms, get_underlying_vars, parse_absorb
 
 
 def regress(
@@ -56,7 +56,18 @@ def regress(
         else:
             weights = np.asarray(aweight)
 
-    data_expanded, x_expanded = expand_factor_terms(data, x)
+    screen_vars = [y]
+    for term in x:
+        screen_vars.extend(get_underlying_vars(term))
+    if cluster is not None:
+        if isinstance(cluster, str):
+            screen_vars.append(cluster)
+        else:
+            screen_vars.extend(cluster)
+    if aweight is not None and isinstance(aweight, str):
+        screen_vars.append(aweight)
+    screen_vars = list(dict.fromkeys(screen_vars))
+    data_expanded, x_expanded = expand_factor_terms(data, x, screen_vars=screen_vars)
 
     model = OLS(
         data=data_expanded,
@@ -109,7 +120,13 @@ def xtreg_fe(
             "xtreg_fe currently supports a single cluster variable (str)."
         )
 
-    data_expanded, x_expanded = expand_factor_terms(data, x)
+    screen_vars = [y, fe]
+    for term in x:
+        screen_vars.extend(get_underlying_vars(term))
+    if cluster is not None:
+        screen_vars.append(cluster)
+    screen_vars = list(dict.fromkeys(screen_vars))
+    data_expanded, x_expanded = expand_factor_terms(data, x, screen_vars=screen_vars)
 
     model = FixedEffectsOLS(
         data=data_expanded,
@@ -178,7 +195,18 @@ def areg(
             "areg currently supports a single cluster variable (str)."
         )
 
-    data_expanded, x_expanded = expand_factor_terms(data, x)
+    screen_vars = [y, absorb]
+    for term in x:
+        screen_vars.extend(get_underlying_vars(term))
+    if cluster is not None:
+        if isinstance(cluster, str):
+            screen_vars.append(cluster)
+        else:
+            screen_vars.extend(cluster)
+    if aweight is not None and isinstance(aweight, str):
+        screen_vars.append(aweight)
+    screen_vars = list(dict.fromkeys(screen_vars))
+    data_expanded, x_expanded = expand_factor_terms(data, x, screen_vars=screen_vars)
     absorb_parsed = parse_absorb(absorb)
     if len(absorb_parsed) > 1:
         raise ValueError("areg supports only a single absorb variable")
