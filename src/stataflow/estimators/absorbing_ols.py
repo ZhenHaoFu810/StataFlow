@@ -430,183 +430,6 @@ class AbsorbingOLS:
         X_star = variables[:, 1:] if k > 0 else np.zeros((n, 0))
         return y_star, X_star, fe_cum
 
-    def _compute_map_cons_variance(
-        self,
-        X_raw: np.ndarray,
-        residuals: np.ndarray,
-        cov_slopes: np.ndarray,
-        fe_info: list[dict],
-        vce: str,
-        n: int,
-        k_full: int,
-        sigma2: float = 0.0,
-    ) -> float:
-        """Compute LSDV-compatible constant variance for MAP path.
-
-        Uses the influence-vector (h) approach:
-        h = p - X_partial @ v,  where  v = solve(Xp'Xp, X'p).
-        Var(_cons) is the appropriate quadratic form in h.
-        """
-        num_fe = len(fe_info)
-        k_x = X_raw.shape[1]
-
-        # ---------- 1-way FE: closed-form p ----------
-        if num_fe == 1:
-            info = fe_info[0]
-            G = info["num_levels"]
-            group_counts = info["counts"]
-            levels = info["levels_int"]
-
-            p = 1.0 / (G * group_counts[levels])
-
-            X_partial = X_raw.copy()
-            for j in range(k_x):
-                gm = np.bincount(levels, weights=X_raw[:, j], minlength=G)
-                gm /= group_counts
-                X_partial[:, j] -= gm[levels]
-
-        # ---------- Multi-way FE: exact p-vector when small ----------
-        else:
-            total_fe_params = sum(info["num_levels"] - 1 for info in fe_info) + 1
-            if total_fe_params > 1000:
-                # Grand-mean approximation for very large FE systems
-                import warnings
-                warnings.warn(
-                    f"MAP _cons variance uses grand-mean approximation for "
-                    f"{total_fe_params} FE params (>1000).  "
-                    f"SE may differ from LSDV/Stata for the constant term.",
-                    RuntimeWarning,
-                    stacklevel=2,
-                )
-                retained_x_names = [name for name in self._coef_names if name != "_cons"]
-                x_means = np.array([self._df[name].mean() for name in retained_x_names])
-                var_cons = float(x_means @ cov_slopes @ x_means)
-                if vce == "ols":
-                    var_cons += sigma2 / n
-                return max(var_cons, 0.0)
-
-            # Build A (FE normal equations with reference levels)
-            A = np.zeros((total_fe_params, total_fe_params))
-            A[0, 0] = n
-
-            offsets = [1]
-            for info in fe_info[:-1]:
-                offsets.append(offsets[-1] + info["num_levels"] - 1)
-
-            for g_idx, info_g in enumerate(fe_info):
-                G_g = info_g["num_levels"]
-                levels_g = info_g["levels_int"]
-                off_g = offsets[g_idx]
-
-                for lvl in range(1, G_g):
-                    mask = levels_g == lvl
-                    count = np.sum(mask)
-                    A[0, off_g + lvl - 1] = count
-                    A[off_g + lvl - 1, 0] = count
-                    A[off_g + lvl - 1, off_g + lvl - 1] = count
-
-                for h_idx in range(g_idx + 1, num_fe):
-                    info_h = fe_info[h_idx]
-                    G_h = info_h["num_levels"]
-                    levels_h = info_h["levels_int"]
-                    off_h = offsets[h_idx]
-
-                    for lvl_g in range(1, G_g):
-                        mask_g = levels_g == lvl_g
-                        for lvl_h in range(1, G_h):
-                            N_gh = np.sum(mask_g & (levels_h == lvl_h))
-                            A[off_g + lvl_g - 1, off_h + lvl_h - 1] = N_gh
-                            A[off_h + lvl_h - 1, off_g + lvl_g - 1] = N_gh
-
-            T_z = np.zeros(total_fe_params)
-            T_z[0] = 1.0
-            for g_idx, info_g in enumerate(fe_info):
-                G_g = info_g["num_levels"]
-                off_g = offsets[g_idx]
-                T_z[off_g : off_g + G_g - 1] = 1.0 / G_g
-
-            try:
-                u = np.linalg.solve(A, T_z)
-            except np.linalg.LinAlgError:
-                u = np.linalg.lstsq(A, T_z, rcond=None)[0]
-
-            p = np.full(n, u[0])
-            for g_idx, info_g in enumerate(fe_info):
-                G_g = info_g["num_levels"]
-                levels_g = info_g["levels_int"]
-                off_g = offsets[g_idx]
-                for lvl in range(1, G_g):
-                    mask = levels_g == lvl
-                    p[mask] += u[off_g + lvl - 1]
-
-            # X_partial = X - Z_ref @ solve(A, Z_ref.T @ X)
-            Z_list = [np.ones(n)]
-            for info_g in fe_info:
-                G_g = info_g["num_levels"]
-                levels_g = info_g["levels_int"]
-                for lvl in range(1, G_g):
-                    Z_list.append((levels_g == lvl).astype(np.float64))
-            Z_ref = np.column_stack(Z_list)
-
-            ZX = Z_ref.T @ X_raw
-            X_partial = X_raw - Z_ref @ np.linalg.solve(A, ZX)
-
-        # ---------- Common: h = p - X_partial @ v, v = solve(Xp'Xp, X'p) ----------
-        XtX_p = X_partial.T @ X_partial
-        Xtp = X_raw.T @ p
-        try:
-            v = np.linalg.solve(XtX_p, Xtp)
-        except np.linalg.LinAlgError:
-            v = np.linalg.lstsq(XtX_p, Xtp, rcond=None)[0]
-        h = p - X_partial @ v
-
-        if vce == "ols":
-            var_cons = sigma2 * np.sum(h ** 2)
-        elif vce == "robust":
-            var_cons = np.sum((h * residuals) ** 2)
-            if n > k_full:
-                var_cons *= n / (n - k_full)
-        elif vce == "cluster":
-            if len(self._cluster_arrs) == 1:
-                clusters = self._cluster_arrs[0]
-                unique_clusters = np.unique(clusters)
-                meat = 0.0
-                for g in unique_clusters:
-                    mask_g = clusters == g
-                    meat += np.sum(h[mask_g] * residuals[mask_g]) ** 2
-                cluster_count = len(unique_clusters)
-                nested_params = sum(
-                    info["num_levels"] - 1 for info in fe_info
-                    if info["var"] == self._cluster_vars[0]
-                )
-                k_eff = k_full - nested_params
-                n_adj = (n - 1) / (n - k_eff) if n > k_eff else 1.0
-                g_adj = cluster_count / (cluster_count - 1) if cluster_count > 1 else 1.0
-                var_cons = n_adj * g_adj * meat
-            else:
-                from stataflow.estimators._vce_utils import compute_multiway_cluster_vce
-                h_mat = h.reshape(-1, 1)
-                hth = float(h_mat.T @ h_mat)
-                if hth > 0:
-                    cov_h, _ = compute_multiway_cluster_vce(
-                        h_mat, h * residuals, np.array([[1.0 / hth]]), self._cluster_arrs, 1, n,
-                    )
-                    var_cons = float(cov_h[0, 0])
-                else:
-                    var_cons = 0.0
-        elif vce == "dkraay":
-            # Delta-method approximation for constant variance under DK
-            retained_x_names = [name for name in self._coef_names if name != "_cons"]
-            if retained_x_names and self._df is not None:
-                x_means = np.array([self._df[name].mean() for name in retained_x_names])
-                var_cons = float(x_means @ cov_slopes @ x_means)
-            else:
-                var_cons = 0.0
-        else:
-            var_cons = 0.0
-
-        return max(var_cons, 0.0)
-
     def _compute_dkraay_vce(
         self,
         X: np.ndarray,
@@ -700,6 +523,19 @@ class AbsorbingOLS:
                 nested_adj = 1
                 break
         return k_x + int(round(self._df_a)) + nested_adj
+
+    def _reghdfe_coefficient_scales(self, y: np.ndarray) -> np.ndarray:
+        """Return reghdfe's coefficient rescaling factors."""
+        x_names = [name for name in self._coef_names if name != "_cons"]
+        y_sd = max(float(np.std(y, ddof=1)), 1e-3)
+        x_sd = np.maximum(
+            np.std(self._df[x_names].to_numpy(), axis=0, ddof=1),
+            1e-3,
+        )
+        scales = x_sd / y_sd
+        if "_cons" in self._coef_names:
+            scales = np.concatenate([scales, [1.0 / y_sd]])
+        return scales
 
     def _compute_multiway_cluster_vce(
         self,
@@ -1168,7 +1004,11 @@ class AbsorbingOLS:
 
             if vce_core == "cluster" and len(self._cluster_arrs) > 1:
                 from stataflow.estimators._vce_utils import fix_psd_reghdfe
-                cov_reported = fix_psd_reghdfe(cov_reported, constant_index=k_x)
+                cov_reported = fix_psd_reghdfe(
+                    cov_reported,
+                    constant_index=k_x,
+                    coefficient_scales=self._reghdfe_coefficient_scales(y),
+                )
         else:
             beta_reported = beta_x
             cov_reported = cov_slopes
@@ -1594,7 +1434,11 @@ class AbsorbingOLS:
                 constant_index = (
                     self._coef_names.index("_cons") if "_cons" in self._coef_names else None
                 )
-                cov_reported = fix_psd_reghdfe(cov_reported, constant_index=constant_index)
+                cov_reported = fix_psd_reghdfe(
+                    cov_reported,
+                    constant_index=constant_index,
+                    coefficient_scales=self._reghdfe_coefficient_scales(y),
+                )
 
             # Standard errors
             diag_cov = np.diag(cov_reported)

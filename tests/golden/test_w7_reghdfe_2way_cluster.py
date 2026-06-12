@@ -197,18 +197,24 @@ class TestW7Reghdfe2WayCluster:
             )
             assert passed, msg
 
-    @pytest.mark.xfail(
-        reason="VCE-003: 2-way cluster _cons SE MAP approximation (known limitation)",
-        strict=False,
-    )
-    def test_coefficients_std_err_2way(self, python_result, stata_result):
+    def test_slope_std_err_2way(self, python_result, stata_result):
         for py_coef, st_coef in zip(
             python_result.coefficients, stata_result.get('coefficients', [])
         ):
+            if py_coef.name == "_cons":
+                continue
             passed, msg = tolerance_close(
                 py_coef.std_err, st_coef['std_err'], name=f"2way_se[{py_coef.name}]"
             )
             assert passed, msg
+
+    def test_constant_std_err_2way(self, python_result, stata_result):
+        py_coef = next(c for c in python_result.coefficients if c.name == "_cons")
+        st_coef = next(c for c in stata_result.get('coefficients', []) if c['name'] == "_cons")
+        passed, msg = tolerance_close(
+            py_coef.std_err, st_coef['std_err'], name="2way_se[_cons]"
+        )
+        assert passed, msg
 
     def test_vcetype(self, python_result):
         assert python_result.model.vcetype == "cluster"

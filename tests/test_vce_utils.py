@@ -6,6 +6,7 @@ from stataflow.estimators._vce_utils import (
     compute_cluster_meat,
     compute_multiway_cluster_vce,
     detect_collinear_columns,
+    fix_psd,
     fix_psd_reghdfe,
 )
 
@@ -46,8 +47,8 @@ def test_fix_psd_reghdfe_without_constant_does_not_treat_last_slope_as_constant(
     assert not np.allclose(fixed[:2, :2], mat[:2, :2])
 
 
-def test_fix_psd_reghdfe_preserves_reported_standard_errors_with_constant():
-    """PSD fix should not change reported slope or _cons variances."""
+def test_fix_psd_reghdfe_restores_slope_block_after_full_matrix_fix():
+    """Reghdfe fixes the full VCE, then restores the slope block."""
     mat = np.array([
         [1.0, 0.0, 1.4],
         [0.0, 1.0, 0.0],
@@ -56,13 +57,13 @@ def test_fix_psd_reghdfe_preserves_reported_standard_errors_with_constant():
 
     fixed = fix_psd_reghdfe(mat.copy(), constant_index=2)
 
-    assert np.allclose(np.diag(fixed), np.diag(mat))
     assert np.allclose(fixed[:2, :2], mat[:2, :2])
-    assert np.min(np.linalg.eigvalsh(fixed)) >= -1e-12
+    assert not np.isclose(fixed[2, 2], mat[2, 2])
+    assert fixed[2, 2] >= 0.0
 
 
 def test_fix_psd_reghdfe_preserves_slope_block_when_constant_variance_is_negative():
-    """Negative _cons variance should not force a generic slope-block rewrite."""
+    """A negative _cons variance is corrected without changing valid slopes."""
     mat = np.array([
         [0.01500439, -0.00227936, -0.00201321],
         [-0.00227936, 0.00781007, 0.00166196],
@@ -73,6 +74,42 @@ def test_fix_psd_reghdfe_preserves_slope_block_when_constant_variance_is_negativ
 
     assert np.allclose(fixed[:2, :2], mat[:2, :2])
     assert fixed[2, 2] >= 0.0
+
+
+def test_fix_psd_reghdfe_applies_fix_on_standardized_scale():
+    """PSD correction must occur before coefficients are returned to original units."""
+    mat = np.array([
+        [1.0, 0.0, 1.4],
+        [0.0, 1.0, 0.0],
+        [1.4, 0.0, 1.0],
+    ])
+    scales = np.array([2.0, 0.5, 4.0])
+
+    fixed = fix_psd_reghdfe(mat, constant_index=2, coefficient_scales=scales)
+    standardized = mat * np.outer(scales, scales)
+    expected = fix_psd_reghdfe(standardized, constant_index=2)
+    expected /= np.outer(scales, scales)
+
+    assert np.allclose(fixed, expected)
+
+
+def test_fix_psd_reghdfe_standardizes_models_without_constant():
+    """No-constant models still require PSD correction on standardized inputs."""
+    mat = np.array([
+        [1.0, 1.4],
+        [1.4, 1.0],
+    ])
+    scales = np.array([3.0, 0.5])
+
+    fixed = fix_psd_reghdfe(
+        mat,
+        constant_index=None,
+        coefficient_scales=scales,
+    )
+    expected = fix_psd(mat * np.outer(scales, scales))
+    expected /= np.outer(scales, scales)
+
+    assert np.allclose(fixed, expected)
 
 
 def test_multiway_cluster_interaction_avoids_separator_collision():

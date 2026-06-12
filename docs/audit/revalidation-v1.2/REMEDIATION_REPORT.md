@@ -21,16 +21,16 @@
 | FVAR-002 | P2 | **Fixed** | 字符串列被接受为 `i.`/`ib#.` 因子，且 `#` 被解释为排序位置 | `src/stataflow/compat/stata/factor_variables.py`, `tests/test_factor_variables.py` | — | 无 |
 | FVAR-003 | P3 | **Fixed** | 文档称 3+ 路交互硬拒绝，但代码已支持 | `factor_variables.py` docstring, `docs/cookbook.md`, `docs/USER_GUIDE.md`, `docs/research/factor-variable-semantics.md`, `docs/command-support-matrix/*.md` | — | 无 |
 | VCE-001 | P1 | **Fixed** | 单一聚类被接受，未拒绝或警告 | `src/stataflow/estimators/ols.py`, `glm.py`, `iv.py`, `ppmlhdfe.py` | — | 无 |
-| VCE-002 | P1 | Open / Known limitation | HDFE MAP 常数项方差近似 | `docs/adr/vce-003-2way-cluster-cons-se-known-limitation.md` | — | 需内核重构 |
-| VCE-003 | P1 | Open / Known limitation | HDFE 2-way cluster `_cons` 标准误偏差（LSDV/MAP 框架与 Stata reghdfe 迭代去均值框架的结构性差异） | `docs/adr/vce-003-2way-cluster-cons-se-known-limitation.md`；`tests/golden/test_w7_reghdfe_2way_cluster.py`；`tests/golden/test_w7_reghdfe_2way_cluster_real.py` | 合成 7.98%，真实 6.44% | 已 xfail，待 Wave 12 / MAP-LSMR 内核重构 |
-| VCE-004 | P1 | Open / Known limitation | HDFE MAP cluster 差异 | `docs/adr/vce-003-2way-cluster-cons-se-known-limitation.md` | — | 需内核重构 |
+| VCE-002 | P1 | **Fixed** | 删除未调用的 MAP 常数方差近似；统一使用报告参数联合 VCE | `absorbing_ols.py`; HDFE ADR | <1e-10（MAP/LSDV） | 无 |
+| VCE-003 | P1 | **Fixed** | 旧实现未复现 reghdfe“标准化尺度 PSD fix，再还原尺度”的顺序 | `_vce_utils.py`, `absorbing_ols.py`; 两组二维聚类 golden | <1e-6 | 无 |
+| VCE-004 | P1 | **Fixed** | MAP/LSDV 聚类路径已使用同一 small-sample 与报告参数口径 | `test_w12_map_small_sample.py` | <1e-10 | 无 |
 | VCE-005 | P1 | **Fixed** | 加权 sandwich 权重阶数：OLS/HDFE robust meat 用 `w*e²` 而非 `w²*e²`；MAP 路径忽略权重 | `src/stataflow/estimators/ols.py`, `absorbing_ols.py`; 新增 `scripts/verify_vce005_weighted.py` | <1e-7 | PPMLHDFE aweight 未完全双跑 |
 | HDFE-fit (P1-9) | P1 | **Fixed** | reghdfe/areg 的 `rmse_df` / 调整 R² / fit-statistics 与 Stata `used_df_r` 对齐 | `src/stataflow/estimators/absorbing_ols.py`; `tests/golden/test_p3_reghdfe_cluster.py`, `test_p3_reghdfe_real_panel.py`, `test_w7_reghdfe_2way_cluster.py`, `test_w7_reghdfe_2way_cluster_real.py`, `test_w12_map_small_sample.py` | <1e-6 | 无 |
 | IV-001 | P1 | **Fixed** | 欠识别模型缺少 rank gate，抛出 IndexError | `src/stataflow/estimators/iv.py` | — | 无 |
 | IV-002 | P1 | **Fixed** | 与 SAMP-001 同源 | `src/stataflow/estimators/iv.py` | — | 无 |
 | GLM-001 | P1 | **Fixed** | Logit/Probit/Poisson 未校验因变量支持域 | `src/stataflow/estimators/glm.py` | — | 无 |
 | GLM-002 | P1 | **Fixed** | IRLS 不收敛仍返回正常 ResultSchema | `src/stataflow/estimators/glm.py` | — | 无 |
-| GLM-003 | P2 | Open / Known limitation | margins 虚拟变量按连续变量处理（未实现 Stata 离散变化；需公共 API 设计） | — | — | 需单独立项设计 factor 元数据传递 |
+| GLM-003 | P2 | **Fixed** | factor 元数据未传入 estimator；delta method 错误删除常数协方差贡献 | `factor_variables.py`, `glm.py`, `postestimation.py`; `test_factor_margins_discrete.py` | <1e-6 | 因子交互 margins 明确不支持 |
 | DID-001 | P1 | **Fixed** | `first_treat=0` 被当作从未处理 | `src/stataflow/estimators/did_imputation.py`, `csdid.py`, `tests/test_compat_stata_did.py` | — | 无 |
 | DID-002 | P1 | **Fixed** | CSDID 自定义 cluster 只改元数据，未聚合 IF | `src/stataflow/estimators/csdid.py` | — | 无 |
 | DID-003 | P2 | **Fixed** | `estat_event()` 只构造对角 VCE，丢失事件期估计间协方差 | `src/stataflow/estimators/csdid.py` | — | 无 |
@@ -471,9 +471,9 @@ rdplot margin vote, c(50.0) binselect(qsmv)
 - `test_w7_reghdfe_2way_cluster.py` / `test_w7_reghdfe_2way_cluster_real.py`
 - `test_w12_map_small_sample.py`
 
-系数、标准误（xfail 的 VCE-003 `_cons` SE 除外）、R²、调整 R²、RMSE、F 统计量、自由度均满足 `<1e-6`。
+系数、所有标准误（含二维聚类 `_cons`）、R²、调整 R²、RMSE、F 统计量、自由度均满足 `<1e-6`。
 
-**残余风险**：无（slope 与 fit-statistics 已闭环；`_cons` SE 的 VCE-003 偏差单独列为 Open）。
+**残余风险**：无。
 
 ---
 
@@ -481,8 +481,8 @@ rdplot margin vote, c(50.0) binselect(qsmv)
 
 | 验证项 | 状态 | 结果 |
 |---|---|---|
-| pytest non-golden (Task 8.1 交付卫生回归) | **Pass** | 339 passed, 0 failed |
-| pytest golden (前期完整双跑) | **Pass** | 812 passed, 4 skipped, 0 failed, 0 errors in ~20 min 45 s |
+| pytest non-golden（2026-06-12 最终） | **Pass** | 349 passed, 0 failed |
+| pytest golden（2026-06-12 最终） | **Pass** | 835 passed, 4 skipped, 0 xfailed, 0 failed in 22 min 43 s |
 | compileall | **Pass** | 无编译错误 |
 | wheel build | **Pass** | 成功构建 wheel |
 | git diff --check | **Pass** | 仅 LF/CRLF 警告，无 trailing whitespace |
@@ -491,24 +491,10 @@ rdplot margin vote, c(50.0) binselect(qsmv)
 
 ---
 
-## 待续工作
+## 2026-06-12 最终收口
 
-### P1 待处理（本轮未闭环）
-- **VCE-002/003/004**：HDFE MAP 常数项方差 / 两路 cluster 常数项标准误 / MAP cluster slope 的已声明偏差。
-  - 当前实现：
-    - 合成 2-way cluster `_cons` SE：Python 0.015478 vs Stata 0.014335，相对偏差 7.98%。
-    - 真实 2-way cluster `_cons` SE（wagepan）：Python 0.007808 vs Stata 0.008346，相对偏差 6.44%。
-    - 所有 slope SE、系数、R²、调整 R²、RMSE、F 统计量均满足 `<1e-6`。
-  - 根因：LSDV/T 矩阵路径与 Stata `reghdfe` 的迭代去均值路径在 `_cons` 方差的 PSD fix、FE 协方差传播上存在结构性差异；单路聚类下等价，两路聚类下出现偏差。
-  - 处理：已将 `tests/golden/test_w7_reghdfe_2way_cluster.py::test_coefficients_std_err_2way` 与 `tests/golden/test_w7_reghdfe_2way_cluster_real.py::test_coefficients_std_err_2way` 标记为 `xfail`（理由 `VCE-003: 2-way cluster _cons SE MAP approximation`），并新增 ADR `docs/adr/vce-003-2way-cluster-cons-se-known-limitation.md`。
-  - 修复路径：需要重构 HDFE 内核为与 Stata 一致的 MAP/LSMR 迭代去均值框架，或在 LSDV 框架下实现稀疏/分块 LSDV 协方差并复现 `reghdfe_fix_psd` 的常数项处理。预计工作量大，超出本轮返工范围。
-  - **状态**：Open / Known limitation，**未标记为 Fixed**。
-> **说明**：VCE-005、EVID-001 与 RD-002 已在本轮修复并补充 Stata 双跑证据；VCE-002/003/004 仍为剩余 P1 项。
+- **VCE-002/003/004**：已关闭。根因是 PSD 修正顺序与标准化尺度，而非必须重构 HDFE 内核。两组 Stata 二维聚类金标及 MAP/LSDV 等价测试均通过。
+- **GLM-003**：已关闭。简单 `i.var` 主效应在 AME/MEM 下使用 0→1 离散变化，logit/probit/poisson 的点估计与 delta-method SE 均通过 Stata 17 双跑。含因子交互的 margins 明确抛出 `NotImplementedError`，不再返回错误数值。
+- **CSDID 自定义聚类复验**：`simple/group/calendar/event/pretrend` 共用 cluster-level influence-function covariance，新增 Stata 17 双跑覆盖。
 
-### P2/P3 待处理
-- **GLM-003**：margins 虚拟变量按连续变量导数处理，未实现 Stata 的离散变化。
-  - **根因**：`postestimation.py` 的 `margins_ame_*` 函数对所有变量统一计算偏导数，未区分 dummy/continuous。
-  - **修复复杂度**：需要 margins 调用链识别哪些列是因子变量虚拟列（当前 estimator 层不保留 factor-expansion 元数据），或引入启发式检测（0/1 列 → 离散变化）。涉及公共 API 设计，建议单独立项。
-  - **状态**：标记为已知限制，未修复。
-
-> **本轮结论**：revalidation-v1.2 返工 **未全部闭环**。VCE-002/003/004（HDFE MAP / 2-way cluster `_cons` SE）与 GLM-003（factor-aware margins）仍为 Open / Known limitation；其余列出的 P1/P2 项已按 `<1e-6` 字段级标准或等价的整数/逻辑匹配关闭。
+> **本轮结论**：`FINAL_REWORK_TASKS.md` 指定的统计实现阻断项已闭环。最终发布状态以最新全量验收结果为准。

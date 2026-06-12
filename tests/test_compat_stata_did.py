@@ -1336,6 +1336,122 @@ def test_csdid_agg_pretrend():
     assert 0 <= res.fit.f_pvalue <= 1
 
 
+def _make_csdid_custom_cluster_data(seed=812):
+    """Create a panel with several units in every inference cluster."""
+    df = _make_csdid_data(n_units=240, n_periods=7, seed=seed)
+    df["region"] = df["id"] // 6
+    return df
+
+
+def _manual_csdid_cluster_cov(model, influence):
+    """Aggregate unit-level influence columns by the fitted custom cluster."""
+    influence = np.asarray(influence, dtype=float)
+    if influence.ndim == 1:
+        influence = influence[:, None]
+
+    unit_cluster = (
+        model._df_clean[[model.id_name, model._cluster_var]]
+        .drop_duplicates(model.id_name)
+        .set_index(model.id_name)[model._cluster_var]
+    )
+    cluster_ids = unit_cluster.reindex(model._units).to_numpy()
+    unique_clusters, inverse = np.unique(cluster_ids, return_inverse=True)
+    cluster_if = np.zeros((len(unique_clusters), influence.shape[1]))
+    np.add.at(cluster_if, inverse, influence)
+    return cluster_if.T @ cluster_if / (len(model._units) ** 2)
+
+
+def _csdid_agg_influence(model, pairs):
+    """Rebuild the unit-level IF used by a CSDID aggregation."""
+    ag_rif = np.array([
+        [model._rifgt[pair][unit] for pair in pairs]
+        for unit in model._units
+    ])
+    ag_wt = np.array([
+        [model._rifwt[pair][unit] for pair in pairs]
+        for unit in model._units
+    ])
+    estimate, rif = model._aggte(ag_rif, ag_wt)
+    return estimate, rif - estimate
+
+
+def test_csdid_custom_cluster_simple_uses_clustered_influence():
+    df = _make_csdid_custom_cluster_data()
+    model = csdid(
+        df, y="y", id="id", time="time", first_treat="first_treat",
+        cluster="region",
+    )
+
+    result = model.estat("simple")
+    post_treatment_pairs = [
+        pair for pair in model._group_time_att if pair[1] >= pair[0]
+    ]
+    expected_beta, influence = _csdid_agg_influence(model, post_treatment_pairs)
+    expected_cov = _manual_csdid_cluster_cov(model, influence)
+
+    assert np.isclose(result.coefficients[0].beta, expected_beta)
+    assert np.allclose(result.variance.values, expected_cov, rtol=1e-12, atol=1e-12)
+    assert np.isclose(result.coefficients[0].std_err, np.sqrt(expected_cov[0, 0]))
+
+
+@pytest.mark.parametrize("aggtype", ["group", "calendar"])
+def test_csdid_custom_cluster_multi_coefficient_aggregations_use_full_cluster_vce(aggtype):
+    df = _make_csdid_custom_cluster_data()
+    model = csdid(
+        df, y="y", id="id", time="time", first_treat="first_treat",
+        cluster="region",
+    )
+
+    result = model.estat(aggtype)
+    influence_columns = []
+    if aggtype == "group":
+        keys = sorted(set(g for g, _ in model._group_time_att))
+        for key in keys:
+            pairs = [pair for pair in model._group_time_att if pair[0] == key and pair[1] >= key]
+            if pairs:
+                _, influence = _csdid_agg_influence(model, pairs)
+                influence_columns.append(influence)
+    else:
+        keys = sorted(set(t for _, t in model._group_time_att))
+        for key in keys:
+            pairs = [pair for pair in model._group_time_att if pair[1] == key and pair[0] <= key]
+            if pairs:
+                _, influence = _csdid_agg_influence(model, pairs)
+                influence_columns.append(influence)
+
+    expected_cov = _manual_csdid_cluster_cov(model, np.column_stack(influence_columns))
+    assert np.allclose(result.variance.values, expected_cov, rtol=1e-12, atol=1e-12)
+    assert np.allclose(
+        [coef.std_err for coef in result.coefficients],
+        np.sqrt(np.diag(expected_cov)),
+        rtol=1e-12,
+        atol=1e-12,
+    )
+
+
+def test_csdid_custom_cluster_pretrend_uses_clustered_joint_covariance():
+    df = _make_csdid_custom_cluster_data()
+    model = csdid(
+        df, y="y", id="id", time="time", first_treat="first_treat",
+        cluster="region",
+    )
+
+    result = model.estat("pretrend")
+    pre_pairs = sorted(
+        pair for pair in model._group_time_att if pair[1] < pair[0]
+    )
+    estimates = np.array([model._group_time_att[pair][0] for pair in pre_pairs])
+    influence = np.column_stack([
+        [model._rifgt[pair][unit] - model._group_time_att[pair][0] for unit in model._units]
+        for pair in pre_pairs
+    ])
+    expected_cov = _manual_csdid_cluster_cov(model, influence)
+    expected_wald = float(estimates @ np.linalg.pinv(expected_cov) @ estimates)
+
+    assert result.fit.df_model == len(pre_pairs)
+    assert np.isclose(result.fit.f_stat, expected_wald, rtol=1e-12, atol=1e-12)
+
+
 def test_csdid_agg_event_default():
     """Explicit event aggtype should match direct estat event."""
     df = _make_did_data(n_units=100, n_periods=5)

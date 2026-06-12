@@ -48,62 +48,58 @@ def fix_psd(mat: np.ndarray) -> np.ndarray:
     return eigvecs @ np.diag(eigvals) @ eigvecs.T
 
 
-def fix_psd_reghdfe(mat: np.ndarray, constant_index: int | None = -1) -> np.ndarray:
-    """
-    Reghdfe-style PSD fix on the reported VCV matrix.
+def fix_psd_reghdfe(
+    mat: np.ndarray,
+    constant_index: int | None = -1,
+    coefficient_scales: Optional[np.ndarray] = None,
+) -> np.ndarray:
+    """Apply reghdfe's Cameron-Gelbach-Miller PSD correction.
 
-    When a constant is reported, preserves the slope submatrix and all
-    reported variances exactly, then shrinks only the constant-slope
-    covariance vector as needed to satisfy the Schur-complement PSD
-    condition. This avoids changing reported standard errors as a side
-    effect of the PSD correction.
+    Reghdfe truncates negative eigenvalues of the full reported VCE.  When a
+    constant is present, it then restores the slope block after applying the
+    same correction to that block if necessary.  Consequently, the constant
+    variance and constant-slope covariances may change while valid slope
+    standard errors remain unchanged.
 
-    By default assumes _cons is the last row/col of the matrix. Pass
-    ``constant_index=None`` when the reported matrix has no constant row.
+    By default ``_cons`` is assumed to be the last row and column. Pass
+    ``constant_index=None`` when the matrix has no reported constant.
+    ``coefficient_scales`` reproduces reghdfe's standardize-before-fix order:
+    original coefficients equal standardized coefficients divided by these
+    scales.
     """
     k = mat.shape[0]
-    if k <= 1:
-        return fix_psd(mat)
-    if constant_index is None:
-        return fix_psd(mat)
+    mat = np.asarray(mat, dtype=float)
+    scales = None
+    if coefficient_scales is not None:
+        scales = np.asarray(coefficient_scales, dtype=float)
+        if scales.shape != (k,) or np.any(scales <= 0):
+            raise ValueError("coefficient_scales must contain one positive value per coefficient")
+        mat = mat * np.outer(scales, scales)
+
+    if k <= 1 or constant_index is None:
+        fixed = fix_psd(mat)
+        return fixed if scales is None else fixed / np.outer(scales, scales)
+
+    mat = 0.5 * (mat + mat.T)
 
     if constant_index < 0:
         constant_index = k + constant_index
     if constant_index < 0 or constant_index >= k:
         raise ValueError("constant_index is out of bounds for covariance matrix")
 
-    mat = 0.5 * (mat + mat.T)
     index = [i for i in range(k) if i != constant_index]
-    slope_block = mat[np.ix_(index, index)].copy()
-    cons_cov = mat[index, constant_index].copy()
-    cons_var = float(mat[constant_index, constant_index])
+    slope_block = mat[np.ix_(index, index)]
 
-    if cons_var < 0:
-        # Reghdfe's reported multi-way VCE can yield a negative raw _cons
-        # variance before the command recovers the demeaning-based constant
-        # variance. In that case we still need the PSD correction to leave
-        # the slope block untouched; otherwise synthetic 2-way cluster slope
-        # SEs drift away from Stata.
-        fixed = fix_psd(mat)
+    if np.min(np.linalg.eigvalsh(mat)) >= 0:
+        return mat if scales is None else mat / np.outer(scales, scales)
+
+    fixed = fix_psd(mat)
+    if slope_block.size:
+        if np.min(np.linalg.eigvalsh(slope_block)) < 0:
+            slope_block = fix_psd(slope_block)
         fixed[np.ix_(index, index)] = slope_block
-        return 0.5 * (fixed + fixed.T)
-
-    slope_eig_min = float(np.min(np.linalg.eigvalsh(slope_block))) if slope_block.size else 0.0
-    if slope_eig_min < -1e-10:
-        return fix_psd(mat)
-
-    slope_pinv = np.linalg.pinv(slope_block, hermitian=True)
-    schur = float(cons_cov @ slope_pinv @ cons_cov)
-    if schur <= cons_var or schur <= 0:
-        return mat
-
-    scale = np.sqrt(cons_var / schur) if cons_var > 0 else 0.0
-    fixed = mat.copy()
-    fixed[index, constant_index] = cons_cov * scale
-    fixed[constant_index, index] = cons_cov * scale
-    fixed[np.ix_(index, index)] = slope_block
-    fixed[constant_index, constant_index] = cons_var
-    return 0.5 * (fixed + fixed.T)
+    fixed = 0.5 * (fixed + fixed.T)
+    return fixed if scales is None else fixed / np.outer(scales, scales)
 
 
 def compute_multiway_cluster_vce(

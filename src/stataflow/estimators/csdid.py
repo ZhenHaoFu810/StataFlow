@@ -84,6 +84,51 @@ class CSDID:
                     mask[orig_idx] = True
         return mask
 
+    def _set_inference_units(self, df: pd.DataFrame, units) -> None:
+        """Cache the fitted unit order and its inference-cluster mapping."""
+        self._units = list(units)
+        cluster_col = self._cluster_var
+        if cluster_col == self.id_name:
+            unit_clusters = pd.Series(self._units, index=self._units)
+        else:
+            unit_clusters = (
+                df[[self.id_name, cluster_col]]
+                .drop_duplicates(self.id_name)
+                .set_index(self.id_name)[cluster_col]
+                .reindex(self._units)
+            )
+        if unit_clusters.isna().any():
+            raise ValueError("Missing cluster mapping for units in the estimation sample")
+        self._cluster_codes, _ = pd.factorize(unit_clusters, sort=True)
+
+    def _influence_covariance(self, influence) -> np.ndarray:
+        """Return covariance from unit-level influence-function columns."""
+        values = np.asarray(influence, dtype=float)
+        if values.ndim == 1:
+            values = values[:, None]
+        if values.ndim != 2 or values.shape[0] != len(self._units):
+            raise ValueError(
+                "Influence matrix must have one row per fitted unit: "
+                f"expected {len(self._units)}, got {values.shape}."
+            )
+
+        cluster_sums = np.zeros((self._cluster_codes.max() + 1, values.shape[1]))
+        np.add.at(cluster_sums, self._cluster_codes, values)
+        return cluster_sums.T @ cluster_sums / (len(self._units) ** 2)
+
+    def _aggregate_pairs(self, pairs) -> tuple[float, np.ndarray]:
+        """Aggregate ATT pairs and return the estimate with its unit-level IF."""
+        ag_rif = np.array([
+            [self._rifgt[pair][unit] for pair in pairs]
+            for unit in self._units
+        ])
+        ag_wt = np.array([
+            [self._rifwt[pair][unit] for pair in pairs]
+            for unit in self._units
+        ])
+        estimate, rif = self._aggte(ag_rif, ag_wt)
+        return estimate, rif - estimate
+
     def fit(self, method="reg", vce=None, cluster=None, xvars=None, notyet=False):
         """Fit the CSDID estimator.
 
@@ -283,39 +328,13 @@ class CSDID:
         """Compute SEs and event-study aggregation from ATT(g,t) and IFs."""
         uid = self.id_name
         n_units_total = len(units)
-
-        # Determine clustering level
-        cluster_col = getattr(self, '_cluster_var', uid)
-        use_cluster = cluster_col != uid and cluster_col in df.columns
-        if use_cluster:
-            unit_to_cluster = df.set_index(uid)[cluster_col].to_dict()
-            cluster_ids = [unit_to_cluster.get(u) for u in units]
-            cluster_unique = sorted({c for c in cluster_ids if c is not None})
-            n_clust = len(cluster_unique)
-            # Build cluster indicator matrix for vectorised aggregation
-            if n_clust > 0:
-                C = np.zeros((n_units_total, n_clust))
-                for i, c in enumerate(cluster_ids):
-                    if c is not None:
-                        C[i, cluster_unique.index(c)] = 1.0
-            else:
-                C = None
-                use_cluster = False
-        else:
-            C = None
-
-        def _se_from_if(if_vals):
-            """Compute SE from influence-function values."""
-            if C is not None:
-                # Cluster-robust: sum IFs within each cluster, then square-sum
-                return np.sqrt(np.sum((C.T @ if_vals) ** 2)) / n_units_total
-            else:
-                return np.sqrt(np.sum(if_vals ** 2)) / n_units_total
+        self._set_inference_units(df, units)
 
         # Group-time SEs
         se_gt = {}
         for k, ifs in if_gt.items():
-            if use_cluster:
+            if self._cluster_var != uid:
+                unit_to_cluster = df.set_index(uid)[self._cluster_var].to_dict()
                 cluster_sums = {}
                 for u, val in ifs.items():
                     c = unit_to_cluster.get(u)
@@ -371,7 +390,7 @@ class CSDID:
             event_est[e] = atte
             event_rif[e] = {u: float(rif_event[idx]) for idx, u in enumerate(units)}
             event_if[e] = {u: float(if_event[idx]) for idx, u in enumerate(units)}
-            event_se[e] = _se_from_if(if_event)
+            event_se[e] = float(np.sqrt(self._influence_covariance(if_event)[0, 0]))
 
         if pre_es:
             k = len(pre_es)
@@ -383,7 +402,7 @@ class CSDID:
             atte, rif_pre = self._aggte(ag_rif, ag_wt)
             if_pre = rif_pre - atte
             event_est["Pre_avg"] = atte
-            event_se["Pre_avg"] = _se_from_if(if_pre)
+            event_se["Pre_avg"] = float(np.sqrt(self._influence_covariance(if_pre)[0, 0]))
             event_rif["Pre_avg"] = {u: float(rif_pre[idx]) for idx, u in enumerate(units)}
             event_if["Pre_avg"] = {u: float(if_pre[idx]) for idx, u in enumerate(units)}
 
@@ -397,7 +416,7 @@ class CSDID:
             atte, rif_post = self._aggte(ag_rif, ag_wt)
             if_post = rif_post - atte
             event_est["Post_avg"] = atte
-            event_se["Post_avg"] = _se_from_if(if_post)
+            event_se["Post_avg"] = float(np.sqrt(self._influence_covariance(if_post)[0, 0]))
             event_rif["Post_avg"] = {u: float(rif_post[idx]) for idx, u in enumerate(units)}
             event_if["Post_avg"] = {u: float(if_post[idx]) for idx, u in enumerate(units)}
 
@@ -407,8 +426,6 @@ class CSDID:
         self._event_if = event_if
         self._rifgt = rifgt
         self._rifwt = rifwt
-        self._units = units
-
         return self
 
     def _fit_dr(self, method="drimp", vce=None, cluster=None, notyet=False):
@@ -688,58 +705,17 @@ class CSDID:
                 ci_high=float(conf_int[i, 1]),
             ))
 
-        active_coeffs = [c for c in coefficients if c.std_err > 0]
-        active_names = [c.name for c in active_coeffs]
-        active_keys = [_to_param_key(k) for k in active_names]
-        n_units_total = len(self._units)
-
-        # Build IF vectors for active estimates
-        if_vecs = []
-        for k in active_keys:
-            if_dict = self._event_if.get(k, {})
-            vec = np.array([if_dict.get(u, 0.0) for u in self._units])
-            if_vecs.append(vec)
-
-        # Determine clustering
-        cluster_col = getattr(self, "_cluster_var", None)
-        use_cluster = (
-            cluster_col is not None
-            and self._df_clean is not None
-            and cluster_col in self._df_clean.columns
-        )
-        if use_cluster:
-            uid = self.id_name
-            unit_to_cluster = self._df_clean.set_index(uid, drop=False)[cluster_col].to_dict()
-            cluster_ids = [unit_to_cluster.get(u) for u in self._units]
-            cluster_unique = sorted({c for c in cluster_ids if c is not None})
-            if len(cluster_unique) > 0:
-                C = np.zeros((n_units_total, len(cluster_unique)))
-                for i, c in enumerate(cluster_ids):
-                    if c is not None:
-                        C[i, cluster_unique.index(c)] = 1.0
-                n_clust = getattr(self, "_n_clust", len(cluster_unique))
-            else:
-                use_cluster = False
-                C = None
-                n_clust = getattr(self, "_n_clust", n_units_total)
+        names = [c.name for c in coefficients]
+        keys = [_to_param_key(name) for name in names]
+        if keys:
+            influence = np.column_stack([
+                [self._event_if[key].get(unit, 0.0) for unit in self._units]
+                for key in keys
+            ])
         else:
-            C = None
-            n_clust = getattr(self, "_n_clust", n_units_total)
-
-        cov = np.zeros((len(active_names), len(active_names)))
-        for i in range(len(active_names)):
-            for j in range(i + 1):
-                if C is not None:
-                    ci = C.T @ if_vecs[i]
-                    cj = C.T @ if_vecs[j]
-                    cov_ij = float(np.dot(ci, cj)) / (n_units_total ** 2)
-                else:
-                    cov_ij = float(np.dot(if_vecs[i], if_vecs[j])) / (n_units_total ** 2)
-                cov[i, j] = cov_ij
-                if i != j:
-                    cov[j, i] = cov_ij
-
-        n_active = len(active_names)
+            influence = np.empty((len(self._units), 0))
+        cov = self._influence_covariance(influence)
+        n_active = len(names)
         df_model = float(n_active) if n_active > 0 else 0.0
         df_resid = float(self._n_clust - 1) if self._n_clust > 1 else float(self._nobs - n_active)
 
@@ -761,7 +737,7 @@ class CSDID:
             ),
             coefficients=coefficients,
             variance=VarianceInfo(
-                row_names=active_names,
+                row_names=names,
                 values=cov.tolist(),
             ),
             diagnostics=DiagnosticsInfo(
@@ -818,25 +794,15 @@ class CSDID:
         if not hasattr(self, "_rifgt") or not self._rifgt:
             raise ValueError("Model has not been fitted.")
 
-        pairs = list(self._group_time_att.keys())
-        n_units_total = len(self._units)
-        k = len(pairs)
-
-        ag_rif = np.zeros((n_units_total, k))
-        ag_wt = np.zeros((n_units_total, k))
-        for j, p in enumerate(pairs):
-            for i, u in enumerate(self._units):
-                ag_rif[i, j] = self._rifgt[p][u]
-                ag_wt[i, j] = self._rifwt[p][u]
-
-        atte, rif_simple = self._aggte(ag_rif, ag_wt)
-        if_simple = rif_simple - atte
-        se = np.sqrt(np.sum(if_simple ** 2)) / n_units_total
+        post_treatment_pairs = [
+            pair for pair in self._group_time_att if pair[1] >= pair[0]
+        ]
+        atte, influence = self._aggregate_pairs(post_treatment_pairs)
 
         return self._make_result_schema(
             names=["simple"],
             coefs=[atte],
-            ses=[se],
+            influence=influence,
             command="csdid_estat simple",
         )
 
@@ -845,38 +811,27 @@ class CSDID:
         if not hasattr(self, "_rifgt") or not self._rifgt:
             raise ValueError("Model has not been fitted.")
 
-        n_units_total = len(self._units)
         cohorts = sorted(set(g for g, t in self._group_time_att.keys()))
 
         names = []
         coefs = []
-        ses = []
+        influence_columns = []
 
         for g in cohorts:
             pairs = [(g_c, t) for g_c, t in self._group_time_att.keys() if g_c == g and t >= g]
             if not pairs:
                 continue
 
-            k = len(pairs)
-            ag_rif = np.zeros((n_units_total, k))
-            ag_wt = np.zeros((n_units_total, k))
-            for j, p in enumerate(pairs):
-                for i, u in enumerate(self._units):
-                    ag_rif[i, j] = self._rifgt[p][u]
-                    ag_wt[i, j] = self._rifwt[p][u]
-
-            atte, rif_g = self._aggte(ag_rif, ag_wt)
-            if_g = rif_g - atte
-            se = np.sqrt(np.sum(if_g ** 2)) / n_units_total
+            atte, influence = self._aggregate_pairs(pairs)
 
             names.append(f"g{int(g)}")
             coefs.append(atte)
-            ses.append(se)
+            influence_columns.append(influence)
 
         return self._make_result_schema(
             names=names,
             coefs=coefs,
-            ses=ses,
+            influence=np.column_stack(influence_columns),
             command="csdid_estat group",
         )
 
@@ -885,66 +840,51 @@ class CSDID:
         if not hasattr(self, "_rifgt") or not self._rifgt:
             raise ValueError("Model has not been fitted.")
 
-        n_units_total = len(self._units)
         times = sorted(set(t for g, t in self._group_time_att.keys()))
 
         names = []
         coefs = []
-        ses = []
+        influence_columns = []
 
         for t in times:
             pairs = [(g, t_c) for g, t_c in self._group_time_att.keys() if t_c == t and g <= t and g > 0]
             if not pairs:
                 continue
 
-            k = len(pairs)
-            ag_rif = np.zeros((n_units_total, k))
-            ag_wt = np.zeros((n_units_total, k))
-            for j, p in enumerate(pairs):
-                for i, u in enumerate(self._units):
-                    ag_rif[i, j] = self._rifgt[p][u]
-                    ag_wt[i, j] = self._rifwt[p][u]
-
-            atte, rif_t = self._aggte(ag_rif, ag_wt)
-            if_t = rif_t - atte
-            se = np.sqrt(np.sum(if_t ** 2)) / n_units_total
+            atte, influence = self._aggregate_pairs(pairs)
 
             names.append(f"t{int(t)}")
             coefs.append(atte)
-            ses.append(se)
+            influence_columns.append(influence)
 
         return self._make_result_schema(
             names=names,
             coefs=coefs,
-            ses=ses,
+            influence=np.column_stack(influence_columns),
             command="csdid_estat calendar",
         )
 
     def estat_pretrend(self):
         """Joint Wald test of pre-trends."""
-        pre_events = sorted([
-            e for e in self._event_est
-            if isinstance(e, (int, np.integer)) and e < 0
-        ])
-        if not pre_events:
+        pre_pairs = sorted(
+            pair for pair in self._group_time_att if pair[1] < pair[0]
+        )
+        if not pre_pairs:
             return self._make_pretrend_result(
                 stat=float("nan"),
                 p_value=float("nan"),
                 df=0,
             )
 
-        n_units_total = len(self._units)
-        n_clust = self._n_clust if self._n_clust > 0 else n_units_total
-        pre_est = np.array([self._event_est[e] for e in pre_events])
-
-        # Build IF matrix: (n_pre_events, n_units)
-        pre_if = np.zeros((len(pre_events), n_units_total))
-        for i, e in enumerate(pre_events):
-            for j, u in enumerate(self._units):
-                pre_if[i, j] = self._event_rif[e][u] - self._event_est[e]
-
-        # Covariance matrix (cluster-robust scaling by number of clusters)
-        cov = (pre_if @ pre_if.T) / (n_clust ** 2)
+        pre_est = np.array([self._group_time_att[pair][0] for pair in pre_pairs])
+        pre_if = np.column_stack([
+            [
+                self._rifgt[pair][unit] - self._group_time_att[pair][0]
+                for unit in self._units
+            ]
+            for pair in pre_pairs
+        ])
+        cov = self._influence_covariance(pre_if)
 
         try:
             inv_cov = np.linalg.inv(cov)
@@ -960,7 +900,7 @@ class CSDID:
             inv_cov = np.linalg.pinv(cov)
             wald = float(pre_est @ inv_cov @ pre_est)
 
-        df = len(pre_events)
+        df = len(pre_pairs)
 
         from scipy.stats import chi2
         p_value = float(chi2.sf(wald, df)) if df > 0 and not np.isnan(wald) else float("nan")
@@ -1002,8 +942,10 @@ class CSDID:
             ),
         )
 
-    def _make_result_schema(self, names, coefs, ses, command):
+    def _make_result_schema(self, names, coefs, influence, command):
         """Build a ResultSchema from coefficient names, values, and SEs."""
+        cov = self._influence_covariance(influence)
+        ses = np.sqrt(np.diag(cov))
         coefficients = []
         for name, beta, se in zip(names, coefs, ses):
             t_stat = beta / se if se > 0 else 0.0
@@ -1020,12 +962,7 @@ class CSDID:
                 ci_high=float(ci_high),
             ))
 
-        active_names = [c.name for c in coefficients if c.std_err > 0]
-        cov = np.zeros((len(active_names), len(active_names)))
-        for i, c in enumerate([c for c in coefficients if c.std_err > 0]):
-            cov[i, i] = c.std_err ** 2
-
-        n_active = len(active_names)
+        n_active = len(names)
         df_model = float(n_active) if n_active > 0 else 0.0
         df_resid = float(self._n_clust - 1) if self._n_clust > 1 else float(self._nobs - n_active)
 
@@ -1047,7 +984,7 @@ class CSDID:
             ),
             coefficients=coefficients,
             variance=VarianceInfo(
-                row_names=active_names,
+                row_names=names,
                 values=cov.tolist(),
             ),
             diagnostics=DiagnosticsInfo(

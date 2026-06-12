@@ -164,7 +164,26 @@ $env:PYTHONPATH="$PWD\src"
 pytest tests/test_stata_runner.py -v
 ```
 
-### 4.2 单个 golden 测试
+### 4.2 社区命令安装检查
+
+先检查 DID 社区命令是否安装。正式诊断脚本位于
+`stata/cases/check_install.do`，会分别输出每个命令的 `_rc`，即使某个命令缺失也会继续检查其余命令：
+
+```powershell
+$env:PYTHONPATH="$PWD\src"
+@'
+from pathlib import Path
+from stataflow.stata_runner import StataRunner
+
+content = Path("stata/cases/check_install.do").read_text(encoding="utf-8")
+result = StataRunner().run_do_file(content, output_dir="stata/output/check-install")
+print(result.output_content)
+'@ | python -
+```
+
+`CHECK_<command>_RC=0` 表示命令可用；非零值表示需检查 ado 安装和 Stata 的 `adopath`。
+
+### 4.3 单个 golden 测试
 
 先运行单文件，不要一开始就运行整个 golden 套件：
 
@@ -173,7 +192,7 @@ $env:PYTHONPATH="$PWD\src"
 pytest tests/golden/test_p1_ols_basic.py -v -s
 ```
 
-### 4.3 完整 golden 套件
+### 4.4 完整 golden 套件
 
 ```powershell
 $env:PYTHONPATH="$PWD\src"

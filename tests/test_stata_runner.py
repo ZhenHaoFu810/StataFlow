@@ -1,6 +1,8 @@
 """Tests for StataRunner - smoke tests for Stata execution."""
 
 import os
+from types import SimpleNamespace
+
 import pytest
 from stataflow.stata_runner.runner import (
     StataRunner,
@@ -66,6 +68,27 @@ def test_stata_runner_build_cmd_command():
 
     assert 'cd /d "D:\\tmp\\out"' in command
     assert f'"{runner.resolved_stata_path}" /e do run_123.do' in command
+
+
+def test_stata_runner_resolves_relative_output_dir(monkeypatch, tmp_path):
+    """Relative output paths must not be interpreted twice after changing cwd."""
+    monkeypatch.chdir(tmp_path)
+    captured = {}
+
+    def fake_run(command, **kwargs):
+        captured["command"] = command
+        captured["cwd"] = kwargs["cwd"]
+        return SimpleNamespace(returncode=0, stderr="")
+
+    monkeypatch.setattr("stataflow.stata_runner.runner.subprocess.run", fake_run)
+    runner = StataRunner()
+    runner._resolved_path = DEFAULT_STATA_PATH
+    result = runner.run_do_file("display 1", output_dir="relative-output")
+
+    expected = str(tmp_path / "relative-output")
+    assert result.exit_code == 0
+    assert captured["cwd"] == expected
+    assert f'cd /d "{expected}"' in captured["command"]
 
 
 def test_stata_runner_run_min_do():
