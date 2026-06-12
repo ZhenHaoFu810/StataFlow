@@ -514,5 +514,5 @@ stata/output/phase2/
   - `python -m compileall -q src/stataflow` → clean
 
 - **Git commit**:
-  - SHA: `de5e45d`
+  - SHA: `a90647e`
   - Message: `fix(csdid): include cluster in missing screening, enforce within-unit constancy, align nobs/mask/cluster count`
