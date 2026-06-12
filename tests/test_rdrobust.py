@@ -5,6 +5,7 @@ against Stata 17, and negative tests for boundary behavior.
 """
 
 import math
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -700,3 +701,42 @@ def test_rdplot_unsupported_kwargs_rejected():
     df = _make_rd_data(n=200, jump=2.0)
     with pytest.raises(ValueError, match="Unsupported arguments"):
         rdplot(df, y="y", x="x", c=0.0, foo="bar")
+
+
+def test_rdplot_binselect_matches_stata_synthetic():
+    """Automatic bin selection should match Stata 17 on synthetic data (RD-002)."""
+    from stataflow.compat.stata.rdplot import rdplot
+
+    # Use legacy RandomState to match the Stata verification seed exactly.
+    np.random.seed(42)
+    n = 500
+    x = np.random.normal(0, 1, n)
+    y = 2.0 + 1.5 * x + 0.5 * x**2 + np.random.normal(0, 0.5, n)
+    df = pd.DataFrame({"y": y, "x": x})
+
+    res_es = rdplot(df, y="y", x="x", c=0.0, binselect="esmv")
+    assert res_es["info"]["J_star_l"] == 10
+    assert res_es["info"]["J_star_r"] == 13
+
+    res_qs = rdplot(df, y="y", x="x", c=0.0, binselect="qsmv")
+    assert res_qs["info"]["J_star_l"] == 21
+    assert res_qs["info"]["J_star_r"] == 139
+
+
+def test_rdplot_binselect_matches_stata_senate():
+    """Automatic bin selection should match Stata 17 on Senate data (RD-002)."""
+    from stataflow.compat.stata.rdplot import rdplot
+
+    project_root = Path(__file__).parent.parent
+    dta = project_root / "research" / "data" / "public" / "rdrobust_senate_with_z.dta"
+    df = pd.read_stata(dta)
+
+    res_es = rdplot(df, y="margin", x="vote", c=50.0, binselect="esmv")
+    assert res_es["info"]["J_star_l"] == 33
+    assert res_es["info"]["J_star_r"] == 53
+
+    res_qs = rdplot(df, y="margin", x="vote", c=50.0, binselect="qsmv")
+    # qsmv now matches Stata 17 after aligning the qs spacings variance
+    # estimator: Stata sums dyi^2 over all adjacent pairs, including ties.
+    assert res_qs["info"]["J_star_l"] == 29
+    assert res_qs["info"]["J_star_r"] == 56
