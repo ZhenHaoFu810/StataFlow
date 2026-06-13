@@ -56,6 +56,7 @@ class GLMBase:
         max_iter: int = 160,
         tol: float = 1e-6,
         weights: Optional[np.ndarray] = None,
+        discrete_vars: Optional[list[str]] = None,
     ):
         self.data = data
         self.y = y
@@ -66,6 +67,11 @@ class GLMBase:
         self.tol = tol
         self._weights_input = weights
         self._weights: Optional[np.ndarray] = None
+        inferred_discrete = data.attrs.get("stataflow_discrete_columns", [])
+        self._discrete_vars = set(discrete_vars if discrete_vars is not None else inferred_discrete)
+        self._unsupported_factor_margins = bool(
+            data.attrs.get("stataflow_unsupported_factor_margins", False)
+        )
 
         self._design_matrix: Optional[np.ndarray] = None
         self._dep_var: Optional[np.ndarray] = None
@@ -486,10 +492,17 @@ class GLMBase:
         """Compute marginal effects."""
         if not self._is_fitted:
             raise ValueError("Model has not been fitted yet. Call fit() first.")
+        if type not in ("dydx", "atmeans"):
+            raise ValueError("margins type must be 'dydx' or 'atmeans'")
+        if self._unsupported_factor_margins:
+            raise NotImplementedError(
+                "margins with factor-variable interactions is not supported"
+            )
         from stataflow.postestimation import (
             margins_ame_logit, margins_mem_logit,
             margins_ame_probit, margins_mem_probit,
             margins_ame_poisson, margins_mem_poisson,
+            apply_discrete_changes,
             _build_margins_result,
         )
 
@@ -511,6 +524,30 @@ class GLMBase:
                 effects, J = margins_mem_poisson(self._beta, X)
         else:
             raise ValueError(f"margins not supported for {self.__class__.__name__}")
+
+        discrete_indices = [
+            index for index, name in enumerate(self._coef_names)
+            if name in self._discrete_vars
+        ]
+        if self.__class__.__name__ == "Logit":
+            inverse_link = lambda eta: 1.0 / (1.0 + np.exp(-eta))
+            inverse_link_derivative = lambda eta: inverse_link(eta) * (1.0 - inverse_link(eta))
+        elif self.__class__.__name__ == "Probit":
+            inverse_link = norm_dist.cdf
+            inverse_link_derivative = norm_dist.pdf
+        else:
+            inverse_link = np.exp
+            inverse_link_derivative = np.exp
+        effects, J = apply_discrete_changes(
+            self._beta,
+            X,
+            effects,
+            J,
+            discrete_indices,
+            inverse_link,
+            inverse_link_derivative,
+            atmeans=type == "atmeans",
+        )
 
         return _build_margins_result(
             effects, J, self._cov_beta, self._coef_names, self._result.sample.nobs

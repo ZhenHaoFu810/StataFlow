@@ -155,6 +155,7 @@ class StataRunner:
         import time
 
         if output_dir:
+            output_dir = os.path.abspath(output_dir)
             os.makedirs(output_dir, exist_ok=True)
         else:
             # Default to project stata/output directory

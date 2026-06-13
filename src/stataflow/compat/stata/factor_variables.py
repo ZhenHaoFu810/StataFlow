@@ -396,8 +396,21 @@ def expand_factor_terms(data: pd.DataFrame, terms: List[str]) -> Tuple[pd.DataFr
     """
     df = data.copy()
     out: List[str] = []
+    discrete_columns = set(df.attrs.get("stataflow_discrete_columns", []))
+    unsupported_factor_margins = bool(
+        df.attrs.get("stataflow_unsupported_factor_margins", False)
+    )
     for term in terms:
-        out.extend(_expand_single_term(df, term))
+        expanded = _expand_single_term(df, term)
+        out.extend(expanded)
+        if "#" in term:
+            atoms = [part for part in re.split(r"##|#", term) if part]
+            if any(_parse_atom(atom)[0] == "i" for atom in atoms):
+                unsupported_factor_margins = True
+        elif _parse_atom(term)[0] == "i":
+            discrete_columns.update(expanded)
+    df.attrs["stataflow_discrete_columns"] = sorted(discrete_columns)
+    df.attrs["stataflow_unsupported_factor_margins"] = unsupported_factor_margins
     return df, out
 
 
