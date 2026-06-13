@@ -220,6 +220,39 @@ def margins_mem_poisson(beta: np.ndarray, X: np.ndarray) -> tuple[np.ndarray, np
     return mem, J
 
 
+def apply_discrete_changes(
+    beta: np.ndarray,
+    X: np.ndarray,
+    effects: np.ndarray,
+    J: np.ndarray,
+    discrete_indices: list[int],
+    inverse_link,
+    inverse_link_derivative,
+    atmeans: bool = False,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Replace derivative effects with 0-to-1 changes for indicator columns."""
+    if not discrete_indices:
+        return effects, J
+
+    evaluation = X.mean(axis=0, keepdims=True) if atmeans else X
+    effects = effects.copy()
+    J = J.copy()
+    for index in discrete_indices:
+        X0 = evaluation.copy()
+        X1 = evaluation.copy()
+        X0[:, index] = 0.0
+        X1[:, index] = 1.0
+        eta0 = X0 @ beta
+        eta1 = X1 @ beta
+        effects[index] = float(np.mean(inverse_link(eta1) - inverse_link(eta0)))
+        gradient = (
+            inverse_link_derivative(eta1)[:, np.newaxis] * X1
+            - inverse_link_derivative(eta0)[:, np.newaxis] * X0
+        )
+        J[index, :] = gradient.mean(axis=0)
+    return effects, J
+
+
 def _build_margins_result(
     effects: np.ndarray,
     J: np.ndarray,
@@ -241,8 +274,9 @@ def _build_margins_result(
         cons_idx = names.index("_cons")
         names.pop(cons_idx)
         effects = np.delete(effects, cons_idx, axis=0)
-        J = np.delete(np.delete(J, cons_idx, axis=0), cons_idx, axis=1)
-        cov_beta = np.delete(np.delete(cov_beta, cons_idx, axis=0), cons_idx, axis=1)
+        # The constant has no marginal effect to report, but uncertainty in
+        # its estimate still contributes through the delta-method Jacobian.
+        J = np.delete(J, cons_idx, axis=0)
 
     V_margins = J @ cov_beta @ J.T
     se = np.sqrt(np.maximum(np.diag(V_margins), 0.0))

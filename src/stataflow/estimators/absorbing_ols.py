@@ -681,6 +681,19 @@ class AbsorbingOLS:
     # _compute_cluster_meat, _fix_psd, _fix_psd_reghdfe, _compute_multiway_cluster_vce
     # are imported from _vce_utils (ADR-0004).
 
+    def _reghdfe_coefficient_scales(self, y: np.ndarray) -> np.ndarray:
+        """Return reghdfe's coefficient rescaling factors."""
+        x_names = [name for name in self._coef_names if name != "_cons"]
+        y_sd = max(float(np.std(y, ddof=1)), 1e-3)
+        x_sd = np.maximum(
+            np.std(self._df[x_names].to_numpy(), axis=0, ddof=1),
+            1e-3,
+        )
+        scales = x_sd / y_sd
+        if "_cons" in self._coef_names:
+            scales = np.concatenate([scales, [1.0 / y_sd]])
+        return scales
+
     def _compute_multiway_cluster_vce(
         self,
         X_full: np.ndarray,
@@ -1109,7 +1122,11 @@ class AbsorbingOLS:
         if vce_core == "cluster" and len(self._cluster_arrs) > 1:
             from stataflow.estimators._vce_utils import fix_psd_reghdfe
             constant_index = k_x if self.add_constant else None
-            cov_reported = fix_psd_reghdfe(cov_reported, constant_index=constant_index)
+            cov_reported = fix_psd_reghdfe(
+                cov_reported,
+                constant_index=constant_index,
+                coefficient_scales=self._reghdfe_coefficient_scales(y),
+            )
             if self.add_constant:
                 sigma2_psd = rss / df_resid if df_resid > 0 else 0.0
                 cons_var = self._compute_map_cons_variance(
@@ -1514,7 +1531,11 @@ class AbsorbingOLS:
                 constant_index = (
                     self._coef_names.index("_cons") if "_cons" in self._coef_names else None
                 )
-                cov_reported = fix_psd_reghdfe(cov_reported, constant_index=constant_index)
+                cov_reported = fix_psd_reghdfe(
+                    cov_reported,
+                    constant_index=constant_index,
+                    coefficient_scales=self._reghdfe_coefficient_scales(y),
+                )
 
                 # For reghdfe with multi-way clustering, the LSDV-based _cons
                 # variance can diverge from reghdfe's demeaning-based computation.
