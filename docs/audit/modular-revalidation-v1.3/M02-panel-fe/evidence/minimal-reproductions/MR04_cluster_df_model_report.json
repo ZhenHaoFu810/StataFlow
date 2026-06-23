@@ -1,0 +1,145 @@
+{
+  "test_id": "MR04_cluster_df_model",
+  "python": {
+    "nobs": 60,
+    "n_input_rows": 60,
+    "df_model": 0.0,
+    "df_resid": 9.0,
+    "r2": 0.02979596849307642,
+    "r2_adj": 0.013068312777439806,
+    "rmse": 0.7579735412808515,
+    "f_stat": 2.5081517155093214,
+    "f_pvalue": 0.14771890575739588,
+    "rss": 33.32238557834641,
+    "tss": 34.34575047744338,
+    "mss": 1.0233648990969684,
+    "cluster_count": 10,
+    "coefficients": [
+      {
+        "name": "x",
+        "beta": 0.16776885258510357,
+        "std_err": 0.10593377108535172,
+        "t_stat": 1.5837145309396266,
+        "p_value": 0.147718905757396,
+        "ci_low": -0.0718699864578502,
+        "ci_high": 0.40740769162805734
+      },
+      {
+        "name": "_cons",
+        "beta": -0.048383935390894944,
+        "std_err": 0.022176915651207284,
+        "t_stat": -2.181725184505582,
+        "p_value": 0.05701398859598772,
+        "ci_low": -0.09855160398004512,
+        "ci_high": 0.0017837331982552274
+      }
+    ],
+    "vce": [
+      [
+        0.0112219638563637,
+        0.0023492843059741446
+      ],
+      [
+        0.0023492843059741446,
+        0.0004918155878007625
+      ]
+    ],
+    "vce_row_names": [
+      "x",
+      "_cons"
+    ],
+    "sample_mask": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ],
+    "warnings": []
+  },
+  "stata": {
+    "nobs": 60.0,
+    "df_model": 0.0,
+    "df_resid": 9.0,
+    "r2": 0.02979597,
+    "r2_adj": 0.01306831,
+    "rmse": 0.75797355,
+    "f_stat": 2.5081517,
+    "coefficients": [
+      {
+        "name": "x",
+        "beta": 0.16776885,
+        "std_err": 0.10593377
+      },
+      {
+        "name": "_cons",
+        "beta": -0.04838394,
+        "std_err": 0.02217692
+      }
+    ],
+    "_do_file": "D:\\OneDrive - SAIF\\PhD3\\StataFlow\\stata\\cases\\audit_v1_3_m02\\MR04_cluster_df_model.do",
+    "_log_hash": "9b8a56200959ed2f",
+    "_exit_code": 0
+  },
+  "comparisons": [
+    {
+      "passed": false,
+      "message": "Stata df_model=0.0 r2_adj=0.01306831; Python df_model=0.0 r2_adj=0.013068312777439806"
+    }
+  ]
+}

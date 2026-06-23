@@ -1,0 +1,95 @@
+{
+  "test_id": "MR03_unbalanced_cons",
+  "python": {
+    "nobs": 9,
+    "n_input_rows": 9,
+    "df_model": 3.0,
+    "df_resid": 5.0,
+    "r2": 0.960668256410225,
+    "r2_adj": 0.93706921025636,
+    "rmse": 0.27358418823342456,
+    "f_stat": 122.12378205627874,
+    "f_pvalue": 0.00010566636666908824,
+    "rss": 0.37424154025670936,
+    "tss": 9.514999999999999,
+    "mss": 9.140758459743289,
+    "cluster_count": null,
+    "coefficients": [
+      {
+        "name": "x",
+        "beta": 1.7887981330221703,
+        "std_err": 0.16186807806694264,
+        "t_stat": 11.050962947014108,
+        "p_value": 0.00010566636666897722,
+        "ci_low": 1.3727029917739264,
+        "ci_high": 2.204893274270414
+      },
+      {
+        "name": "_cons",
+        "beta": 0.1931933099961105,
+        "std_err": 0.2113335085122138,
+        "t_stat": 0.9141631696562929,
+        "p_value": 0.4025628818747977,
+        "ci_low": -0.35005676824667886,
+        "ci_high": 0.7364433882388999
+      }
+    ],
+    "vce": [
+      [
+        0.026201274697085837,
+        -0.030859279087678847
+      ],
+      [
+        -0.030859279087678847,
+        0.04466185182008195
+      ]
+    ],
+    "vce_row_names": [
+      "x",
+      "_cons"
+    ],
+    "sample_mask": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ],
+    "warnings": []
+  },
+  "stata": {
+    "nobs": 9.0,
+    "df_model": 3.0,
+    "df_resid": 5.0,
+    "r2": 0.96066827,
+    "r2_adj": 0.93706924,
+    "rmse": 0.27358412,
+    "f_stat": 122.12384,
+    "f_pvalue": 4.264e-05,
+    "coefficients": [
+      {
+        "name": "x",
+        "beta": 1.7887981,
+        "std_err": 0.16186804
+      },
+      {
+        "name": "_cons",
+        "beta": 0.19319332,
+        "std_err": 0.21133346
+      }
+    ],
+    "_do_file": "D:\\OneDrive - SAIF\\PhD3\\StataFlow\\stata\\cases\\audit_v1_3_m02\\MR03_unbalanced_cons.do",
+    "_log_hash": "6b44dfdad95864e8",
+    "_exit_code": 0
+  },
+  "comparisons": [
+    {
+      "passed": false,
+      "message": "Stata _cons beta=0.19319332 se=0.21133346; Python _cons beta=0.1931933099961105 se=0.2113335085122138"
+    }
+  ]
+}

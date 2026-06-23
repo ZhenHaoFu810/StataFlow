@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
-    branches: [main]
+    branches: [main, dev]
 
 jobs:
   test:
@@ -22,20 +22,37 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install package
+      - name: Install package and dev dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -e .
+          pip install -e ".[dev]"
+
+      - name: Lint and type check
+        run: |
+          ruff check src tests
+          mypy src
 
       - name: Import smoke
         run: python -c "import stataflow; print(stataflow.__version__)"
 
-      - name: Run example smoke
+      - name: Run unit and integration tests
+        run: |
+          pytest tests/ -v --ignore=tests/golden/ --ignore=tests/audit_v1_3 --cov=stataflow --cov-report=term-missing --timeout=300
+
+      - name: Run example smoke tests
         run: |
           python examples/demo_regress.py
           python examples/demo_reghdfe.py
           python examples/demo_ppmlhdfe.py
           python examples/demo_ivregress_2sls.py
 
-      - name: Build wheel
-        run: python -m pip wheel . --no-deps -w dist_tmp
+      - name: Build sdist and wheel
+        run: |
+          python -m build --sdist --wheel --outdir dist_tmp
+
+      - name: Verify clean wheel install
+        run: |
+          python -m venv clean_venv
+          source clean_venv/bin/activate
+          pip install dist_tmp/StataFlow-*.whl
+          python -c "import stataflow; print(stataflow.__version__)"

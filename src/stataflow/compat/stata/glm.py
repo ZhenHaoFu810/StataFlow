@@ -5,7 +5,11 @@ from __future__ import annotations
 from typing import Optional
 
 from stataflow.estimators import Logit, Probit, Poisson
-from stataflow.compat.stata.factor_variables import expand_factor_terms, get_underlying_vars
+from stataflow.compat.stata.factor_variables import (
+    expand_factor_terms,
+    get_underlying_vars,
+    restore_factor_omitted_rows,
+)
 
 
 def logit(
@@ -32,6 +36,8 @@ def logit(
         Report odds ratios (``eform`` alias for logit).
     """
     eform = or_
+    if aweight is not None:
+        raise ValueError("aweights not allowed by Stata's logit command")
     if kwargs:
         raise ValueError(f"Unsupported arguments: {list(kwargs.keys())}")
 
@@ -40,20 +46,18 @@ def logit(
         screen_vars.extend(get_underlying_vars(term))
     if cluster is not None:
         screen_vars.append(cluster)
-    if aweight is not None:
-        screen_vars.append(aweight)
     data_expanded, x_expanded = expand_factor_terms(data, x, screen_vars=list(dict.fromkeys(screen_vars)))
 
-    weights = data[aweight].values if aweight is not None else None
     model = Logit(
         data=data_expanded,
         y=y,
         x=x_expanded,
         add_constant=not noconstant,
         missing=missing,
-        weights=weights,
     )
-    return model.fit(vce=vce, cluster=cluster, eform=eform)
+    return restore_factor_omitted_rows(
+        model.fit(vce=vce, cluster=cluster, eform=eform), data_expanded
+    )
 
 
 def probit(
@@ -73,6 +77,8 @@ def probit(
 
     Maps to :class:`stataflow.estimators.Probit`.
     """
+    if aweight is not None:
+        raise ValueError("aweights not allowed by Stata's probit command")
     if kwargs:
         raise ValueError(f"Unsupported arguments: {list(kwargs.keys())}")
 
@@ -81,20 +87,18 @@ def probit(
         screen_vars.extend(get_underlying_vars(term))
     if cluster is not None:
         screen_vars.append(cluster)
-    if aweight is not None:
-        screen_vars.append(aweight)
     data_expanded, x_expanded = expand_factor_terms(data, x, screen_vars=list(dict.fromkeys(screen_vars)))
 
-    weights = data[aweight].values if aweight is not None else None
     model = Probit(
         data=data_expanded,
         y=y,
         x=x_expanded,
         add_constant=not noconstant,
         missing=missing,
-        weights=weights,
     )
-    return model.fit(vce=vce, cluster=cluster)
+    return restore_factor_omitted_rows(
+        model.fit(vce=vce, cluster=cluster), data_expanded
+    )
 
 
 def poisson(
@@ -126,6 +130,8 @@ def poisson(
         Report exponentiated coefficients.
     """
     eform = eform or irr
+    if aweight is not None:
+        raise ValueError("aweights not allowed by Stata's poisson command")
     if kwargs:
         raise ValueError(f"Unsupported arguments: {list(kwargs.keys())}")
 
@@ -139,17 +145,15 @@ def poisson(
         screen_vars.extend(get_underlying_vars(term))
     if cluster is not None:
         screen_vars.append(cluster)
-    if aweight is not None:
-        screen_vars.append(aweight)
     data_expanded, x_expanded = expand_factor_terms(data, x, screen_vars=list(dict.fromkeys(screen_vars)))
 
-    weights = data[aweight].values if aweight is not None else None
     model = Poisson(
         data=data_expanded,
         y=y,
         x=x_expanded,
         add_constant=not noconstant,
         missing=missing,
-        weights=weights,
     )
-    return model.fit(vce=vce, cluster=cluster, eform=eform)
+    return restore_factor_omitted_rows(
+        model.fit(vce=vce, cluster=cluster, eform=eform), data_expanded
+    )

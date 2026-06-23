@@ -196,9 +196,9 @@ def compute_multiway_cluster_vce(
 
 
 def detect_collinear_columns(
-    X: np.ndarray, names: list[str], tol: float = 1e-10,
+    X: np.ndarray, names: list[str], tol: float = 1e-6,
 ) -> tuple[np.ndarray, list[str], list[int]]:
-    """Detect and drop collinear columns by rank-increment screening.
+    """Detect and drop exact or numerically unstable collinear columns.
 
     Returns (X_indep, dropped_names, kept_indices).
     Used by all estimators for pre-OLS collinearity screening (ADR-0004).
@@ -208,7 +208,64 @@ def detect_collinear_columns(
 
     rank = np.linalg.matrix_rank(X)
     if rank == X.shape[1]:
-        return X, [], list(range(X.shape[1]))
+        # NumPy's default rank threshold is too permissive for Stata-style
+        # regression screening under extreme column scaling.  Use pivoted QR
+        # only for this numerically full-rank case so exact dependencies retain
+        # the established input-order selection below.
+        from scipy.linalg import qr
+
+        _, r, pivots = qr(X, mode="economic", pivoting=True)
+        diagonal = np.abs(np.diag(r))
+        if diagonal.size == 0:
+            return X, [], list(range(X.shape[1]))
+        numerical_rank = int(np.sum(diagonal > tol * diagonal.max()))
+        if numerical_rank == X.shape[1]:
+            return X, [], list(range(X.shape[1]))
+
+        norms = np.linalg.norm(X, axis=0)
+        positive_norms = norms[norms > 0]
+        scale_ratio = (
+            float(positive_norms.max() / positive_norms.min())
+            if positive_norms.size
+            else 1.0
+        )
+        if scale_ratio > 1e4:
+            # Compare column directions after normalizing their scales.  Keep
+            # the intercept as a mandatory basis vector, then prefer larger
+            # original-scale regressors when two directions are numerically
+            # indistinguishable.  This reproduces Stata's omission choice
+            # without allowing a large regressor to suppress `_cons`.
+            mandatory = [i for i, name in enumerate(names) if name == "_cons"]
+            candidates = sorted(
+                (i for i in range(X.shape[1]) if i not in mandatory),
+                key=lambda i: (-norms[i], i),
+            )
+            independent = list(mandatory)
+            current_rank = len(independent)
+            for i in candidates:
+                if norms[i] == 0:
+                    continue
+                trial = independent + [i]
+                trial_norms = norms[trial]
+                scaled = X[:, trial] / trial_norms
+                trial_rank = np.linalg.matrix_rank(scaled, tol=tol)
+                if trial_rank > current_rank:
+                    independent.append(i)
+                    current_rank = trial_rank
+            independent.sort()
+        else:
+            independent = []
+            for i in range(X.shape[1]):
+                candidate = independent + [i]
+                _, candidate_r = np.linalg.qr(X[:, candidate], mode="reduced")
+                candidate_diag = np.abs(np.diag(candidate_r))
+                candidate_rank = int(
+                    np.sum(candidate_diag > tol * candidate_diag.max())
+                )
+                if candidate_rank > len(independent):
+                    independent.append(i)
+        dropped = [names[i] for i in range(X.shape[1]) if i not in independent]
+        return X[:, independent], dropped, independent
 
     independent = []
     dropped = []

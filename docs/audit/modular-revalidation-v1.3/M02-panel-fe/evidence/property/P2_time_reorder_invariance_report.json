@@ -1,0 +1,20 @@
+{
+  "test_id": "P2_time_reorder_invariance",
+  "python": {
+    "base": {
+      "x": 2.034604503697123,
+      "_cons": 0.993765471514789
+    },
+    "reordered": {
+      "x": 2.034604503697123,
+      "_cons": 0.993765471514789
+    }
+  },
+  "stata": {},
+  "comparisons": [
+    {
+      "passed": true,
+      "message": "coefficients invariant under time reorder"
+    }
+  ]
+}

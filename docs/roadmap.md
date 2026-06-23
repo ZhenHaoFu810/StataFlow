@@ -413,23 +413,38 @@
 
 ---
 
-## Wave 13 (v1.1.0)：Advanced HDFE Extensions（计划中）
+## Wave 13 (v1.1.0)：Advanced HDFE Extensions — 已完成
 
 目标：
 
 - 补充 Wave 12 推迟项与残余高频功能
 
-候选内容：
+已完成内容：
 
-1. `group(var) individual(var)` FE（团队/个体 FE）
-2. 3-way+ multi-way clustering VCE
-3. LSMR/LSQR 迭代算法评估与引入
-4. `savefe` MAP 路径支持
-5. `ivreghdfe`：`orthog` / `endogtest` / `redundant` / `partial()` / HAC standard errors
-6. `ppmlhdfe`：`separation(ir/simplex/mu)` / `d()` / `d2`
-7. `doffadjustments()` 精确算法（pairwise / firstpair / clusters / continuous）
+1. IV first-stage diagnostics、weak-instrument tests、overidentification tests
+2. GLM robust small-sample correction 与 `eform`/`irr`/`or_` 别名
+3. DID `allhorizons`、`csdid notyet`、不平衡面板 NaN 修复
+4. 2-way cluster rank-deficiency detection 与 documented PSD fallback
+5. `reghdfe` 高级 tuple/list `absorb` API 与 `aweight` array/Series 支持
 
-优先级与拆分待 v1.0.0 发布后由 Roadmaster 重新评估。
+推迟至 v1.2.0+：
+
+- `group(var) individual(var)` FE（团队/个体 FE）
+- 3-way+ multi-way clustering VCE
+- LSMR/LSQR 迭代算法评估与引入
+- `savefe` MAP 路径支持
+- `ivreghdfe`：`orthog` / `endogtest` / `redundant` / `partial()` / HAC standard errors
+- `ppmlhdfe`：`separation(ir/simplex/mu)` / `d()` / `d2`
+- `doffadjustments()` 精确算法（pairwise / firstpair / clusters / continuous）
+
+## Wave 14 (v1.2.0+)：开源可持续维护与命令完整度深化（计划中）
+
+目标：
+
+- 完成 modular revalidation v1.3 修缮，修复已确认正确性问题
+- 推进 HDFE / DID / RD 命令完整度
+- 建立可持续的 CI、lint/type、release 与文档治理机制
+- 实现公开仓库与内部开发母仓的自动化、白名单式同步
 
 ---
 
@@ -449,9 +464,11 @@
 10. `DID Hardening`（已完成）
 11. `IV Completion`（已完成）
 12. `Postestimation & estat Ecosystem`（已完成）
-13. **`Advanced HDFE & Performance`**（已完成 / v1.0.0 Stable）
+13. **`Advanced HDFE & Performance`**（已完成 / v1.1.0 Stable）
+14. **`Advanced HDFE Extensions`**（已完成 / v1.1.0）
+15. **`Open-Source Sustainability & Command Completeness`**（计划中 / v1.2.0+）
 
-在没有新的用户优先级调整前，不自动切换主线。
+在没有新的用户优先级调整前，默认主线为开源可持续维护与命令完整度深化。
 
 ---
 
@@ -463,7 +480,8 @@
 | v0.2.x | Beta 发布，HDFE / RD / DID 核心加固 | Wave 7–9 |
 | v0.3.x | Beta 发布，IV 完整生态 + Postestimation | Wave 10–11 |
 | v1.0.0 | 稳定发布，高级 HDFE 与性能优化 | Wave 12 |
-| v1.1.0 | 扩展发布，高级 HDFE 扩展 + 残余补全 | Wave 13（计划中） |
+| v1.1.0 | 扩展发布，高级 HDFE 扩展 + 残余补全 | Wave 13（已完成） |
+| v1.2.0+ | 开源可持续维护与命令完整度深化 | Wave 14（计划中） |
 
 **发布门槛：**
 

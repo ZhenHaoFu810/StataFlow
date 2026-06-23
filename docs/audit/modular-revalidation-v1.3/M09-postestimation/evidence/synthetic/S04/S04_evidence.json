@@ -1,0 +1,74 @@
+{
+  "prefix": "S04",
+  "python": {
+    "seed": 202604,
+    "data_hash": "00243e709830ce8c",
+    "nobs": 200,
+    "pr_mean": 0.22999999999999987,
+    "pr_sd": 0.1285748700901996,
+    "ame_x1": 0.09017425250664833,
+    "ame_se_x1": 0.030376444058686104,
+    "ic": {
+      "N": 200.0,
+      "ll": -98.45510758477212,
+      "k": 3.0,
+      "aic": 202.91021516954424,
+      "bic": 212.80516726918836
+    }
+  },
+  "stata": {
+    "log_margins": "D:\\OneDrive - SAIF\\PhD3\\StataFlow\\stata\\output\\audit_v1_3_m09\\S04_margins.log",
+    "log_predict": "D:\\OneDrive - SAIF\\PhD3\\StataFlow\\stata\\output\\audit_v1_3_m09\\S04_predict.log",
+    "log_ic": "D:\\OneDrive - SAIF\\PhD3\\StataFlow\\stata\\output\\audit_v1_3_m09\\S04_ic.log",
+    "pr_mean": 0.23,
+    "pr_sd": 0.12857487,
+    "margins": {
+      "M_x1": 0.09017425,
+      "SE_x1": 0.03037644
+    },
+    "ic": {
+      "IC_N": 200.0,
+      "IC_LL": -98.455108,
+      "IC_K": 3.0,
+      "IC_AIC": 202.91022,
+      "IC_BIC": 212.80517
+    }
+  },
+  "diffs": {
+    "passed": true,
+    "messages": [
+      "pr.mean: Python=0.23, Stata=0.23, abs=1.39e-16, rel=6.03e-16 PASS",
+      "pr.sd: Python=0.12857487009, Stata=0.12857487, abs=9.02e-11, rel=7.02e-10 PASS",
+      "margins.x1: Python=0.0901742525066, Stata=0.09017425, abs=2.51e-09, rel=2.78e-08 PASS",
+      "margins.se_x1: Python=0.0303764440587, Stata=0.03037644, abs=4.06e-09, rel=1.34e-07 PASS",
+      "ic.aic: Python=202.91021517, Stata=202.91022, abs=4.83e-06, rel=2.38e-08 PASS",
+      "ic.bic: Python=212.805167269, Stata=212.80517, abs=2.73e-06, rel=1.28e-08 PASS"
+    ],
+    "field_results": {
+      "pr.mean": {
+        "passed": true,
+        "message": "pr.mean: Python=0.23, Stata=0.23, abs=1.39e-16, rel=6.03e-16 PASS"
+      },
+      "pr.sd": {
+        "passed": true,
+        "message": "pr.sd: Python=0.12857487009, Stata=0.12857487, abs=9.02e-11, rel=7.02e-10 PASS"
+      },
+      "margins.x1": {
+        "passed": true,
+        "message": "margins.x1: Python=0.0901742525066, Stata=0.09017425, abs=2.51e-09, rel=2.78e-08 PASS"
+      },
+      "margins.se_x1": {
+        "passed": true,
+        "message": "margins.se_x1: Python=0.0303764440587, Stata=0.03037644, abs=4.06e-09, rel=1.34e-07 PASS"
+      },
+      "ic.aic": {
+        "passed": true,
+        "message": "ic.aic: Python=202.91021517, Stata=202.91022, abs=4.83e-06, rel=2.38e-08 PASS"
+      },
+      "ic.bic": {
+        "passed": true,
+        "message": "ic.bic: Python=212.805167269, Stata=212.80517, abs=2.73e-06, rel=1.28e-08 PASS"
+      }
+    }
+  }
+}

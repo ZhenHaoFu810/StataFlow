@@ -519,10 +519,25 @@ class AbsorbingOLS:
         nested_adj = 0
         fe_info = getattr(self, '_dummy_info', []) or getattr(self, '_fe_info', [])
         for info in fe_info:
-            if info['var'] in self._cluster_vars:
+            if self._fe_is_nested_in_cluster(info):
                 nested_adj = 1
                 break
         return k_x + int(round(self._df_a)) + nested_adj
+
+    def _fe_is_nested_in_cluster(self, info: dict) -> bool:
+        """Return whether each FE level belongs to one cluster level."""
+        if not self._cluster_vars:
+            return False
+        fe_var = info["var"]
+        if fe_var in self._cluster_vars:
+            return True
+        for cluster_var in self._cluster_vars:
+            nesting = self._df.groupby(fe_var, sort=False)[cluster_var].nunique(
+                dropna=False
+            )
+            if bool((nesting <= 1).all()):
+                return True
+        return False
 
     def _reghdfe_coefficient_scales(self, y: np.ndarray) -> np.ndarray:
         """Return reghdfe's coefficient rescaling factors."""
@@ -835,15 +850,18 @@ class AbsorbingOLS:
     def _compute_df_a(self, fe_info_or_dummy_info: list[dict]) -> None:
         """Compute absorbed degrees of freedom."""
         effective_levels = []
-        for i, var in enumerate(self.absorb_vars):
-            if self._cluster_vars and var in self._cluster_vars:
-                continue  # Nested in cluster: contributes 0
+        for i, _var in enumerate(self.absorb_vars):
             if i < len(fe_info_or_dummy_info):
                 info = fe_info_or_dummy_info[i]
                 n_levels = info['num_levels']
                 n_slopes = len(info.get('slopes', []))
                 has_intercept = info.get('has_intercept', True)
-                params_per_level = (1 if has_intercept else 0) + n_slopes
+                intercept_df = (
+                    1
+                    if has_intercept and not self._fe_is_nested_in_cluster(info)
+                    else 0
+                )
+                params_per_level = intercept_df + n_slopes
                 effective_levels.append(n_levels * params_per_level)
 
         self._df_a = float(sum(effective_levels))
@@ -900,7 +918,7 @@ class AbsorbingOLS:
             fe_info = getattr(self, "_fe_info", [])
             nested_levels = sum(
                 info["num_levels"] for info in fe_info
-                if info["var"] in self._cluster_vars
+                if self._fe_is_nested_in_cluster(info)
             )
             rmse_df = float(n - df_model - df_a - nested_levels)
         else:
@@ -910,7 +928,7 @@ class AbsorbingOLS:
         rmse = np.sqrt(rss / rmse_df) if rmse_df > 0 else 0.0
 
         if self._reghdfe_mode:
-            r2_adj = 1.0 - (rss / rmse_df) / (tss / (n - 1)) if rmse_df > 0 and tss > 0 else 0.0
+            r2_adj = 1.0 - (rss / rmse_df) / (tss / (n - 1)) if rmse_df > 0 and tss > 0 else None
         else:
             r2_adj = 1.0 - (1.0 - r2) * (n - 1) / rmse_df if rmse_df > 0 else 0.0
 
@@ -1263,7 +1281,7 @@ class AbsorbingOLS:
                 dummy_info = getattr(self, "_dummy_info", [])
                 nested_levels = sum(
                     info["num_levels"] for info in dummy_info
-                    if info["var"] in self._cluster_vars
+                    if self._fe_is_nested_in_cluster(info)
                 )
                 rmse_df = float(n - df_model - df_a - nested_levels)
             else:
@@ -1274,7 +1292,7 @@ class AbsorbingOLS:
 
             # Adjusted R-squared
             if self._reghdfe_mode:
-                r2_adj = 1.0 - (rss / rmse_df) / (tss / (n - 1)) if rmse_df > 0 and tss > 0 else 0.0
+                r2_adj = 1.0 - (rss / rmse_df) / (tss / (n - 1)) if rmse_df > 0 and tss > 0 else None
             else:
                 r2_adj = 1.0 - (1.0 - r2) * (n - 1) / rmse_df if rmse_df > 0 else 0.0
 
@@ -1403,21 +1421,19 @@ class AbsorbingOLS:
             beta_reported = T @ beta_full
             cov_reported = T @ cov_full @ T.T
 
-            # For slope absorption, the T-matrix _cons can diverge from reghdfe's
-            # demeaning-based constant recovery when slope variables have unequal
-            # within-group means or when multiple slopes are present.
-            # Override both the point estimate and the OLS variance.
+            # Reghdfe recovers the reported constant from the sample means after
+            # estimating the slopes.  This also gives a stable normalization for
+            # disconnected FE graphs, where dummy coefficients are not unique.
             has_slopes = any(len(info.get('slopes', [])) > 0 for info in self._dummy_info)
-            if has_slopes and "_cons" in self._coef_names and self._df is not None:
+            if "_cons" in self._coef_names and self._df is not None:
                 retained_x_names = [name for name in self._coef_names if name != "_cons"]
                 k_slopes = len(retained_x_names)
                 x_means = np.array([self._df[name].mean() for name in retained_x_names])
-                # Overwrite _cons with mean(y) - x_bar' * beta_x
                 beta_reported[k_slopes] = float(
                     np.mean(y) - x_means @ beta_reported[:k_slopes]
                 )
-                # OLS variance: Var(_cons) = x_bar' Cov(beta_x) x_bar + sigma^2 / n
-                if vce_core == "ols":
+                # Slope absorption also changes the constant's delta-method VCE.
+                if has_slopes and vce_core == "ols":
                     cov_slopes = cov_full[np.ix_(self._x_indices_in_full, self._x_indices_in_full)]
                     sigma2 = rss / df_resid if df_resid > 0 else 0.0
                     cons_var = float(x_means @ cov_slopes @ x_means + sigma2 / n)
@@ -1446,7 +1462,12 @@ class AbsorbingOLS:
             se = np.sqrt(diag_cov)
 
             # t-statistics and p-values
-            t_stats = beta_reported / se
+            t_stats = np.divide(
+                beta_reported,
+                se,
+                out=np.full_like(beta_reported, np.nan, dtype=float),
+                where=se > 0,
+            )
             p_values = 2 * (1 - t_dist.cdf(np.abs(t_stats), df=df_resid))
 
             # Confidence intervals

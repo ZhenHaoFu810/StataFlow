@@ -1,0 +1,6 @@
+{
+  "finding": "A_WeightSyntaxRejected",
+  "stata_exit_code": 0,
+  "stata_log_excerpt": ". do run_1781344291230.do \n\n. clear all\n\n. set more off\n\n. import delimited \"D:/OneDrive - SAIF/PhD3/StataFlow/stata/output/audit_v1_3_m\n> 06/repro_aweight.csv\", varnames(1) clear\n(encoding automatically selected: ISO-8859-1)\n(5 vars, 30 obs)\n\n. capture noisily ppmlhdfe y x1 x2 [aweight=w], absorb(entity_id) vce(robust)\naweights not allowed\n\n. if _rc {\n.     display \"AWEIGHT_RC=\" _rc\nAWEIGHT_RC=101\n. }\n\n. capture noisily ppmlhdfe y x1 x2 [iweight=w], absorb(entity_id) vce(robust)\niweights not allowed\n\n. if _rc {\n.     display \"IWEIGHT_RC=\" _rc\nIWEIGHT_RC=101\n. }\n\n. display \"DONE\"\nDONE\n\n. \nend of do-file",
+  "note": "Stata ppmlhdfe accepts only pweight; aweight/iweight give r(101)."
+}

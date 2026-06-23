@@ -1,0 +1,265 @@
+{
+  "test_id": "P3_redundant_variable",
+  "python": {
+    "nobs": 120,
+    "n_input_rows": 120,
+    "df_model": 2.0,
+    "df_resid": 117.0,
+    "ll": -79.12963703426703,
+    "pseudo_r2": 0.024891159471348123,
+    "chi2": 4.039812444448785,
+    "chi2_pvalue": 0.13266790579788146,
+    "deviance": 158.25927406853407,
+    "cluster_count": null,
+    "coefficients": [
+      {
+        "name": "x1",
+        "beta": 0.3093904470197549,
+        "std_err": 0.20519101976435866,
+        "t_stat": 1.507816703552908,
+        "p_value": 0.13160144587156153,
+        "ci_low": -0.09277656166943449,
+        "ci_high": 0.7115574557089442
+      },
+      {
+        "name": "x2",
+        "beta": -0.25360500683145515,
+        "std_err": 0.19382021754887307,
+        "t_stat": -1.3084548662603113,
+        "p_value": 0.1907190734877009,
+        "ci_low": -0.6334856527029645,
+        "ci_high": 0.12627563904005423
+      },
+      {
+        "name": "_cons",
+        "beta": -0.38139180766732605,
+        "std_err": 0.1892921773277475,
+        "t_stat": -2.0148313208261643,
+        "p_value": 0.04392232607996882,
+        "ci_low": -0.7523976577848805,
+        "ci_high": -0.010385957549771563
+      }
+    ],
+    "vce": [
+      [
+        0.042103354591937425,
+        -0.001324185602983416,
+        -0.002150760003410431
+      ],
+      [
+        -0.0013241856029834159,
+        0.03756627673069248,
+        0.0013911872459110364
+      ],
+      [
+        -0.0021507600034104315,
+        0.0013911872459110367,
+        0.035831528397479405
+      ]
+    ],
+    "vce_row_names": [
+      "x1",
+      "x2",
+      "_cons"
+    ],
+    "sample_mask": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ],
+    "warnings": [],
+    "dropped_vars": []
+  },
+  "stata": {
+    "nobs": 120.0,
+    "df_model": 2.0,
+    "k": 3.0,
+    "ll": -79.129637,
+    "pseudo_r2": 0.02489116,
+    "chi2": 4.0398125,
+    "chi2_pvalue": 0.1326679,
+    "deviance": 158.25927,
+    "df_resid": 117.0,
+    "coefficients": [
+      {
+        "name": "x1",
+        "beta": 0.30939044,
+        "std_err": 0.20519102
+      },
+      {
+        "name": "x2",
+        "beta": -0.25360501,
+        "std_err": 0.19382022
+      },
+      {
+        "name": "_cons",
+        "beta": -0.38139181,
+        "std_err": 0.18929218
+      }
+    ],
+    "vce": [
+      [
+        0.04210335,
+        -0.00132419,
+        -0.00215076
+      ],
+      [
+        -0.00132419,
+        0.03756628,
+        0.00139119
+      ],
+      [
+        -0.00215076,
+        0.00139119,
+        0.03583153
+      ]
+    ],
+    "vce_rows": 3,
+    "_do_file": "D:\\OneDrive - SAIF\\PhD3\\StataFlow\\stata\\cases\\audit_v1_3_m05\\P3_redundant_variable_base.do",
+    "_log_hash": "27a2dc5bc16f62d8",
+    "_exit_code": 0
+  },
+  "comparisons": [
+    {
+      "passed": true,
+      "message": "beta[x1]: Python=0.309390447019755, Stata=0.309390447019755, abs_diff=1.11e-16, rel_diff=3.59e-16 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "std_err[x1]: Python=0.205191019764359, Stata=0.205191019764359, abs_diff=0.00e+00, rel_diff=0.00e+00 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "beta[x2]: Python=-0.253605006831455, Stata=-0.253605006831455, abs_diff=0.00e+00, rel_diff=0.00e+00 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "std_err[x2]: Python=0.193820217548873, Stata=0.193820217548873, abs_diff=0.00e+00, rel_diff=0.00e+00 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "beta[_cons]: Python=-0.381391807667326, Stata=-0.381391807667326, abs_diff=1.67e-16, rel_diff=4.37e-16 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "std_err[_cons]: Python=0.189292177327748, Stata=0.189292177327748, abs_diff=0.00e+00, rel_diff=0.00e+00 -> PASS"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "test_id": "S8_separation_boundary",
+  "python": {
+    "error": "RuntimeError: outcome predicts data perfectly (complete separation; Stata r(2000))"
+  },
+  "stata": {
+    "_do_file": "D:\\OneDrive - SAIF\\PhD3\\StataFlow\\stata\\cases\\audit_v1_3_m05\\S8_separation_boundary.do",
+    "_log_hash": "b6eedca95e32f8af",
+    "_exit_code": 0
+  },
+  "comparisons": [
+    {
+      "passed": true,
+      "message": "Python error/behaviour: RuntimeError: outcome predicts data perfectly (complete separation; Stata r(2000))"
+    },
+    {
+      "passed": true,
+      "message": "Stata converged/notes: False"
+    }
+  ]
+}

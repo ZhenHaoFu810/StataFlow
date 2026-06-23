@@ -1,0 +1,76 @@
+{
+  "test_id": "M10-S04",
+  "timestamp": "2026-06-14T07:36:34.996537+00:00",
+  "data_hash": "a5e994595c41c7a164188dc3063b841c8351f0bfd636dd342b0b1b8a900d1099",
+  "stata_command": "regress y x z, cluster(cid)",
+  "python_call": "regress(df, 'y', ['x','z'], vce='cluster', cluster='cid')",
+  "stata_scalars": {
+    "nobs": 58.0,
+    "df_model": 2.0,
+    "df_resid": 4.0,
+    "r2": 0.90321909,
+    "r2_adj": 0.89969978,
+    "rmse": 1.1147858,
+    "f_stat": 1195.701,
+    "n_clust": 5.0,
+    "mss": 637.89462,
+    "rss": 68.351106
+  },
+  "python_scalars": {
+    "nobs": 58,
+    "n_input_rows": 60,
+    "df_model": 2.0,
+    "df_resid": 4.0,
+    "df_a": null,
+    "r2": 0.9032190872894175,
+    "r2_adj": 0.899699781372669,
+    "rmse": 1.1147857975993798,
+    "f_stat": 1195.7009509930683,
+    "f_pvalue": 2.788452189594892e-06,
+    "rss": 68.3511055991107,
+    "tss": 706.2457222687141,
+    "mss": 637.8946166696034,
+    "n_clust": 5,
+    "active_coef_names": [
+      "x",
+      "z",
+      "_cons"
+    ]
+  },
+  "scalars_comparison": {
+    "passed": true,
+    "messages": [
+      "nobs: Python=58, Stata=58.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "df_model: Python=2.0, Stata=2.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "df_resid: Python=4.0, Stata=4.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "n_clust: Python=5, Stata=5.0, abs=0.00e+00, rel=0.00e+00 PASS"
+    ]
+  },
+  "coefficients_comparison": {
+    "passed": true,
+    "messages": [
+      "coef_names/order: Python(active)=['x', 'z', '_cons'], Stata=['x', 'z', '_cons'] PASS",
+      "x.beta: Python=1.9068186268394012, Stata=1.9068186, abs=2.68e-08, rel=1.41e-08 PASS",
+      "x.std_err: Python=0.0745581782227552, Stata=0.07455818, abs=1.78e-09, rel=2.38e-08 PASS",
+      "z.beta: Python=3.0584613195598287, Stata=3.0584613, abs=1.96e-08, rel=6.40e-09 PASS",
+      "z.std_err: Python=0.11912697358528167, Stata=0.11912697, abs=3.59e-09, rel=3.01e-08 PASS",
+      "_cons.beta: Python=1.3405244362487725, Stata=1.3405244, abs=3.62e-08, rel=2.70e-08 PASS",
+      "_cons.std_err: Python=0.181652245963821, Stata=0.18165225, abs=4.04e-09, rel=2.22e-08 PASS"
+    ]
+  },
+  "vce_comparison": {
+    "passed": true,
+    "messages": [
+      "VCE[x,x]: Python=0.005558921939896129, Stata=0.00555892, abs=1.94e-09, rel=3.49e-07 PASS",
+      "VCE[x,z]: Python=-0.004004448957729288, Stata=-0.00400445, abs=1.04e-09, rel=2.60e-07 PASS",
+      "VCE[x,_cons]: Python=-0.01153528830599413, Stata=-0.01153529, abs=1.69e-09, rel=1.47e-07 PASS",
+      "VCE[z,x]: Python=-0.004004448957729289, Stata=-0.00400445, abs=1.04e-09, rel=2.60e-07 PASS",
+      "VCE[z,z]: Python=0.014191235835588397, Stata=0.01419124, abs=4.16e-09, rel=2.93e-07 PASS",
+      "VCE[z,_cons]: Python=0.007924582640363848, Stata=0.00792458, abs=2.64e-09, rel=3.33e-07 PASS",
+      "VCE[_cons,x]: Python=-0.01153528830599413, Stata=-0.01153529, abs=1.69e-09, rel=1.47e-07 PASS",
+      "VCE[_cons,z]: Python=0.007924582640363848, Stata=0.00792458, abs=2.64e-09, rel=3.33e-07 PASS",
+      "VCE[_cons,_cons]: Python=0.03299753846370053, Stata=0.03299754, abs=1.54e-09, rel=4.66e-08 PASS"
+    ]
+  },
+  "sample_mask_equal": true
+}

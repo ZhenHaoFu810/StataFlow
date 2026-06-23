@@ -1,0 +1,8 @@
+{
+  "python_nobs": 600,
+  "stata_nobs": 280.0,
+  "python_tau_beta": 1.9368653179907471,
+  "python_tau_se": 0.06971785119737181,
+  "stata_tau_beta": 2.016069,
+  "stata_tau_se": 0.1272326
+}

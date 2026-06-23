@@ -1,0 +1,64 @@
+{
+  "test_id": "M10-R02",
+  "timestamp": "2026-06-14T07:36:46.515274+00:00",
+  "data_source": "research/data/public/did/jtrain_prepared.dta",
+  "data_hash": "54c58bbc3e4bfe5d8a2cf53db465ccd8175dc1c7e32e49b2061106e0154ab427",
+  "stata_command": "regress lscrap grant i.year, cluster(fcode)",
+  "python_call": "regress(df, 'lscrap', ['grant','i.year'], vce='cluster', cluster='fcode')",
+  "scalars_comparison": {
+    "passed": true,
+    "messages": [
+      "nobs: Python=162, Stata=162.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "df_model: Python=3.0, Stata=3.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "df_resid: Python=53.0, Stata=53.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "n_clust: Python=54, Stata=54.0, abs=0.00e+00, rel=0.00e+00 PASS"
+    ]
+  },
+  "coefficients_comparison": {
+    "passed": true,
+    "messages": [
+      "coef_names/order: Python(active)=['grant', '1988.year', '1989.year', '_cons'], Stata=['grant', '1988.year', '1989.year', '_cons'] PASS",
+      "grant.beta: Python=0.19160537888628867, Stata=0.19160538, abs=1.11e-09, rel=5.81e-09 PASS",
+      "grant.std_err: Python=0.2556167344563881, Stata=0.25561673, abs=4.46e-09, rel=1.74e-08 PASS",
+      "1987b.year.beta: Python=0.0, Stata=0.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "1987b.year.std_err: Python=0.0, Stata=0.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "1988.year.beta: Python=-0.23640983795364146, Stata=-0.23640984, abs=2.05e-09, rel=8.66e-09 PASS",
+      "1988.year.std_err: Python=0.10835129296694224, Stata=0.10835129, abs=2.97e-09, rel=2.74e-08 PASS",
+      "1989.year.beta: Python=-0.47774729753768125, Stata=-0.4777473, abs=2.46e-09, rel=5.15e-09 PASS",
+      "1989.year.std_err: Python=0.12630436265576284, Stata=0.12630436, abs=2.66e-09, rel=2.10e-08 PASS",
+      "_cons.beta: Python=0.5974340504035354, Stata=0.59743405, abs=4.04e-10, rel=6.75e-10 PASS",
+      "_cons.std_err: Python=0.21905614519741654, Stata=0.21905615, abs=4.80e-09, rel=2.19e-08 PASS"
+    ]
+  },
+  "vce_comparison": {
+    "passed": true,
+    "messages": [
+      "VCE[grant,grant]: Python=0.06533991493414763, Stata=0.06533991, abs=4.93e-09, rel=7.55e-08 PASS",
+      "VCE[grant,1987b.year]: Python=0.0, Stata=0.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "VCE[grant,1988.year]: Python=-0.017865073724679124, Stata=-0.01786507, abs=3.72e-09, rel=2.08e-07 PASS",
+      "VCE[grant,1989.year]: Python=-0.005338547256447154, Stata=-0.00533855, abs=2.74e-09, rel=5.14e-07 PASS",
+      "VCE[grant,_cons]: Python=-0.022858124872680387, Stata=-0.02285812, abs=4.87e-09, rel=2.13e-07 PASS",
+      "VCE[1987b.year,grant]: Python=0.0, Stata=0.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "VCE[1987b.year,1987b.year]: Python=0.0, Stata=0.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "VCE[1987b.year,1988.year]: Python=0.0, Stata=0.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "VCE[1987b.year,1989.year]: Python=0.0, Stata=0.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "VCE[1987b.year,_cons]: Python=0.0, Stata=0.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "VCE[1988.year,grant]: Python=-0.01786507372467912, Stata=-0.01786507, abs=3.72e-09, rel=2.08e-07 PASS",
+      "VCE[1988.year,1987b.year]: Python=0.0, Stata=0.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "VCE[1988.year,1988.year]: Python=0.011740002687608147, Stata=0.01174, abs=2.69e-09, rel=2.29e-07 PASS",
+      "VCE[1988.year,1989.year]: Python=0.009469963624722466, Stata=0.00946996, abs=3.62e-09, rel=3.83e-07 PASS",
+      "VCE[1988.year,_cons]: Python=-0.0007891868840365288, Stata=-0.00078919, abs=3.12e-09, rel=3.95e-06 PASS",
+      "VCE[1989.year,grant]: Python=-0.005338547256447161, Stata=-0.00533855, abs=2.74e-09, rel=5.14e-07 PASS",
+      "VCE[1989.year,1987b.year]: Python=0.0, Stata=0.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "VCE[1989.year,1988.year]: Python=0.009469963624722513, Stata=0.00946996, abs=3.62e-09, rel=3.83e-07 PASS",
+      "VCE[1989.year,1989.year]: Python=0.01595279202587846, Stata=0.01595279, abs=2.03e-09, rel=1.27e-07 PASS",
+      "VCE[1989.year,_cons]: Python=-0.008411881082994305, Stata=-0.00841188, abs=1.08e-09, rel=1.29e-07 PASS",
+      "VCE[_cons,grant]: Python=-0.022858124872680366, Stata=-0.02285812, abs=4.87e-09, rel=2.13e-07 PASS",
+      "VCE[_cons,1987b.year]: Python=0.0, Stata=0.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "VCE[_cons,1988.year]: Python=-0.0007891868840365496, Stata=-0.00078919, abs=3.12e-09, rel=3.95e-06 PASS",
+      "VCE[_cons,1989.year]: Python=-0.008411881082994274, Stata=-0.00841188, abs=1.08e-09, rel=1.29e-07 PASS",
+      "VCE[_cons,_cons]: Python=0.04798559474875164, Stata=0.04798559, abs=4.75e-09, rel=9.90e-08 PASS"
+    ]
+  },
+  "sample_mask_equal": true
+}

@@ -1,0 +1,59 @@
+{
+  "prefix": "S7_RDPLOT_ESMV",
+  "python": {
+    "bins": "    bin_id  N     x_min     x_max    mean_x     mean_y      se_y\n0        0  2 -2.885512 -2.705168 -2.857141   1.598560  0.120975\n1        1  3 -2.705168 -2.524823 -2.559787   1.490338  0.303497\n2        2  1 -2.524823 -2.344479 -2.449917   0.385286  0.000000\n3        3  3 -2.344479 -2.164134 -2.272359   1.807847  0.038661\n4        4  7 -2.164134 -1.983790 -2.087444   1.057541  0.228395\n..     ... ..       ...       ...       ...        ...       ...\n62      49  2  2.108482  2.151513  2.118785   7.136893  0.465721\n63      51  2  2.194543  2.237573  2.224521   7.566201  0.407220\n64      52  3  2.237573  2.280603  2.261859   7.651671  0.314735\n65      65  1  2.796966  2.839997  2.811713   9.462835  0.000000\n66      69  1  2.969087  3.012118  3.012118  11.648650  0.000000\n\n[67 rows x 7 columns]",
+    "fit": "            x          y   side\n0   -2.885512   1.666752   left\n1   -2.879730   1.663116   left\n2   -2.873947   1.659469   left\n3   -2.868164   1.655813   left\n4   -2.862382   1.652146   left\n..        ...        ...    ...\n995  2.987972  11.030274  right\n996  2.994009  11.062647  right\n997  3.000045  11.095129  right\n998  3.006081  11.127721  right\n999  3.012118  11.160424  right\n\n[1000 rows x 3 columns]",
+    "info": {
+      "N_l": 255,
+      "N_r": 245,
+      "J_star_l": 16,
+      "J_star_r": 70,
+      "c": 0.0,
+      "p": 4,
+      "h_l": 2.885512195229152,
+      "h_r": 3.012117534689308,
+      "binselect": "esmv",
+      "kernel": "uniform"
+    }
+  },
+  "stata": {
+    "n_l": 255.0,
+    "n_r": 245.0,
+    "j_star_l": 16.0,
+    "j_star_r": 70.0,
+    "c": 0.0,
+    "p": NaN,
+    "h_l": NaN,
+    "h_r": NaN,
+    "_log_path": "D:\\OneDrive - SAIF\\PhD3\\StataFlow\\stata\\output\\audit_v1_3_m08\\S7_RDPLOT_ESMV.log",
+    "_dta_path": "D:\\OneDrive - SAIF\\PhD3\\StataFlow\\stata\\cases\\audit_v1_3_m08\\S7_RDPLOT_ESMV.dta",
+    "_exit_code": 0
+  },
+  "diffs": {
+    "passed": true,
+    "messages": [
+      "n_l: Python=255, Stata=255, abs=0.00e+00, rel=0.00e+00 PASS",
+      "n_r: Python=245, Stata=245, abs=0.00e+00, rel=0.00e+00 PASS",
+      "j_star_l: Python=16, Stata=16, abs=0.00e+00, rel=0.00e+00 PASS",
+      "j_star_r: Python=70, Stata=70, abs=0.00e+00, rel=0.00e+00 PASS"
+    ],
+    "field_results": {
+      "n_l": {
+        "passed": true,
+        "message": "n_l: Python=255, Stata=255, abs=0.00e+00, rel=0.00e+00 PASS"
+      },
+      "n_r": {
+        "passed": true,
+        "message": "n_r: Python=245, Stata=245, abs=0.00e+00, rel=0.00e+00 PASS"
+      },
+      "j_star_l": {
+        "passed": true,
+        "message": "j_star_l: Python=16, Stata=16, abs=0.00e+00, rel=0.00e+00 PASS"
+      },
+      "j_star_r": {
+        "passed": true,
+        "message": "j_star_r: Python=70, Stata=70, abs=0.00e+00, rel=0.00e+00 PASS"
+      }
+    }
+  }
+}

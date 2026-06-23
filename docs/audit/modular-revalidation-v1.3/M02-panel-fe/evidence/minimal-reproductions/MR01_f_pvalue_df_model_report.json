@@ -1,0 +1,98 @@
+{
+  "test_id": "MR01_f_pvalue_df_model",
+  "python": {
+    "nobs": 12,
+    "n_input_rows": 12,
+    "df_model": 3.0,
+    "df_resid": 8.0,
+    "r2": 0.9764419987244679,
+    "r2_adj": 0.9676077482461434,
+    "rmse": 0.22502217444420156,
+    "f_stat": 331.5873829206815,
+    "f_pvalue": 8.502484194483628e-08,
+    "rss": 0.40507983193277336,
+    "tss": 17.195,
+    "mss": 16.789920168067226,
+    "cluster_count": null,
+    "coefficients": [
+      {
+        "name": "x",
+        "beta": 1.6798319327731093,
+        "std_err": 0.09225009757604247,
+        "t_stat": 18.209540985996366,
+        "p_value": 8.502484183381398e-08,
+        "ci_low": 1.4671028262897676,
+        "ci_high": 1.892561039256451
+      },
+      {
+        "name": "_cons",
+        "beta": 0.21292717086834712,
+        "std_err": 0.15705110630168925,
+        "t_stat": 1.3557826868110183,
+        "p_value": 0.21219705724504112,
+        "ci_low": -0.1492333297017373,
+        "ci_high": 0.5750876714384315
+      }
+    ],
+    "vce": [
+      [
+        0.008510080502789355,
+        -0.013190624779323513
+      ],
+      [
+        -0.013190624779323513,
+        0.0246650499905845
+      ]
+    ],
+    "vce_row_names": [
+      "x",
+      "_cons"
+    ],
+    "sample_mask": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ],
+    "warnings": []
+  },
+  "stata": {
+    "nobs": 12.0,
+    "df_model": 3.0,
+    "df_resid": 8.0,
+    "r2": 0.976442,
+    "r2_adj": 0.96760775,
+    "rmse": 0.22502215,
+    "f_stat": 331.58745,
+    "f_pvalue": 9.938e-09,
+    "coefficients": [
+      {
+        "name": "x",
+        "beta": 1.6798319,
+        "std_err": 0.09225009
+      },
+      {
+        "name": "_cons",
+        "beta": 0.21292717,
+        "std_err": 0.15705109
+      }
+    ],
+    "_do_file": "D:\\OneDrive - SAIF\\PhD3\\StataFlow\\stata\\cases\\audit_v1_3_m02\\MR01_f_pvalue_df_model.do",
+    "_log_hash": "41f8696fd44a647e",
+    "_exit_code": 0
+  },
+  "comparisons": [
+    {
+      "passed": false,
+      "message": "Stata e(df_m)=3.0, F p-value=9.938e-09; Python df_model=3.0, F p-value=8.502484194483628e-08"
+    }
+  ]
+}

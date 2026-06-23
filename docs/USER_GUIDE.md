@@ -13,7 +13,7 @@ Every public command is validated against Stata 17 through **dual-run testing**:
 
 ## 2. Installation
 
-**Requirements:** Python 3.10+, NumPy, pandas, SciPy.
+**Requirements:** Python 3.10+, NumPy, pandas, SciPy, scikit-learn, PyYAML.
 
 ```bash
 pip install StataFlow
@@ -261,9 +261,9 @@ All `ResultSchema` objects contain fit statistics accessible via `result.fit`:
 
 ```python
 print(result.fit.r2)           # R-squared
-print(result.fit.r2_a)         # Adjusted R-squared
+print(result.fit.r2_adj)       # Adjusted R-squared
 print(result.fit.rmse)         # Root MSE
-print(result.fit.f_statistic)  # F-statistic
+print(result.fit.f_stat)       # F-statistic
 print(result.fit.ll)           # Log-likelihood (ML models)
 print(result.fit.deviance)     # Deviance (Poisson/PPML)
 ```

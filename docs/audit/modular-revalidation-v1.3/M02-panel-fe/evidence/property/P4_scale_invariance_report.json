@@ -1,0 +1,20 @@
+{
+  "test_id": "P4_scale_invariance",
+  "python": {
+    "base": {
+      "x": 2.0197907042134458,
+      "_cons": 1.1528915521959398
+    },
+    "scaled": {
+      "x": 2.0197907042134458,
+      "_cons": 8.070240865371579
+    }
+  },
+  "stata": {},
+  "comparisons": [
+    {
+      "passed": "True",
+      "message": "slope invariant to scale: base=2.0197907042134458 scaled=2.0197907042134458"
+    }
+  ]
+}

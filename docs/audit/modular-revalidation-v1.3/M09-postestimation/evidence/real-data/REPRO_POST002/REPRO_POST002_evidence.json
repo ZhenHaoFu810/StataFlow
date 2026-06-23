@@ -1,0 +1,14 @@
+{
+  "finding": "M09-POST-002",
+  "seed": 202604,
+  "data_hash": "00243e709830ce8c",
+  "python": {
+    "margins_x2": -0.17852164321764455,
+    "se_x2": 0.05393446879266693
+  },
+  "stata": {
+    "log_path": "D:\\OneDrive - SAIF\\PhD3\\StataFlow\\stata\\output\\audit_v1_3_m09\\REPRO_POST002.log",
+    "margins_x2": -0.17852164,
+    "se_x2": 0.05393447
+  }
+}

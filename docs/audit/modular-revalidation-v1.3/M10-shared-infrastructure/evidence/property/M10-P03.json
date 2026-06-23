@@ -1,0 +1,11 @@
+{
+  "test_id": "M10-P03",
+  "timestamp": "2026-06-14T07:36:43.305063+00:00",
+  "property": "cluster label permutation invariance",
+  "data_hash_base": "2513eb195880489d30412d04a9c9cd79b6d4724dcf9c498578322cfd24ad0b51",
+  "data_hash_permuted": "09efac97814e9f46447b1a9b59489f956a91cdb23045366ddfe98c4d416222db",
+  "python_x_se_base": 0.9217524413337882,
+  "python_x_se_perm": 0.9217524413337882,
+  "stata_x_se_base": 0.92175244,
+  "stata_x_se_perm": 0.92175244
+}

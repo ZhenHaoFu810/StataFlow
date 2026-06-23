@@ -1,0 +1,13 @@
+{
+  "test_id": "MR02_collinear_drop_crash",
+  "python": {
+    "status": "no exception"
+  },
+  "stata": {},
+  "comparisons": [
+    {
+      "passed": false,
+      "message": "Python completed without exception (unexpected)"
+    }
+  ]
+}

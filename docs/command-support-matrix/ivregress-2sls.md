@@ -45,7 +45,7 @@ The wrapper layer automatically expands Stata-style factor terms in `x_exog`, `x
 - `i.g1#c.x1`, `i.g1##c.x1`
 - `c.x1#i.g1`, `c.x1##i.g1` (mixed-order symmetry, equivalent to `i.g1#c.x1` / `i.g1##c.x1`)
 
-Unsupported factor syntax (`ib#.`, `o.`, `b.`, time-series operators are supported). The following remain hard-rejected with `ValueError`.
+Unsupported factor syntax (`ib#.`, `o.`, `b.` without level, time-series operators) remain hard-rejected with `ValueError`.
 
 ## Planned Parameters
 

@@ -2,8 +2,8 @@
 
 This checklist governs the transition from development mainline to open-source release candidate. It must be completed before any public release tag is created.
 
-**Current version:** 1.0.0 (Stable)
-**Last updated:** 2026-04-30
+**Current version:** 1.1.0 (Stable)
+**Last updated:** 2026-06-23
 
 ---
 
@@ -22,13 +22,13 @@ This checklist governs the transition from development mainline to open-source r
 - [x] `docs/command-support-matrix/README.md` status legend matches per-command matrices
 - [x] Per-command matrices do not claim support for parameters that are hard-rejected in code
 - [x] `README.md` "What is not yet supported" matches current implementation reality
-- [x] `docs/release/known-issues.md` and `docs/release/open-source-beta-status.md` are consistent with each other and with the code
+- [x] `docs/release/known-issues.md` and `docs/release/open-source-status.md` are consistent with each other and with the code
 - [x] `docs/cookbook.md` and `docs/cookbook.zh-CN.md` examples use data paths that exist in the open-source repo
 - [x] Chinese and English user-facing docs convey equivalent scope and limitations
 
 ### 1.3 Tests and Examples
 
-- [x] `pytest tests/ -v --ignore=tests/golden/` passes with 0 failures (271 passed)
+- [x] `pytest tests/ -v --ignore=tests/golden/ --ignore=tests/audit_v1_3` passes with 0 failures (392 passed)
 - [x] All `examples/demo_*.py` scripts run without error
 - [x] `scripts/validation/run_validation_all.py` produces expected artifacts (if run)
 
@@ -55,7 +55,7 @@ python scripts/release/export_open_source.py --force
 
 ### 3.1 Content Integrity
 
-- [x] No closed files leaked (audit: `docs/audit/`, `docs/tasks/`, `workspace/`, `tests/golden/`, secrets)
+- [x] No closed files leaked (audit: `docs/audit/`, `docs/tasks/`, `workspace/`, `tests/golden/`, `tests/audit_v1_3/`, `.claude/`, `session_restore/`, secrets)
 - [x] No `__pycache__/`, `.pytest_cache/`, or build artifacts present
 - [x] `scripts/release/export_open_source.py` is present in the exported repo
 - [x] File count is within expected range (current baseline: 168 non-git files)
@@ -63,7 +63,7 @@ python scripts/release/export_open_source.py --force
 ### 3.2 Verification in Clean Environment
 
 - [x] `pip install -e .` succeeds in the exported repo
-- [x] `pytest tests/ -v --ignore=tests/golden/` passes with 0 failures (271 passed)
+- [x] `pytest tests/ -v --ignore=tests/golden/ --ignore=tests/audit_v1_3` passes with 0 failures (392 passed)
 - [x] `python examples/demo_regress.py` runs
 - [x] `python examples/demo_reghdfe.py` runs
 - [x] `python examples/demo_ppmlhdfe.py` runs
@@ -71,7 +71,8 @@ python scripts/release/export_open_source.py --force
 
 ### 3.3 Git Hygiene (if tagging)
 
-- [x] `.gitignore` covers standard Python artifacts
+- [x] `.gitignore` covers standard Python artifacts, internal agent/session state, and internal audit/tests
+- [x] `scripts/release/open_source_manifest.yml` blacklist excludes `tests/audit_v1_3/`, `.claude/`, `session_restore/`, `docs/audit/`
 - [x] No large binary files accidentally committed
 - [ ] Commit message references the checklist version
 

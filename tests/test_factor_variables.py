@@ -28,6 +28,10 @@ from stataflow.compat.stata import regress, reghdfe, logit, ivreghdfe, ppmlhdfe
 from stataflow.estimators._absorb_spec import AbsorbSpec
 
 
+def _active_coefficients(result):
+    return [coefficient for coefficient in result.coefficients if not coefficient.is_omitted]
+
+
 def test_parse_absorb_list():
     result = parse_absorb(["firm", "year"])
     assert [r.var for r in result] == ["firm", "year"]
@@ -116,6 +120,40 @@ def test_expand_categorical_continuous_full_interaction():
     df = pd.DataFrame({"g": [1, 2, 1], "x": [1.0, 2.0, 3.0]})
     df_out, cols = expand_factor_terms(df, ["i.g##c.x"])
     assert cols == ["2.g", "x", "2.g#c.x"]
+
+
+def test_regress_restores_stata_factor_base_rows_and_zero_vce():
+    """Compat results retain Stata's base rows without estimating them."""
+    df = pd.DataFrame(
+        {
+            "g": np.repeat([1, 2], 12),
+            "x": np.tile(np.linspace(-1.0, 1.0, 12), 2),
+        }
+    )
+    df["y"] = 1.0 + 0.8 * (df["g"] == 2) + 1.5 * df["x"] + 0.2 * (
+        df["g"] == 2
+    ) * df["x"]
+
+    result = regress(df, "y", ["i.g##c.x"])
+
+    assert [row.name for row in result.coefficients] == [
+        "1b.g",
+        "2.g",
+        "x",
+        "1b.g#co.x",
+        "2.g#c.x",
+        "_cons",
+    ]
+    assert result.coefficients[0].is_base
+    assert result.coefficients[0].is_omitted
+    assert result.coefficients[3].is_base
+    assert result.coefficients[3].is_omitted
+    vce = np.asarray(result.variance.values)
+    assert np.all(vce[0, :] == 0.0)
+    assert np.all(vce[:, 0] == 0.0)
+    assert np.all(vce[3, :] == 0.0)
+    assert np.all(vce[:, 3] == 0.0)
+    result.validate()
 
 
 def test_expand_mixed_order_interaction_symmetric():
@@ -321,9 +359,10 @@ def test_regress_categorical_continuous_full_interaction_equals_manual():
     df = _make_interaction_data()
     res_factor = regress(df, y="y", x=["i.g##c.x1"])
     res_manual = regress(df, y="y", x=["g_2", "g_3", "x1", "g_2_x1", "g_3_x1"])
+    factor_coefficients = _active_coefficients(res_factor)
     for i in range(5):
-        assert pytest.approx(res_factor.coefficients[i].beta, rel=1e-10) == res_manual.coefficients[i].beta
-        assert pytest.approx(res_factor.coefficients[i].std_err, rel=1e-10) == res_manual.coefficients[i].std_err
+        assert pytest.approx(factor_coefficients[i].beta, rel=1e-10) == res_manual.coefficients[i].beta
+        assert pytest.approx(factor_coefficients[i].std_err, rel=1e-10) == res_manual.coefficients[i].std_err
 
 
 def test_reghdfe_absorb_space_separated_string():
@@ -339,10 +378,11 @@ def test_reghdfe_bare_continuous_full_interaction_equals_manual():
     df = _make_interaction_data()
     res_factor = reghdfe(df, y="y", x=["x1##x2"], absorb="firm year")
     res_manual = reghdfe(df, y="y", x=["x1", "x2", "x1_x2"], absorb="firm year")
-    py_names = [c.name for c in res_factor.coefficients]
+    factor_coefficients = _active_coefficients(res_factor)
+    py_names = [c.name for c in factor_coefficients]
     mn_names = [c.name for c in res_manual.coefficients]
     assert len(py_names) == len(mn_names)
-    for pyc, mnc in zip(res_factor.coefficients, res_manual.coefficients):
+    for pyc, mnc in zip(factor_coefficients, res_manual.coefficients):
         assert pytest.approx(pyc.beta, rel=1e-10) == mnc.beta
         assert pytest.approx(pyc.std_err, rel=1e-10) == mnc.std_err
 
@@ -376,10 +416,11 @@ def test_regress_explicit_base_full_interaction_equals_manual():
     df["g_3_x1"] = df["g_3"] * df["x1"]
     res_factor = regress(df, y="y", x=["ib2.g##c.x1"])
     res_manual = regress(df, y="y", x=["g_1", "g_3", "x1", "g_1_x1", "g_3_x1"])
-    py_names = [c.name for c in res_factor.coefficients]
+    factor_coefficients = _active_coefficients(res_factor)
+    py_names = [c.name for c in factor_coefficients]
     mn_names = [c.name for c in res_manual.coefficients]
     assert len(py_names) == len(mn_names)
-    for pyc, mnc in zip(res_factor.coefficients, res_manual.coefficients):
+    for pyc, mnc in zip(factor_coefficients, res_manual.coefficients):
         assert pytest.approx(pyc.beta, rel=1e-10) == mnc.beta
         assert pytest.approx(pyc.std_err, rel=1e-10) == mnc.std_err
 
@@ -393,10 +434,11 @@ def test_reghdfe_explicit_base_full_interaction_equals_manual():
     df["g_3_x1"] = df["g_3"] * df["x1"]
     res_factor = reghdfe(df, y="y", x=["ib2.g##c.x1"], absorb="firm year")
     res_manual = reghdfe(df, y="y", x=["g_1", "g_3", "x1", "g_1_x1", "g_3_x1"], absorb="firm year")
-    py_names = [c.name for c in res_factor.coefficients]
+    factor_coefficients = _active_coefficients(res_factor)
+    py_names = [c.name for c in factor_coefficients]
     mn_names = [c.name for c in res_manual.coefficients]
     assert len(py_names) == len(mn_names)
-    for pyc, mnc in zip(res_factor.coefficients, res_manual.coefficients):
+    for pyc, mnc in zip(factor_coefficients, res_manual.coefficients):
         assert pytest.approx(pyc.beta, rel=1e-10) == mnc.beta
         assert pytest.approx(pyc.std_err, rel=1e-10) == mnc.std_err
 
@@ -422,10 +464,11 @@ def test_reghdfe_mixed_order_factor_equals_manual():
     df = _make_interaction_data()
     res_factor = reghdfe(df, y="y", x=["c.x1##i.g"], absorb="firm year")
     res_manual = reghdfe(df, y="y", x=["g_2", "g_3", "x1", "g_2_x1", "g_3_x1"], absorb="firm year")
-    py_names = [c.name for c in res_factor.coefficients]
+    factor_coefficients = _active_coefficients(res_factor)
+    py_names = [c.name for c in factor_coefficients]
     mn_names = [c.name for c in res_manual.coefficients]
     assert len(py_names) == len(mn_names)
-    for pyc, mnc in zip(res_factor.coefficients, res_manual.coefficients):
+    for pyc, mnc in zip(factor_coefficients, res_manual.coefficients):
         assert pytest.approx(pyc.beta, rel=1e-10) == mnc.beta
         assert pytest.approx(pyc.std_err, rel=1e-10) == mnc.std_err
 
@@ -456,10 +499,11 @@ def test_ivreghdfe_factor_syntax_equals_manual():
         df, y="y", x_exog=["g_2", "g_3", "x1", "g_2_x1", "g_3_x1"], x_endog=["x_endog"],
         instruments=["z1", "z2"], absorb="firm year"
     )
-    py_names = [c.name for c in res_factor.coefficients]
+    factor_coefficients = _active_coefficients(res_factor)
+    py_names = [c.name for c in factor_coefficients]
     mn_names = [c.name for c in res_manual.coefficients]
     assert len(py_names) == len(mn_names)
-    for pyc, mnc in zip(res_factor.coefficients, res_manual.coefficients):
+    for pyc, mnc in zip(factor_coefficients, res_manual.coefficients):
         assert pytest.approx(pyc.beta, rel=1e-10) == mnc.beta
         assert pytest.approx(pyc.std_err, rel=1e-10) == mnc.std_err
 
@@ -485,10 +529,11 @@ def test_ppmlhdfe_factor_syntax_equals_manual():
     res_manual = ppmlhdfe(
         df, y="y", x=["g_2", "g_3", "x1", "g_2_x1", "g_3_x1"], absorb="exporter importer"
     )
-    py_names = [c.name for c in res_factor.coefficients]
+    factor_coefficients = _active_coefficients(res_factor)
+    py_names = [c.name for c in factor_coefficients]
     mn_names = [c.name for c in res_manual.coefficients]
     assert len(py_names) == len(mn_names)
-    for pyc, mnc in zip(res_factor.coefficients, res_manual.coefficients):
+    for pyc, mnc in zip(factor_coefficients, res_manual.coefficients):
         assert pytest.approx(pyc.beta, rel=1e-10) == mnc.beta
         assert pytest.approx(pyc.std_err, rel=1e-10) == mnc.std_err
 
@@ -549,6 +594,6 @@ def test_factor_screening_changes_base_category():
         "y": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0],
     })
     res = regress(df, y="y", x=["i.g##c.x"])
-    names = [c.name for c in res.coefficients]
+    names = [c.name for c in _active_coefficients(res)]
     assert "2.g" not in names
     assert names == ["3.g", "x", "3.g#c.x", "_cons"]

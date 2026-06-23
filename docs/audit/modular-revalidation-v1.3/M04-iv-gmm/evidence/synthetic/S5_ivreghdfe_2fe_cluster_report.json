@@ -1,0 +1,288 @@
+{
+  "test_id": "S5_ivreghdfe_2fe_cluster",
+  "python": {
+    "nobs": 150,
+    "n_input_rows": 150,
+    "df_model": 1.0,
+    "df_resid": 29.0,
+    "r2": 0.8227102533038139,
+    "r2_adj": 0.8165968137625661,
+    "rmse": 0.5471191860828915,
+    "f_stat": 102.5657124374106,
+    "f_pvalue": 4.94753127355807e-11,
+    "rss": 43.40421354810081,
+    "tss": 244.8207770440372,
+    "mss": 201.41656349593637,
+    "cluster_count": 30,
+    "coefficients": [
+      {
+        "name": "x",
+        "beta": 1.4650186300272483,
+        "std_err": 0.14465786362400052,
+        "t_stat": 10.127473151650939,
+        "p_value": 4.94753127355807e-11,
+        "ci_low": 1.1691600793758523,
+        "ci_high": 1.7608771806786443
+      }
+    ],
+    "vce": [
+      [
+        0.020925897508259933
+      ]
+    ],
+    "vce_row_names": [
+      "x"
+    ],
+    "sample_mask": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ],
+    "warnings": [],
+    "widstat": 160.28607832313082,
+    "idstat": 22.060027171214113,
+    "df_a": 4.0,
+    "num_singletons": 0,
+    "dropped_vars": []
+  },
+  "stata": {
+    "nobs": 150.0,
+    "df_model": 1.0,
+    "df_resid": 29.0,
+    "r2": 0.82271025,
+    "r2_adj": 0.81659681,
+    "rmse": 0.54711919,
+    "f_stat": 102.56572,
+    "f_pvalue": 4.948e-11,
+    "rss": 43.404214,
+    "mss": 201.41656,
+    "n_clust": 30.0,
+    "widstat": 160.28607,
+    "idstat": 22.060027,
+    "j_stat": 0.0,
+    "j_df": 0.0,
+    "df_a": 4.0,
+    "tss": 244.820774,
+    "coefficients": [
+      {
+        "name": "x",
+        "beta": 1.4650186,
+        "std_err": 0.14465786
+      }
+    ],
+    "vce": [
+      [
+        0.0209259
+      ]
+    ],
+    "vce_rows": 1,
+    "_do_file": "D:\\OneDrive - SAIF\\PhD3\\StataFlow\\stata\\cases\\audit_v1_3_m04\\S5_ivreghdfe_2fe_cluster.do",
+    "_log_hash": "2c9c8ee605761a7c",
+    "_exit_code": 0
+  },
+  "comparisons": [
+    {
+      "passed": true,
+      "message": "beta[x]: Python=1.46501863002725, Stata=1.4650186, abs_diff=3.00e-08, rel_diff=2.05e-08 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "std_err[x]: Python=0.144657863624001, Stata=0.14465786, abs_diff=3.62e-09, rel_diff=2.51e-08 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "nobs: Python=150, Stata=150, abs_diff=0.00e+00, rel_diff=0.00e+00 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "df_model: Python=1, Stata=1, abs_diff=0.00e+00, rel_diff=0.00e+00 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "df_resid: Python=29, Stata=29, abs_diff=0.00e+00, rel_diff=0.00e+00 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "df_a: Python=4, Stata=4, abs_diff=0.00e+00, rel_diff=0.00e+00 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "r2: Python=0.822710253303814, Stata=0.82271025, abs_diff=3.30e-09, rel_diff=4.02e-09 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "r2_adj: Python=0.816596813762566, Stata=0.81659681, abs_diff=3.76e-09, rel_diff=4.61e-09 -> PASS"
+    },
+    {
+      "passed": "True",
+      "message": "rmse: Python=0.547119186082891, Stata=0.54711919, abs_diff=3.92e-09, rel_diff=7.16e-09 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "f_stat: Python=102.565712437411, Stata=102.56572, abs_diff=7.56e-06, rel_diff=7.37e-08 -> PASS"
+    },
+    {
+      "passed": "True",
+      "message": "f_pvalue: Python=4.94753127355807e-11, Stata=4.948e-11, abs_diff=4.69e-15, rel_diff=9.47e-05 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "cluster_count: Python=30, Stata=30, abs_diff=0.00e+00, rel_diff=0.00e+00 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "widstat: Python=160.286078323131, Stata=160.28607, abs_diff=8.32e-06, rel_diff=5.19e-08 -> PASS"
+    },
+    {
+      "passed": "True",
+      "message": "VCE(non-omitted) max_abs_diff=2.49e-09, max_rel_diff=1.19e-07 -> PASS"
+    }
+  ]
+}

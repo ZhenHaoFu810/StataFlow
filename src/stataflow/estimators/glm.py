@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+from scipy.optimize import linprog
 from scipy.stats import norm as norm_dist, chi2 as chi2_dist
 from typing import Optional
 from types import SimpleNamespace
@@ -256,6 +257,22 @@ class GLMBase:
         mu = self._link_inv(eta)
         return beta, mu, eta, converged
 
+    @staticmethod
+    def _raise_if_completely_separated(X: np.ndarray, y: np.ndarray) -> None:
+        """Detect a linear rule that classifies every binary outcome exactly."""
+        signed_design = (2.0 * y - 1.0)[:, np.newaxis] * X
+        feasibility = linprog(
+            np.zeros(X.shape[1]),
+            A_ub=-signed_design,
+            b_ub=-np.ones(len(y)),
+            bounds=[(None, None)] * X.shape[1],
+            method="highs",
+        )
+        if feasibility.success:
+            raise RuntimeError(
+                "outcome predicts data perfectly (complete separation; Stata r(2000))"
+            )
+
     def _compute_vce(
         self,
         X: np.ndarray,
@@ -357,6 +374,7 @@ class GLMBase:
                 raise ValueError(
                     f"{self.__class__.__name__} requires dependent variable to be binary (0 or 1)"
                 )
+            self._raise_if_completely_separated(X, y)
         elif self.__class__.__name__ == "Poisson":
             if np.any(y < 0):
                 raise ValueError("Poisson requires dependent variable to be non-negative")
@@ -373,12 +391,7 @@ class GLMBase:
         df_model = float(k - 1) if self.add_constant else float(k)
         df_resid = float(n - k)
 
-        if vce == "cluster" and cluster_arr is not None:
-            unique_clusters = np.unique(cluster_arr)
-            cluster_count = len(unique_clusters)
-            df_resid = float(cluster_count - 1)
-        else:
-            cluster_count = None
+        cluster_count = None
 
         cov_beta, cluster_count_vce = self._compute_vce(X, y, mu, eta, beta, vce, cluster_arr)
         if cluster_count is None:
@@ -407,8 +420,20 @@ class GLMBase:
             ci_low_display = ci_low
             ci_high_display = ci_high
 
-        # LR chi2
-        chi2 = 2.0 * (ll_model - ll_null)
+        if vce == "ols":
+            chi2 = 2.0 * (ll_model - ll_null)
+        else:
+            slope_indices = [
+                i for i, name in enumerate(self._coef_names) if name != "_cons"
+            ]
+            beta_slopes = beta[slope_indices]
+            cov_slopes = cov_beta[np.ix_(slope_indices, slope_indices)]
+            try:
+                chi2 = float(
+                    beta_slopes @ np.linalg.solve(cov_slopes, beta_slopes)
+                )
+            except np.linalg.LinAlgError:
+                chi2 = float(beta_slopes @ np.linalg.pinv(cov_slopes) @ beta_slopes)
         chi2_pvalue = 1.0 - chi2_dist.cdf(chi2, df=df_model) if df_model > 0 else None
 
         # Deviance

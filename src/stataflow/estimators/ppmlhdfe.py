@@ -61,7 +61,7 @@ class PPMLHDFE:
         tol: float = 1e-8,
         offset: Optional[str] = None,
         exposure: Optional[str] = None,
-        separation: Optional[str] = None,
+        separation: Optional[str] = "fe",
         weights: Optional[str] = None,
     ):
         if offset is not None and exposure is not None:
@@ -80,7 +80,10 @@ class PPMLHDFE:
         self.tol = tol
         self.offset_var = offset
         self.exposure_var = exposure
-        self.separation = separation
+        normalized_separation = "fe" if separation is None else separation.lower()
+        if normalized_separation not in ("fe", "none"):
+            raise ValueError("separation must be 'fe' or 'none'.")
+        self.separation = normalized_separation
         self.weights_var = weights
 
         # Load offset vector (exposure is converted to log offset)
@@ -179,6 +182,8 @@ class PPMLHDFE:
 
             # Working response and weights for Poisson
             z = eta + (y - mu) / mu
+            if offset is not None:
+                z = z - offset
             w = mu * p
 
             sqrt_w = np.sqrt(w)
@@ -213,9 +218,15 @@ class PPMLHDFE:
             ll_new = float(np.sum(p * (y * np.log(mu_new) - mu_new - gammaln(y + 1))))
 
             rel_change = abs(ll_new - ll_old) / (abs(ll_old) + 1.0)
-            param_change = np.max(np.abs(gamma_new - gamma))
+            score = X.T @ (p * (y - mu_new))
+            score_scale = max(float(np.sum(p * y)), 1.0)
+            score_norm = float(np.max(np.abs(score))) / score_scale
 
-            if rel_change < self.tol and param_change < self.tol:
+            # FE coefficients for separated all-zero groups diverge to -inf
+            # even though the likelihood and Poisson score have converged.
+            # Stata/ppmlhdfe therefore uses an objective/score criterion rather
+            # than requiring every nuisance LSDV coefficient to stop moving.
+            if rel_change < self.tol and score_norm < self.tol:
                 converged = True
                 gamma = gamma_new
                 break
@@ -237,7 +248,7 @@ class PPMLHDFE:
         For PPMLHDFE, the reported constant follows the reghdfe formula:
         b0 = weighted_mean(log(mu), weights=mu) - sum_j weighted_mean(x_j, weights=mu) * b_j
         which is equivalent to gamma_const + weighted_mean(FE_dummies, weights=mu) @ gamma_FE.
-        If an offset is present, its weighted mean is subtracted from the constant.
+        The offset is fixed and is therefore not part of this parameter map.
         """
         X_full = self._abs_ols._design_matrix
         k_x = len([name for name in self._abs_ols._coef_names if name != "_cons"])
@@ -263,10 +274,6 @@ class PPMLHDFE:
             for i, full_idx in enumerate(self._abs_ols._x_indices_in_full):
                 mean_xj = np.sum(X_full[:, full_idx] * w)
                 T[cons_row, full_idx] -= mean_xj
-            # subtract weighted mean of offset if present
-            if self._offset_vec is not None:
-                T[cons_row, :] -= np.sum(self._offset_vec[self._abs_ols._sample_mask] * w)
-
         return T
 
     # _compute_cluster_meat, _fix_psd, _fix_psd_reghdfe: imported from _vce_utils (ADR-0004).
@@ -359,6 +366,9 @@ class PPMLHDFE:
 
         # Prepare LSDV data via AbsorbingOLS
         self._abs_ols._prepare_data(cluster_vars=cluster_vars)
+        raw_weights_current = None
+        if self._weights_vec is not None:
+            raw_weights_current = self._weights_vec[self._abs_ols._sample_mask]
 
         # separation(fe): drop FE groups where all y == 0
         num_sep_dropped = 0
@@ -370,8 +380,11 @@ class PPMLHDFE:
                 sep_levels = grouped[grouped == 0].index
                 drop_idx.update(df.index[df[var].isin(sep_levels)].tolist())
             if drop_idx:
+                keep_rows = ~df.index.isin(drop_idx)
                 df_clean = df.drop(index=list(drop_idx)).copy()
                 num_sep_dropped = len(drop_idx)
+                if raw_weights_current is not None:
+                    raw_weights_current = raw_weights_current[keep_rows]
                 self._abs_ols = AbsorbingOLS(
                     data=df_clean,
                     y=self.y,
@@ -379,7 +392,7 @@ class PPMLHDFE:
                     absorb=self.absorb_vars,
                     add_constant=self.add_constant,
                     missing=self.missing,
-                    weights=self._weights_vec,
+                    weights=raw_weights_current,
                     weight_type="aweight",
                 )
                 self._abs_ols._prepare_data(cluster_vars=cluster_vars)
@@ -395,23 +408,37 @@ class PPMLHDFE:
         if self._offset_vec is not None:
             offset_vec = self._offset_vec[self._abs_ols._sample_mask]
 
-        # Standardize x variable columns for numerical stability in IRLS
+        # ppmlhdfe standardizes y and x by their sample standard deviations
+        # (without centering), then restores the original scale after IRLS.
+        if n > 1:
+            y_std = max(float(np.std(y, ddof=1)), 1e-3)
+        else:
+            y_std = 1.0
+        y_irls = y / y_std
+
+        # Standardize x variable columns for numerical stability in IRLS.
         x_indices = list(self._abs_ols._x_indices_in_full)
         x_stds = np.ones(len(x_indices))
-        x_means = np.zeros(len(x_indices))
         X_std = X_full.copy()
         for idx_pos, col_idx in enumerate(x_indices):
             col = X_std[:, col_idx]
-            std = np.std(col)
+            std = np.std(col, ddof=1) if n > 1 else 1.0
             if std > 1e-15:
-                x_stds[idx_pos] = std
-                x_means[idx_pos] = np.mean(col)
-                X_std[:, col_idx] = (col - x_means[idx_pos]) / std
+                x_stds[idx_pos] = max(float(std), 1e-3)
+                X_std[:, col_idx] = col / x_stds[idx_pos]
 
         # Extract prior weights aligned with retained sample
         p = getattr(self._abs_ols, '_weights', None)
+        raw_p = raw_weights_current
 
-        gamma_std, mu, converged = self._irls_fit(X_std, y, offset=offset_vec, weights=p)
+        gamma_std, mu_irls, converged = self._irls_fit(
+            X_std, y_irls, offset=offset_vec, weights=p
+        )
+        if not converged:
+            raise RuntimeError(
+                "PPMLHDFE IRLS did not converge. Check separation, model specification, "
+                "or increase max_iter."
+            )
 
         # Rescale LSDV coefficients back to original x scale
         gamma = gamma_std.copy()
@@ -419,7 +446,7 @@ class PPMLHDFE:
             gamma[col_idx] = gamma_std[col_idx] / x_stds[idx_pos]
         if self._abs_ols._constant_idx_reduced is not None:
             const_idx = self._abs_ols._constant_idx_reduced
-            gamma[const_idx] = gamma_std[const_idx] - np.sum(x_means * gamma[x_indices])
+            gamma[const_idx] = gamma_std[const_idx] + np.log(y_std)
 
         # Recompute mu on original scale to ensure consistency
         eta = X_full @ gamma
@@ -430,7 +457,7 @@ class PPMLHDFE:
 
         # Log-likelihood (weighted)
         from scipy.special import gammaln
-        p_arr = p if p is not None else np.ones(n)
+        p_arr = raw_p if raw_p is not None else np.ones(n)
         ll_model = float(np.sum(p_arr * (y * np.log(mu) - mu - gammaln(y + 1))))
 
         # Deviance: 2 * sum(p * [mu - y + y * log(y/mu)])  (with 0*log(0) = 0)
@@ -504,6 +531,10 @@ class PPMLHDFE:
             ci_low = np.exp(ci_low)
             ci_high = np.exp(ci_high)
 
+        # Postestimation always operates on the untransformed coefficient
+        # vector, even when the displayed table uses eform.
+        beta_reported_raw = T @ gamma
+
         result = ResultSchema()
         result.model = ModelInfo(
             command="ppmlhdfe",
@@ -550,8 +581,6 @@ class PPMLHDFE:
             warnings.append(f"Singleton observations dropped: {self._abs_ols._num_singletons}")
         if num_sep_dropped > 0:
             warnings.append(f"Separation observations dropped: {num_sep_dropped}")
-        if not converged:
-            warnings.append("IRLS did not converge")
         result.diagnostics = DiagnosticsInfo(
             cluster_count=cluster_count,
             warnings=warnings,
@@ -570,7 +599,7 @@ class PPMLHDFE:
         self._mu = mu
         self._eta = eta
         self._T = T
-        self._beta_reported = beta_reported
+        self._beta_reported = beta_reported_raw
         self._cov_reported = cov_reported
         self._result = result
         result._model = self
@@ -587,7 +616,16 @@ class PPMLHDFE:
         if newdata is not None:
             raise NotImplementedError("Out-of-sample prediction for PPMLHDFE not yet implemented.")
         if type == "xb":
-            return self._eta
+            columns = []
+            for name in self._abs_ols._coef_names:
+                if name == "_cons":
+                    columns.append(np.ones(len(self._abs_ols._df)))
+                else:
+                    columns.append(
+                        self._abs_ols._df[name].to_numpy(dtype=np.float64)
+                    )
+            X_reported = np.column_stack(columns)
+            return X_reported @ self._beta_reported
         if type == "mu":
             return self._mu
         # residuals: y - mu

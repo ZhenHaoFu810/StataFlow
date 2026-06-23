@@ -1,0 +1,436 @@
+{
+  "prefix": "P3_SCALE_TRANSFORMATION_ORIG",
+  "python": {
+    "model": {
+      "command": "ppmlhdfe",
+      "estimator_family": "ppmlhdfe",
+      "vcetype": "robust",
+      "weight_type": null,
+      "fe_vars": [],
+      "absorb_var": null,
+      "absorb_vars": [
+        "entity_id",
+        "time_id"
+      ],
+      "cluster_var": null,
+      "has_constant": true
+    },
+    "sample": {
+      "nobs": 200,
+      "n_input_rows": 200,
+      "sample_mask": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "dropped_rows_reason": null
+    },
+    "fit": {
+      "df_model": 2.0,
+      "df_resid": 169.0,
+      "df_a": 29.0,
+      "rank": 31,
+      "rss": 0.0,
+      "tss": 0.0,
+      "mss": 0.0,
+      "rmse": 0.0,
+      "r2": 0.0,
+      "r2_adj": 0.0,
+      "f_stat": null,
+      "f_pvalue": null,
+      "ll": -225.47986580442335,
+      "deviance": 199.46545971240863,
+      "pseudo_r2": 0.6159496620064507
+    },
+    "coefficients": [
+      {
+        "name": "x1",
+        "beta": 0.6060509381141009,
+        "std_err": 0.0634902969689979,
+        "t_stat": 9.545567859133397,
+        "p_value": 0.0,
+        "ci_low": 0.4816122426871125,
+        "ci_high": 0.7304896335410893
+      },
+      {
+        "name": "x2",
+        "beta": -0.4759523275649416,
+        "std_err": 0.06672972862410038,
+        "t_stat": -7.132538036323509,
+        "p_value": 9.85433956657289e-13,
+        "ci_low": -0.6067401923663098,
+        "ci_high": -0.3451644627635733
+      },
+      {
+        "name": "_cons",
+        "beta": 1.0401304375363667,
+        "std_err": 0.07265870182114395,
+        "t_stat": 14.315290687366574,
+        "p_value": 0.0,
+        "ci_low": 0.8977219988034897,
+        "ci_high": 1.1825388762692437
+      }
+    ],
+    "variance": {
+      "row_names": [
+        "x1",
+        "x2",
+        "_cons"
+      ],
+      "values": [
+        [
+          0.004031017809211544,
+          4.031442898880758e-05,
+          -0.002833844050364025
+        ],
+        [
+          4.031442898880798e-05,
+          0.0044528566822460815,
+          0.0006046390638415288
+        ],
+        [
+          -0.002833844050364005,
+          0.0006046390638415494,
+          0.005279286950333907
+        ]
+      ]
+    },
+    "diagnostics": {
+      "residual_df_correction": null,
+      "cluster_count": null,
+      "warnings": [
+        "IRLS did not converge"
+      ]
+    },
+    "provenance": {
+      "source": "python",
+      "stata_version_target": "17",
+      "stata_command": "ppmlhdfe y x1 x2, absorb(entity_id time_id)"
+    }
+  },
+  "stata": {
+    "nobs": 200.0,
+    "df_model": 2.0,
+    "df_a": 29.0,
+    "df_resid": NaN,
+    "ll": -225.47987,
+    "deviance": 199.46546,
+    "pseudo_r2": 0.61594966,
+    "chi2": 143.29966,
+    "n_clust": NaN,
+    "coefficients": [
+      {
+        "name": "x1",
+        "beta": 0.60605094,
+        "std_err": 0.0634903,
+        "z_stat": 9.545567433135457,
+        "p_value": 0.0
+      },
+      {
+        "name": "x2",
+        "beta": -0.47595233,
+        "std_err": 0.06672973,
+        "z_stat": -7.132537925749137,
+        "p_value": 9.85433956657289e-13
+      },
+      {
+        "name": "_cons",
+        "beta": 1.0401304,
+        "std_err": 0.0726587,
+        "z_stat": 14.315290529558055,
+        "p_value": 0.0
+      }
+    ],
+    "vce_matrix": [
+      [
+        0.00403102,
+        4.031e-05,
+        -0.00283384
+      ],
+      [
+        4.031e-05,
+        0.00445286,
+        0.00060464
+      ],
+      [
+        -0.00283384,
+        0.00060464,
+        0.00527929
+      ]
+    ],
+    "vce_names": [
+      "x1",
+      "x2",
+      "_cons"
+    ],
+    "predict": {},
+    "_log_path": "D:\\OneDrive - SAIF\\PhD3\\StataFlow\\stata\\output\\audit_v1_3_m06\\P3_SCALE_ORIG.log",
+    "_csv_path": "D:\\OneDrive - SAIF\\PhD3\\StataFlow\\stata\\cases\\audit_v1_3_m06\\P3_SCALE_ORIG.csv",
+    "_command": "ppmlhdfe y x1 x2, absorb(entity_id time_id) vce(robust) separation(none)",
+    "_exit_code": 0
+  },
+  "diffs": {
+    "passed": true,
+    "messages": [
+      "orig.x1.beta: Python=0.606050938114, Stata=0.60605094, abs=1.89e-09, rel=3.11e-09 PASS",
+      "orig.x1.std_err: Python=0.063490296969, Stata=0.0634903, abs=3.03e-09, rel=4.77e-08 PASS",
+      "orig.x1.t_stat: Python=9.54556785913, Stata=9.54556743314, abs=4.26e-07, rel=4.46e-08 PASS",
+      "orig.x1.p_value: Python=0, Stata=0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "orig.x2.beta: Python=-0.475952327565, Stata=-0.47595233, abs=2.44e-09, rel=5.12e-09 PASS",
+      "orig.x2.std_err: Python=0.0667297286241, Stata=0.06672973, abs=1.38e-09, rel=2.06e-08 PASS",
+      "orig.x2.t_stat: Python=-7.13253803632, Stata=-7.13253792575, abs=1.11e-07, rel=1.55e-08 PASS",
+      "orig.x2.p_value: Python=9.85433956657e-13, Stata=9.85433956657e-13, abs=0.00e+00, rel=0.00e+00 PASS",
+      "orig._cons.beta: Python=1.04013043754, Stata=1.0401304, abs=3.75e-08, rel=3.61e-08 PASS",
+      "orig._cons.std_err: Python=0.0726587018211, Stata=0.0726587, abs=1.82e-09, rel=2.51e-08 PASS",
+      "orig._cons.t_stat: Python=14.3152906874, Stata=14.3152905296, abs=1.58e-07, rel=1.10e-08 PASS",
+      "orig._cons.p_value: Python=0, Stata=0, abs=0.00e+00, rel=0.00e+00 PASS"
+    ],
+    "field_results": {
+      "orig.x1.beta": {
+        "passed": true,
+        "message": "orig.x1.beta: Python=0.606050938114, Stata=0.60605094, abs=1.89e-09, rel=3.11e-09 PASS"
+      },
+      "orig.x1.std_err": {
+        "passed": true,
+        "message": "orig.x1.std_err: Python=0.063490296969, Stata=0.0634903, abs=3.03e-09, rel=4.77e-08 PASS"
+      },
+      "orig.x1.t_stat": {
+        "passed": true,
+        "message": "orig.x1.t_stat: Python=9.54556785913, Stata=9.54556743314, abs=4.26e-07, rel=4.46e-08 PASS"
+      },
+      "orig.x1.p_value": {
+        "passed": "True",
+        "message": "orig.x1.p_value: Python=0, Stata=0, abs=0.00e+00, rel=0.00e+00 PASS"
+      },
+      "orig.x2.beta": {
+        "passed": true,
+        "message": "orig.x2.beta: Python=-0.475952327565, Stata=-0.47595233, abs=2.44e-09, rel=5.12e-09 PASS"
+      },
+      "orig.x2.std_err": {
+        "passed": true,
+        "message": "orig.x2.std_err: Python=0.0667297286241, Stata=0.06672973, abs=1.38e-09, rel=2.06e-08 PASS"
+      },
+      "orig.x2.t_stat": {
+        "passed": true,
+        "message": "orig.x2.t_stat: Python=-7.13253803632, Stata=-7.13253792575, abs=1.11e-07, rel=1.55e-08 PASS"
+      },
+      "orig.x2.p_value": {
+        "passed": "True",
+        "message": "orig.x2.p_value: Python=9.85433956657e-13, Stata=9.85433956657e-13, abs=0.00e+00, rel=0.00e+00 PASS"
+      },
+      "orig._cons.beta": {
+        "passed": true,
+        "message": "orig._cons.beta: Python=1.04013043754, Stata=1.0401304, abs=3.75e-08, rel=3.61e-08 PASS"
+      },
+      "orig._cons.std_err": {
+        "passed": true,
+        "message": "orig._cons.std_err: Python=0.0726587018211, Stata=0.0726587, abs=1.82e-09, rel=2.51e-08 PASS"
+      },
+      "orig._cons.t_stat": {
+        "passed": true,
+        "message": "orig._cons.t_stat: Python=14.3152906874, Stata=14.3152905296, abs=1.58e-07, rel=1.10e-08 PASS"
+      },
+      "orig._cons.p_value": {
+        "passed": "True",
+        "message": "orig._cons.p_value: Python=0, Stata=0, abs=0.00e+00, rel=0.00e+00 PASS"
+      }
+    }
+  }
+}

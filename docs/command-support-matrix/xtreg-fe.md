@@ -22,6 +22,7 @@ result = xtreg_fe(data, y="depvar", x=["x1", "x2"], fe="id")
 | `fe` | `str` | Entity identifier |
 | `vce` | `str` | `"ols"`, `"cluster"` |
 | `cluster` | `str` | Cluster variable (required when `vce="cluster"`) |
+| `level` | `int` | Confidence level (default 95) |
 | `missing` | `str` | `"drop"` only |
 
 ## Supported Result Fields

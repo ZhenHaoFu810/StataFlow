@@ -1,0 +1,168 @@
+{
+  "test_id": "S1_hand_computable_panel",
+  "python": {
+    "nobs": 12,
+    "n_input_rows": 12,
+    "df_model": 3.0,
+    "df_resid": 8.0,
+    "r2": 0.9590061648393098,
+    "r2_adj": 0.943633476654051,
+    "rmse": 0.09097538355665748,
+    "f_stat": 187.15129454565803,
+    "f_pvalue": 9.531729383560616e-08,
+    "rss": 0.06621216330624755,
+    "tss": 1.6151736729853408,
+    "mss": 1.5489615096790932,
+    "cluster_count": null,
+    "coefficients": [
+      {
+        "name": "x",
+        "beta": 1.8010835140973898,
+        "std_err": 0.13165502298785628,
+        "t_stat": 13.680325089180378,
+        "p_value": 7.852008854225545e-07,
+        "ci_low": 1.4974864866669937,
+        "ci_high": 2.104680541527786
+      },
+      {
+        "name": "_cons",
+        "beta": 1.0021247319944275,
+        "std_err": 0.026287098155912892,
+        "t_stat": 38.12230342241159,
+        "p_value": 2.4615109950332226e-10,
+        "ci_low": 0.9415065749443746,
+        "ci_high": 1.0627428890444806
+      }
+    ],
+    "vce": [
+      [
+        0.017333045077932967,
+        -0.00015019611121701927
+      ],
+      [
+        -0.00015019611121701927,
+        0.000691011529458599
+      ]
+    ],
+    "vce_row_names": [
+      "x",
+      "_cons"
+    ],
+    "sample_mask": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ],
+    "warnings": []
+  },
+  "stata": {
+    "nobs": 12.0,
+    "df_model": 3.0,
+    "df_resid": 8.0,
+    "r2": 0.95900618,
+    "r2_adj": 0.9436335,
+    "rmse": 0.09097537,
+    "f_stat": 187.15136,
+    "f_pvalue": 9.532e-08,
+    "rss": 0.06621214,
+    "mss": 1.5489616,
+    "tss": 1.61517374,
+    "coefficients": [
+      {
+        "name": "x",
+        "beta": 1.8010835384629,
+        "std_err": 0.131655001689388
+      },
+      {
+        "name": "_cons",
+        "beta": 1.00212473492826,
+        "std_err": 0.0262870941288603
+      }
+    ],
+    "vce": [
+      [
+        0.0173330394698326,
+        -0.000150196201709248
+      ],
+      [
+        -0.000150196201709248,
+        0.000691011317739563
+      ]
+    ],
+    "vce_rows": 2,
+    "_do_file": "D:\\OneDrive - SAIF\\PhD3\\StataFlow\\stata\\cases\\audit_v1_3_m02\\S1_hand_computable_panel.do",
+    "_log_hash": "5be7008a3c020f74",
+    "_exit_code": 0
+  },
+  "comparisons": [
+    {
+      "passed": true,
+      "message": "beta[x]: Python=1.80108351409739, Stata=1.8010835384629, abs_diff=2.44e-08, rel_diff=1.35e-08 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "std_err[x]: Python=0.131655022987856, Stata=0.131655001689388, abs_diff=2.13e-08, rel_diff=1.62e-07 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "beta[_cons]: Python=1.00212473199443, Stata=1.00212473492826, abs_diff=2.93e-09, rel_diff=2.93e-09 -> PASS"
+    },
+    {
+      "passed": "True",
+      "message": "std_err[_cons]: Python=0.0262870981559129, Stata=0.0262870941288603, abs_diff=4.03e-09, rel_diff=1.53e-07 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "nobs: Python=12, Stata=12, abs_diff=0.00e+00, rel_diff=0.00e+00 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "df_model: Python=3, Stata=3, abs_diff=0.00e+00, rel_diff=0.00e+00 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "df_resid: Python=8, Stata=8, abs_diff=0.00e+00, rel_diff=0.00e+00 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "r2: Python=0.95900616483931, Stata=0.95900618, abs_diff=1.52e-08, rel_diff=1.58e-08 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "r2_adj: Python=0.943633476654051, Stata=0.9436335, abs_diff=2.33e-08, rel_diff=2.47e-08 -> PASS"
+    },
+    {
+      "passed": "True",
+      "message": "rmse: Python=0.0909753835566575, Stata=0.09097537, abs_diff=1.36e-08, rel_diff=1.49e-07 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "f_stat: Python=187.151294545658, Stata=187.15136, abs_diff=6.55e-05, rel_diff=3.50e-07 -> PASS"
+    },
+    {
+      "passed": "True",
+      "message": "f_pvalue: Python=9.53172938356062e-08, Stata=9.532e-08, abs_diff=2.71e-12, rel_diff=2.84e-05 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "rss: Python=0.0662121633062475, Stata=0.06621214, abs_diff=2.33e-08, rel_diff=3.52e-07 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "tss: Python=1.61517367298534, Stata=1.61517374, abs_diff=6.70e-08, rel_diff=4.15e-08 -> PASS"
+    },
+    {
+      "passed": "True",
+      "message": "VCE(non-omitted) max_abs_diff=5.61e-09, max_rel_diff=6.02e-07 -> PASS"
+    }
+  ]
+}

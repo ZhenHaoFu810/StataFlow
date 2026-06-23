@@ -67,6 +67,8 @@ class CoefficientRow:
     p_value: float = 0.0
     ci_low: float = 0.0
     ci_high: float = 0.0
+    is_base: bool = False
+    is_omitted: bool = False
 
 
 @dataclass
@@ -81,6 +83,13 @@ class DiagnosticsInfo:
     """Diagnostics and warnings."""
     residual_df_correction: Optional[str] = None
     cluster_count: Optional[int] = None
+    widstat: Optional[float] = None
+    idstat: Optional[float] = None
+    iddf: Optional[float] = None
+    idp: Optional[float] = None
+    hansen_j: Optional[float] = None
+    hansen_j_df: Optional[float] = None
+    hansen_j_pvalue: Optional[float] = None
     warnings: list[str] = field(default_factory=list)
 
 

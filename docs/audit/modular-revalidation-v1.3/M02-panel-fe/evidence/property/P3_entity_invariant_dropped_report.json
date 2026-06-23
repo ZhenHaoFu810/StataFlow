@@ -1,0 +1,20 @@
+{
+  "test_id": "P3_entity_invariant_dropped",
+  "python": {
+    "coefs": {
+      "x": 1.9897400730918882,
+      "_cons": 0.8547649109254473
+    },
+    "se": {
+      "x": 0.03429199258805922,
+      "_cons": 0.030406028322888634
+    }
+  },
+  "stata": {},
+  "comparisons": [
+    {
+      "passed": "True",
+      "message": "entity-invariant z handled: coef=None se=None"
+    }
+  ]
+}

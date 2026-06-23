@@ -1,0 +1,13 @@
+{
+  "test_id": "MR07_entity_invariant_not_dropped",
+  "python": {
+    "error": "Singular matrix"
+  },
+  "stata": {},
+  "comparisons": [
+    {
+      "passed": false,
+      "message": "Python raised LinAlgError: Singular matrix; Stata drops z"
+    }
+  ]
+}

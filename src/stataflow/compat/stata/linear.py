@@ -8,7 +8,33 @@ import numpy as np
 import pandas as pd
 
 from stataflow.estimators import OLS, FixedEffectsOLS, AbsorbingOLS
-from stataflow.compat.stata.factor_variables import expand_factor_terms, get_underlying_vars, parse_absorb
+from stataflow.compat.stata.factor_variables import (
+    expand_factor_terms,
+    get_underlying_vars,
+    parse_absorb,
+    restore_factor_omitted_rows,
+)
+
+
+def _parse_level_alpha(kwargs: dict) -> float:
+    """Extract Stata ``level()`` option and convert to a two-sided alpha."""
+    alpha = 0.05
+    if "level" in kwargs:
+        level = kwargs.pop("level")
+        alpha = 1.0 - level / 100.0
+    return alpha
+
+
+def _validate_wrapper_kwargs(kwargs: dict, wrapper_name: str) -> None:
+    """Reject known unsupported and unknown kwargs for Stata-compatible wrappers."""
+    for known_unsupported in ("beta", "eform"):
+        if known_unsupported in kwargs:
+            kwargs.pop(known_unsupported)
+            raise NotImplementedError(
+                f"'{known_unsupported}' is not yet supported by the {wrapper_name} wrapper."
+            )
+    if kwargs:
+        raise ValueError(f"Unsupported arguments: {list(kwargs.keys())}")
 
 
 def regress(
@@ -33,19 +59,8 @@ def regress(
         cluster = vce.split(" ", 1)[1]
         vce = "cluster"
 
-    # Handle known Stata options
-    alpha = 0.05
-    if "level" in kwargs:
-        level = kwargs.pop("level")
-        alpha = 1.0 - level / 100.0
-    for known_unsupported in ("beta", "eform"):
-        if known_unsupported in kwargs:
-            kwargs.pop(known_unsupported)
-            raise NotImplementedError(
-                f"'{known_unsupported}' is not yet supported by the regress wrapper."
-            )
-    if kwargs:
-        raise ValueError(f"Unsupported arguments: {list(kwargs.keys())}")
+    alpha = _parse_level_alpha(kwargs)
+    _validate_wrapper_kwargs(kwargs, "regress")
 
     weight_type = None
     weights = None
@@ -78,7 +93,9 @@ def regress(
         weight_type=weight_type,
         missing=missing,
     )
-    return model.fit(vce=vce, cluster=cluster, alpha=alpha)
+    return restore_factor_omitted_rows(
+        model.fit(vce=vce, cluster=cluster, alpha=alpha), data_expanded
+    )
 
 
 def xtreg_fe(
@@ -89,7 +106,7 @@ def xtreg_fe(
     fe: str,
     vce: str = "ols",
     cluster: Optional[str | list[str]] = None,
-    constant: bool = False,
+    constant: bool = True,
     missing: str = "drop",
     **kwargs,
 ) -> object:
@@ -102,18 +119,8 @@ def xtreg_fe(
         cluster = vce.split(" ", 1)[1]
         vce = "cluster"
 
-    alpha = 0.05
-    if "level" in kwargs:
-        level = kwargs.pop("level")
-        alpha = 1.0 - level / 100.0
-    for known_unsupported in ("beta", "eform"):
-        if known_unsupported in kwargs:
-            kwargs.pop(known_unsupported)
-            raise NotImplementedError(
-                f"'{known_unsupported}' is not yet supported by the xtreg_fe wrapper."
-            )
-    if kwargs:
-        raise ValueError(f"Unsupported arguments: {list(kwargs.keys())}")
+    alpha = _parse_level_alpha(kwargs)
+    _validate_wrapper_kwargs(kwargs, "xtreg_fe")
     if isinstance(cluster, list):
         raise ValueError(
             "Multi-way clustering is only supported for regress. "
@@ -136,7 +143,9 @@ def xtreg_fe(
         add_constant=constant,
         missing=missing,
     )
-    return model.fit(vce=vce, cluster=cluster, alpha=alpha)
+    return restore_factor_omitted_rows(
+        model.fit(vce=vce, cluster=cluster, alpha=alpha), data_expanded
+    )
 
 
 def areg(
@@ -177,18 +186,8 @@ def areg(
         cluster = vce.split(" ", 1)[1]
         vce = "cluster"
 
-    alpha = 0.05
-    if "level" in kwargs:
-        level = kwargs.pop("level")
-        alpha = 1.0 - level / 100.0
-    for known_unsupported in ("beta", "eform"):
-        if known_unsupported in kwargs:
-            kwargs.pop(known_unsupported)
-            raise NotImplementedError(
-                f"'{known_unsupported}' is not yet supported by the areg wrapper."
-            )
-    if kwargs:
-        raise ValueError(f"Unsupported arguments: {list(kwargs.keys())}")
+    alpha = _parse_level_alpha(kwargs)
+    _validate_wrapper_kwargs(kwargs, "areg")
     if isinstance(cluster, list):
         raise ValueError(
             "Multi-way clustering is only supported for regress. "
@@ -230,4 +229,6 @@ def areg(
         weights=weights,
         weight_type=weight_type,
     )
-    return model.fit(vce=vce, cluster=cluster, alpha=alpha)
+    return restore_factor_omitted_rows(
+        model.fit(vce=vce, cluster=cluster, alpha=alpha), data_expanded
+    )

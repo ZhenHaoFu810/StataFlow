@@ -1,0 +1,49 @@
+{
+  "prefix": "S05",
+  "python": {
+    "seed": 202605,
+    "data_hash": "46d373da5f2d4c0c",
+    "nobs": 150,
+    "mu_mean": 2.2600000000000007,
+    "mu_sd": 1.1000699591908623,
+    "mem_x1": 0.7540814037424408,
+    "mem_se_x1": 0.10641592711480635
+  },
+  "stata": {
+    "log_margins": "D:\\OneDrive - SAIF\\PhD3\\StataFlow\\stata\\output\\audit_v1_3_m09\\S05_margins.log",
+    "log_predict": "D:\\OneDrive - SAIF\\PhD3\\StataFlow\\stata\\output\\audit_v1_3_m09\\S05_predict.log",
+    "mu_mean": 2.26,
+    "mu_sd": 1.10007,
+    "margins": {
+      "M_x1": 0.75408141,
+      "SE_x1": 0.10641593
+    }
+  },
+  "diffs": {
+    "passed": true,
+    "messages": [
+      "mu.mean: Python=2.26, Stata=2.26, abs=8.88e-16, rel=3.93e-16 PASS",
+      "mu.sd: Python=1.10006995919, Stata=1.10007, abs=4.08e-08, rel=3.71e-08 PASS",
+      "margins.x1: Python=0.754081403742, Stata=0.75408141, abs=6.26e-09, rel=8.30e-09 PASS",
+      "margins.se_x1: Python=0.106415927115, Stata=0.10641593, abs=2.89e-09, rel=2.71e-08 PASS"
+    ],
+    "field_results": {
+      "mu.mean": {
+        "passed": true,
+        "message": "mu.mean: Python=2.26, Stata=2.26, abs=8.88e-16, rel=3.93e-16 PASS"
+      },
+      "mu.sd": {
+        "passed": true,
+        "message": "mu.sd: Python=1.10006995919, Stata=1.10007, abs=4.08e-08, rel=3.71e-08 PASS"
+      },
+      "margins.x1": {
+        "passed": true,
+        "message": "margins.x1: Python=0.754081403742, Stata=0.75408141, abs=6.26e-09, rel=8.30e-09 PASS"
+      },
+      "margins.se_x1": {
+        "passed": true,
+        "message": "margins.se_x1: Python=0.106415927115, Stata=0.10641593, abs=2.89e-09, rel=2.71e-08 PASS"
+      }
+    }
+  }
+}

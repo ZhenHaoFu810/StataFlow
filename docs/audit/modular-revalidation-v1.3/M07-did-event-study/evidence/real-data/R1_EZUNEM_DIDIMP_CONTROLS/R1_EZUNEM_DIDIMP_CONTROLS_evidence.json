@@ -1,0 +1,519 @@
+{
+  "prefix": "R1_EZUNEM_DIDIMP_CONTROLS",
+  "python": {
+    "model": {
+      "command": "did_imputation",
+      "estimator_family": "did_imputation",
+      "vcetype": "cluster",
+      "weight_type": null,
+      "fe_vars": [],
+      "absorb_var": null,
+      "absorb_vars": [],
+      "cluster_var": "city",
+      "has_constant": true
+    },
+    "sample": {
+      "nobs": 176,
+      "n_input_rows": 198,
+      "sample_mask": [
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "dropped_rows_reason": null
+    },
+    "fit": {
+      "df_model": 5.0,
+      "df_resid": 175.0,
+      "df_a": null,
+      "rank": 0,
+      "rss": 0.0,
+      "tss": 0.0,
+      "mss": 0.0,
+      "rmse": 0.0,
+      "r2": 0.0,
+      "r2_adj": 0.0,
+      "f_stat": null,
+      "f_pvalue": null,
+      "ll": null,
+      "deviance": null,
+      "pseudo_r2": null
+    },
+    "coefficients": [
+      {
+        "name": "tau0",
+        "beta": 5232.062125946984,
+        "std_err": 14403.105319852939,
+        "t_stat": 0.3632593117773859,
+        "p_value": 0.7164111847910621,
+        "ci_low": -22997.50556650203,
+        "ci_high": 33461.629818396
+      },
+      {
+        "name": "tau1",
+        "beta": 2535.1660159154153,
+        "std_err": 17062.63420428335,
+        "t_stat": 0.14857998979307635,
+        "p_value": 0.8818850635599691,
+        "ci_low": -30906.982505861193,
+        "ci_high": 35977.31453769202
+      },
+      {
+        "name": "tau2",
+        "beta": -2133.2550547546857,
+        "std_err": 19345.99186644318,
+        "t_stat": -0.11026858015250945,
+        "p_value": 0.9121963746838906,
+        "ci_low": -40050.70235818814,
+        "ci_high": 35784.192248678766
+      },
+      {
+        "name": "tau3",
+        "beta": 413.20882332738734,
+        "std_err": 22449.31735788495,
+        "t_stat": 0.018406297917217273,
+        "p_value": 0.9853147282832766,
+        "ci_low": -43586.64467563699,
+        "ci_high": 44413.06232229177
+      },
+      {
+        "name": "tau4",
+        "beta": -3496.816967131692,
+        "std_err": 28475.854671470748,
+        "t_stat": -0.12279936835873327,
+        "p_value": 0.9022659744520161,
+        "ci_low": -59308.466552211015,
+        "ci_high": 52314.83261794763
+      }
+    ],
+    "variance": {
+      "row_names": [
+        "tau0",
+        "tau1",
+        "tau2",
+        "tau3",
+        "tau4"
+      ],
+      "values": [
+        [
+          207449442.85477602,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          291133485.9891801,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          374267401.2964856,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          503971849.8350345,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          810874299.2707224
+        ]
+      ]
+    },
+    "diagnostics": {
+      "residual_df_correction": null,
+      "cluster_count": null,
+      "warnings": []
+    },
+    "provenance": {
+      "source": "python",
+      "stata_version_target": null,
+      "stata_command": "did_imputation uclms city year first_treat, cluster(city) allhorizons autosample minn(0)"
+    }
+  },
+  "stata": {
+    "nobs": 176.0,
+    "n_clust": NaN,
+    "coefficients": [
+      {
+        "name": "tau0",
+        "beta": 5232.063,
+        "std_err": 14398.68,
+        "z_stat": 0.36337101734325644,
+        "p_value": 0.7163277490951712
+      },
+      {
+        "name": "tau1",
+        "beta": 2535.167,
+        "std_err": 17058.27,
+        "z_stat": 0.14861806033085417,
+        "p_value": 0.8818550211962808
+      },
+      {
+        "name": "tau2",
+        "beta": -2133.254,
+        "std_err": 19343.88,
+        "z_stat": -0.110280564188777,
+        "p_value": 0.9121868707685024
+      },
+      {
+        "name": "tau3",
+        "beta": 413.2093,
+        "std_err": 22449.39,
+        "z_stat": 0.01840625959101784,
+        "p_value": 0.9853147588579798
+      },
+      {
+        "name": "tau4",
+        "beta": -3496.816,
+        "std_err": 28475.85,
+        "z_stat": -0.12279935454077753,
+        "p_value": 0.9022659853943344
+      },
+      {
+        "name": "control_x",
+        "beta": 38828.57,
+        "std_err": 7212.523,
+        "z_stat": 5.3834934044577745,
+        "p_value": 7.305392557555024e-08
+      }
+    ],
+    "_log_path": "D:\\OneDrive - SAIF\\PhD3\\StataFlow\\stata\\output\\audit_v1_3_m07\\R1_EZUNEM_DIDIMP_CONTROLS.log",
+    "_dta_path": "D:\\OneDrive - SAIF\\PhD3\\StataFlow\\stata\\cases\\audit_v1_3_m07\\R1_EZUNEM_DIDIMP_CONTROLS.dta",
+    "_exit_code": 0
+  },
+  "diffs": {
+    "passed": true,
+    "messages": [
+      "nobs: Python=176, Stata=176, abs=0.00e+00, rel=0.00e+00 PASS",
+      "n_clust: Python=None, Stata=nan (both missing) PASS",
+      "tau0.beta: Python=5232.06212595, Stata=5232.063, abs=8.74e-04, rel=1.67e-07 PASS",
+      "tau0.std_err: Python=14403.1053199, Stata=14398.68, abs=4.43e+00, rel=3.07e-04 PASS",
+      "tau0.t_stat: Python=0.363259311777, Stata=0.363371017343, abs=1.12e-04, rel=3.07e-04 PASS",
+      "tau0.p_value: Python=0.716411184791, Stata=0.716327749095, abs=8.34e-05, rel=1.16e-04 PASS",
+      "tau1.beta: Python=2535.16601592, Stata=2535.167, abs=9.84e-04, rel=3.88e-07 PASS",
+      "tau1.std_err: Python=17062.6342043, Stata=17058.27, abs=4.36e+00, rel=2.56e-04 PASS",
+      "tau1.t_stat: Python=0.148579989793, Stata=0.148618060331, abs=3.81e-05, rel=2.56e-04 PASS",
+      "tau1.p_value: Python=0.88188506356, Stata=0.881855021196, abs=3.00e-05, rel=3.41e-05 PASS",
+      "tau2.beta: Python=-2133.25505475, Stata=-2133.254, abs=1.05e-03, rel=4.94e-07 PASS",
+      "tau2.std_err: Python=19345.9918664, Stata=19343.88, abs=2.11e+00, rel=1.09e-04 PASS",
+      "tau2.t_stat: Python=-0.110268580153, Stata=-0.110280564189, abs=1.20e-05, rel=1.09e-04 PASS",
+      "tau2.p_value: Python=0.912196374684, Stata=0.912186870769, abs=9.50e-06, rel=1.04e-05 PASS",
+      "tau3.beta: Python=413.208823327, Stata=413.2093, abs=4.77e-04, rel=1.15e-06 PASS",
+      "tau3.std_err: Python=22449.3173579, Stata=22449.39, abs=7.26e-02, rel=3.24e-06 PASS",
+      "tau3.t_stat: Python=0.0184062979172, Stata=0.018406259591, abs=3.83e-08, rel=2.08e-06 PASS",
+      "tau3.p_value: Python=0.985314728283, Stata=0.985314758858, abs=3.06e-08, rel=3.10e-08 PASS",
+      "tau4.beta: Python=-3496.81696713, Stata=-3496.816, abs=9.67e-04, rel=2.77e-07 PASS",
+      "tau4.std_err: Python=28475.8546715, Stata=28475.85, abs=4.67e-03, rel=1.64e-07 PASS",
+      "tau4.t_stat: Python=-0.122799368359, Stata=-0.122799354541, abs=1.38e-08, rel=1.13e-07 PASS",
+      "tau4.p_value: Python=0.902265974452, Stata=0.902265985394, abs=1.09e-08, rel=1.21e-08 PASS",
+      "sample_mask length: Python=198, n_input_rows=198 PASS",
+      "sample_mask sum: Python=176, nobs=176 PASS"
+    ],
+    "field_results": {
+      "nobs": {
+        "passed": true,
+        "message": "nobs: Python=176, Stata=176, abs=0.00e+00, rel=0.00e+00 PASS"
+      },
+      "n_clust": {
+        "passed": true,
+        "message": "n_clust: Python=None, Stata=nan (both missing) PASS"
+      },
+      "tau0.beta": {
+        "passed": true,
+        "message": "tau0.beta: Python=5232.06212595, Stata=5232.063, abs=8.74e-04, rel=1.67e-07 PASS"
+      },
+      "tau0.std_err": {
+        "passed": "True",
+        "message": "tau0.std_err: Python=14403.1053199, Stata=14398.68, abs=4.43e+00, rel=3.07e-04 PASS"
+      },
+      "tau0.t_stat": {
+        "passed": "True",
+        "message": "tau0.t_stat: Python=0.363259311777, Stata=0.363371017343, abs=1.12e-04, rel=3.07e-04 PASS"
+      },
+      "tau0.p_value": {
+        "passed": "True",
+        "message": "tau0.p_value: Python=0.716411184791, Stata=0.716327749095, abs=8.34e-05, rel=1.16e-04 PASS"
+      },
+      "tau1.beta": {
+        "passed": true,
+        "message": "tau1.beta: Python=2535.16601592, Stata=2535.167, abs=9.84e-04, rel=3.88e-07 PASS"
+      },
+      "tau1.std_err": {
+        "passed": "True",
+        "message": "tau1.std_err: Python=17062.6342043, Stata=17058.27, abs=4.36e+00, rel=2.56e-04 PASS"
+      },
+      "tau1.t_stat": {
+        "passed": "True",
+        "message": "tau1.t_stat: Python=0.148579989793, Stata=0.148618060331, abs=3.81e-05, rel=2.56e-04 PASS"
+      },
+      "tau1.p_value": {
+        "passed": "True",
+        "message": "tau1.p_value: Python=0.88188506356, Stata=0.881855021196, abs=3.00e-05, rel=3.41e-05 PASS"
+      },
+      "tau2.beta": {
+        "passed": true,
+        "message": "tau2.beta: Python=-2133.25505475, Stata=-2133.254, abs=1.05e-03, rel=4.94e-07 PASS"
+      },
+      "tau2.std_err": {
+        "passed": "True",
+        "message": "tau2.std_err: Python=19345.9918664, Stata=19343.88, abs=2.11e+00, rel=1.09e-04 PASS"
+      },
+      "tau2.t_stat": {
+        "passed": "True",
+        "message": "tau2.t_stat: Python=-0.110268580153, Stata=-0.110280564189, abs=1.20e-05, rel=1.09e-04 PASS"
+      },
+      "tau2.p_value": {
+        "passed": "True",
+        "message": "tau2.p_value: Python=0.912196374684, Stata=0.912186870769, abs=9.50e-06, rel=1.04e-05 PASS"
+      },
+      "tau3.beta": {
+        "passed": true,
+        "message": "tau3.beta: Python=413.208823327, Stata=413.2093, abs=4.77e-04, rel=1.15e-06 PASS"
+      },
+      "tau3.std_err": {
+        "passed": "True",
+        "message": "tau3.std_err: Python=22449.3173579, Stata=22449.39, abs=7.26e-02, rel=3.24e-06 PASS"
+      },
+      "tau3.t_stat": {
+        "passed": "True",
+        "message": "tau3.t_stat: Python=0.0184062979172, Stata=0.018406259591, abs=3.83e-08, rel=2.08e-06 PASS"
+      },
+      "tau3.p_value": {
+        "passed": "True",
+        "message": "tau3.p_value: Python=0.985314728283, Stata=0.985314758858, abs=3.06e-08, rel=3.10e-08 PASS"
+      },
+      "tau4.beta": {
+        "passed": true,
+        "message": "tau4.beta: Python=-3496.81696713, Stata=-3496.816, abs=9.67e-04, rel=2.77e-07 PASS"
+      },
+      "tau4.std_err": {
+        "passed": "True",
+        "message": "tau4.std_err: Python=28475.8546715, Stata=28475.85, abs=4.67e-03, rel=1.64e-07 PASS"
+      },
+      "tau4.t_stat": {
+        "passed": "True",
+        "message": "tau4.t_stat: Python=-0.122799368359, Stata=-0.122799354541, abs=1.38e-08, rel=1.13e-07 PASS"
+      },
+      "tau4.p_value": {
+        "passed": "True",
+        "message": "tau4.p_value: Python=0.902265974452, Stata=0.902265985394, abs=1.09e-08, rel=1.21e-08 PASS"
+      },
+      "sample_mask_length": {
+        "passed": true,
+        "message": "sample_mask length: Python=198, n_input_rows=198 PASS"
+      },
+      "sample_mask_sum": {
+        "passed": true,
+        "message": "sample_mask sum: Python=176, nobs=176 PASS"
+      }
+    }
+  }
+}

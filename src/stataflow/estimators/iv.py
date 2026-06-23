@@ -801,8 +801,15 @@ class IVAbsorbingOLS:
                 kept_x_endog_names.append(var)
 
         constant_kept = self._constant_idx_reduced is not None
-        # ivreghdfe never reports _cons; it is always partialled out
-        self._coef_names = kept_x_endog_names + kept_x_exog_names
+        self._has_effective_fe = any(
+            df[var].nunique(dropna=False) > 1 for var in self.absorb_vars
+        )
+        report_constant = constant_kept and not self._has_effective_fe
+        self._coef_names = (
+            kept_x_endog_names
+            + kept_x_exog_names
+            + (["_cons"] if report_constant else [])
+        )
 
         # Track FE dummy indices and compute df_a
         self._fe_dummy_indices_reduced = []
@@ -1125,12 +1132,19 @@ class IVAbsorbingOLS:
                         )
                         widstat = wald / n * (n - iv1_ct - dofminus) / q
                     else:  # cluster
-                        iv1_ct = (
-                            (1 if self._constant_idx_reduced is not None else 0)
-                            + len(self._x_exog_indices_in_full)
-                            + k_excl
-                        )
-                        widstat = wald / (n - 1) * (n - iv1_ct) / q
+                        if self._has_effective_fe:
+                            # ivreghdfe calls ivreg2 on residualized, no-constant
+                            # data and passes the non-nested absorbed df separately.
+                            iv1_ct = len(self._x_exog_indices_in_full) + k_excl
+                            dofminus = self._df_a
+                        else:
+                            iv1_ct = (
+                                (1 if self._constant_idx_reduced is not None else 0)
+                                + len(self._x_exog_indices_in_full)
+                                + k_excl
+                            )
+                            dofminus = 0.0
+                        widstat = wald / (n - 1) * (n - iv1_ct - dofminus) / q
                 except np.linalg.LinAlgError:
                     widstat = np.nan
         else:
@@ -1259,8 +1273,6 @@ class IVAbsorbingOLS:
             e_sq = residuals ** 2
             XtOmegaX = (X_proj * e_sq[:, np.newaxis]).T @ X_proj
             cov_full = M_inv @ XtOmegaX @ M_inv
-            if n > k_x_full:
-                cov_full *= n / (n - k_x_full)
         else:
             if len(self._cluster_arrs) == 1:
                 from stataflow.estimators._vce_utils import compute_cluster_meat
@@ -1604,8 +1616,7 @@ class IVAbsorbingOLS:
         # VCE
         if vce == "ols":
             rss = float(np.sum(residuals ** 2))
-            df_resid = n - k_x_full
-            sigma2 = rss / df_resid if df_resid > 0 else 0.0
+            sigma2 = rss / n if n > 0 else 0.0
             V = sigma2 * np.linalg.inv(Qh) / N
         else:
             # Compute omega using LIML residuals
@@ -1781,14 +1792,26 @@ class IVAbsorbingOLS:
         # RMSE denominator: n - k_x_reported - df_a (matches Stata ivreghdfe)
         # When cluster VCE and all FEs are nested (df_a=0), Stata still subtracts
         # the partialled-out constant from the RMSE denominator.
-        if vce == "cluster" and df_a == 0 and self.add_constant:
+        if not self._has_effective_fe:
+            rmse_df = float(n)
+        elif vce == "cluster" and df_a == 0 and self.add_constant:
             rmse_df = float(n - k_x_reported - 1)
         else:
             rmse_df = float(n - k_x_reported - df_a)
         rmse = np.sqrt(rss_struct / rmse_df) if rmse_df > 0 else 0.0
 
-        # Adjusted R-squared: ivreghdfe uses TSS_resid / n in denominator
-        r2_adj = 1.0 - (rss_struct / rmse_df) / (tss_resid / n) if rmse_df > 0 and tss_resid > 0 else 0.0
+        if not self._has_effective_fe:
+            # ivreg2 reports root MSE using RSS/N, but adjusted R2 retains
+            # the conventional (N-k, N-1) correction.
+            adj_df = n - k_x_full
+            r2_adj = (
+                1.0 - (rss_struct / adj_df) / (tss_resid / (n - 1))
+                if adj_df > 0 and n > 1 and tss_resid > 0
+                else 0.0
+            )
+        else:
+            # ivreghdfe uses the absorbed-model residual denominator.
+            r2_adj = 1.0 - (rss_struct / rmse_df) / (tss_resid / n) if rmse_df > 0 and tss_resid > 0 else 0.0
 
         # T matrix: map full LSDV -> reported coefficients
         report_dim = k_x_reported + (1 if "_cons" in self._coef_names else 0)
@@ -1959,10 +1982,21 @@ class IVAbsorbingOLS:
         # F-statistic
         if self.add_constant and df_model > 0 and rmse_df > 0 and rss_struct > 0:
             if vce == "ols":
-                # ivreghdfe hybrid F-stat: numerator uses residualized 2SLS, denominator uses structural RSS
-                mss_incremental = tss_resid - rss_2s_resid
-                f_stat = (mss_incremental / df_model) / (rss_struct / (n - k_x_full))
-                f_pvalue = 1 - f_dist.cdf(f_stat, dfn=df_model, dfd=rmse_df)
+                if estimator == "liml":
+                    # ivreg2 posts the LIML covariance, forms the Wald chi2,
+                    # then rescales it by df_r/N for the reported F statistic.
+                    beta_slopes = beta_reported[:k_x_reported]
+                    cov_slopes = cov_reported[:k_x_reported, :k_x_reported]
+                    wald_stat = float(
+                        beta_slopes @ np.linalg.solve(cov_slopes, beta_slopes)
+                    )
+                    f_stat = wald_stat / df_model * df_resid / n
+                else:
+                    # ivreghdfe hybrid F-stat: numerator uses residualized
+                    # 2SLS, denominator uses structural RSS.
+                    mss_incremental = tss_resid - rss_2s_resid
+                    f_stat = (mss_incremental / df_model) / (rss_struct / (n - k_x_full))
+                f_pvalue = 1 - f_dist.cdf(f_stat, dfn=df_model, dfd=df_resid)
             else:
                 slope_idx = list(range(k_x_reported))
                 beta_slopes = beta_reported[slope_idx]
@@ -1982,6 +2016,10 @@ class IVAbsorbingOLS:
                         wald_df = df_model
                     wald_stat = float(beta_slopes @ cov_inv @ beta_slopes)
                     f_stat = wald_stat / wald_df
+                    if vce == "robust" and not self._has_effective_fe:
+                        # ivreg2 posts HC0 coefficient VCE but reports the
+                        # model Wald F with its small-sample df_r/N scaling.
+                        f_stat *= df_resid / n
                     f_pvalue = 1 - f_dist.cdf(f_stat, dfn=df_model, dfd=df_resid)
                 except (np.linalg.LinAlgError, ValueError):
                     f_stat = None
@@ -2053,6 +2091,13 @@ class IVAbsorbingOLS:
         result.diagnostics = DiagnosticsInfo(
             residual_df_correction=None,
             cluster_count=cluster_count,
+            widstat=None if np.isnan(widstat) else float(widstat),
+            idstat=None if np.isnan(extra_stats.get("idstat", np.nan)) else float(extra_stats["idstat"]),
+            iddf=None if np.isnan(extra_stats.get("iddf", np.nan)) else float(extra_stats["iddf"]),
+            idp=None if np.isnan(extra_stats.get("idp", np.nan)) else float(extra_stats["idp"]),
+            hansen_j=None if np.isnan(extra_stats.get("hansen_j", np.nan)) else float(extra_stats["hansen_j"]),
+            hansen_j_df=None if np.isnan(extra_stats.get("hansen_j_df", np.nan)) else float(extra_stats["hansen_j_df"]),
+            hansen_j_pvalue=None if np.isnan(extra_stats.get("hansen_j_p", np.nan)) else float(extra_stats["hansen_j_p"]),
             warnings=warnings,
         )
         cmd_name = "ivreghdfe"

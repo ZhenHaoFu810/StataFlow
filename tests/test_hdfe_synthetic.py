@@ -10,6 +10,7 @@ import pytest
 
 from stataflow.compat.stata import reghdfe, ppmlhdfe, ivreghdfe
 from stataflow.estimators import AbsorbingOLS, PPMLHDFE, IVAbsorbingOLS
+from stataflow.estimators._absorb_spec import AbsorbSpec
 
 
 def _make_reghdfe_data(n=200, seed=42):
@@ -180,6 +181,64 @@ def test_reghdfe_noconstant_wrapper():
     assert "_cons" in const_names
     assert "_cons" not in nocons_names
     assert len(res_nocons.coefficients) == len(res_const.coefficients) - 1
+
+
+def test_reghdfe_detects_fe_nested_by_values_within_cluster():
+    """A firm FE nested in industry is redundant for cluster df accounting."""
+    rng = np.random.default_rng(303)
+    firm = np.repeat(np.arange(1, 25), 4)
+    year = np.tile(np.arange(1, 5), 24)
+    industry = (firm - 1) // 4 + 1
+    x = rng.normal(size=len(firm))
+    y = 1.0 + 1.5 * x + rng.normal(size=len(firm))
+    df = pd.DataFrame({
+        "firm": firm, "year": year, "industry": industry, "x": x, "y": y,
+    })
+
+    result = AbsorbingOLS(
+        df, y="y", x=["x"], absorb=["firm", "year"], add_constant=True
+    ).fit(vce="cluster", cluster="industry")
+
+    assert result.fit.df_a == 3
+
+
+def test_reghdfe_nested_intercept_still_counts_group_slopes():
+    """Clustering on the FE removes intercept df, not firm-specific trends."""
+    rng = np.random.default_rng(606)
+    firm = np.repeat(np.arange(1, 13), 5)
+    year = np.tile(np.arange(1, 6), 12)
+    x = rng.normal(size=len(firm))
+    y = 1.0 + x + rng.normal(size=len(firm))
+    df = pd.DataFrame({"firm": firm, "year": year, "x": x, "y": y})
+
+    result = AbsorbingOLS(
+        df,
+        y="y",
+        x=["x"],
+        absorb=[AbsorbSpec(var="firm", slopes=["year"], has_intercept=True)],
+        add_constant=True,
+    ).fit(vce="cluster", cluster="firm")
+
+    assert result.fit.df_a == 12
+
+
+def test_reghdfe_saturated_model_has_missing_adjusted_r2():
+    """Stata stores a missing adjusted R-squared when residual df is zero."""
+    rng = np.random.default_rng(404)
+    rows = []
+    for firm in [1, 2, 3, 4]:
+        for year in [(firm % 4) + 1, ((firm + 1) % 4) + 1]:
+            rows.append({"firm": firm, "year": year})
+    df = pd.DataFrame(rows)
+    df["x"] = rng.normal(size=len(df))
+    df["y"] = 1.0 + 2.0 * df["x"] + rng.normal(scale=0.1, size=len(df))
+
+    result = AbsorbingOLS(
+        df, y="y", x=["x"], absorb=["firm", "year"], add_constant=True
+    ).fit(vce="ols")
+
+    assert result.fit.df_resid == 0
+    assert result.fit.r2_adj is None
 
 
 # ---------------------------------------------------------------------------
@@ -383,9 +442,9 @@ def test_ppmlhdfe_maxiter_tolerance_wrapper():
     res_fine = ppmlhdfe(df, y="y", x=["x1"], absorb="firm_id", maxiter=200, tolerance=1e-12)
     assert "IRLS did not converge" not in " ".join(res_fine.diagnostics.warnings)
 
-    # One iteration should not converge
-    res_fast = ppmlhdfe(df, y="y", x=["x1"], absorb="firm_id", maxiter=1, tolerance=1e8)
-    assert "IRLS did not converge" in " ".join(res_fast.diagnostics.warnings)
+    # One iteration should fail rather than return a usable-looking estimate.
+    with pytest.raises(RuntimeError, match="IRLS did not converge"):
+        ppmlhdfe(df, y="y", x=["x1"], absorb="firm_id", maxiter=1, tolerance=1e8)
 
 
 def test_ppmlhdfe_predict_residuals():

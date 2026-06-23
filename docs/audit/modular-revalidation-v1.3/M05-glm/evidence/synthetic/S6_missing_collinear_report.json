@@ -1,0 +1,316 @@
+{
+  "test_id": "S6_missing_collinear",
+  "python": {
+    "nobs": 108,
+    "n_input_rows": 120,
+    "df_model": 2.0,
+    "df_resid": 105.0,
+    "ll": -65.18460277906216,
+    "pseudo_r2": 0.08433764061791582,
+    "chi2": 15.910835493418084,
+    "chi2_pvalue": 0.0003507566966786113,
+    "deviance": 130.36920555812432,
+    "cluster_count": 20,
+    "coefficients": [
+      {
+        "name": "x1",
+        "beta": 0.5839183066860587,
+        "std_err": 0.17790618566103017,
+        "t_stat": 3.28216978244149,
+        "p_value": 0.0010301156034677739,
+        "ci_low": 0.23522859016354336,
+        "ci_high": 0.932608023208574
+      },
+      {
+        "name": "x2",
+        "beta": -0.4264470053464767,
+        "std_err": 0.20803058252132617,
+        "t_stat": -2.0499245840584988,
+        "p_value": 0.04037179077235975,
+        "ci_low": -0.8341794547711636,
+        "ci_high": -0.018714555921789777
+      },
+      {
+        "name": "_cons",
+        "beta": -0.6716736190768984,
+        "std_err": 0.17597714501525605,
+        "t_stat": -3.8168230256188593,
+        "p_value": 0.00013518105877285969,
+        "ci_low": -1.0165824854089824,
+        "ci_high": -0.3267647527448142
+      }
+    ],
+    "vce": [
+      [
+        0.03165061089645693,
+        0.002391614897842994,
+        -0.004043208197256589
+      ],
+      [
+        0.0023916148978429946,
+        0.04327672326416229,
+        0.018555312622299883
+      ],
+      [
+        -0.004043208197256586,
+        0.018555312622299886,
+        0.03096795556772046
+      ]
+    ],
+    "vce_row_names": [
+      "x1",
+      "x2",
+      "_cons"
+    ],
+    "sample_mask": [
+      true,
+      true,
+      false,
+      true,
+      true,
+      false,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ],
+    "warnings": [
+      "Collinear variables dropped: x3"
+    ],
+    "dropped_vars": [
+      "x3"
+    ]
+  },
+  "stata": {
+    "nobs": 108.0,
+    "df_model": 2.0,
+    "k": 4.0,
+    "ll": -65.184603,
+    "pseudo_r2": 0.08433764,
+    "chi2": 15.910836,
+    "chi2_pvalue": 0.00035076,
+    "deviance": 130.36921,
+    "n_clust": 20.0,
+    "df_resid": 104.0,
+    "coefficients": [
+      {
+        "name": "x1",
+        "beta": 0.5839183,
+        "std_err": 0.17790619
+      },
+      {
+        "name": "x2",
+        "beta": -0.426447,
+        "std_err": 0.20803058
+      },
+      {
+        "name": "o.x3",
+        "beta": 0.0,
+        "std_err": 0.0
+      },
+      {
+        "name": "_cons",
+        "beta": -0.67167362,
+        "std_err": 0.17597714
+      }
+    ],
+    "vce": [
+      [
+        0.03165061,
+        0.00239162,
+        0.0,
+        -0.00404321
+      ],
+      [
+        0.00239162,
+        0.04327672,
+        0.0,
+        0.01855531
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        -0.00404321,
+        0.01855531,
+        0.0,
+        0.03096796
+      ]
+    ],
+    "vce_rows": 4,
+    "_do_file": "D:\\OneDrive - SAIF\\PhD3\\StataFlow\\stata\\cases\\audit_v1_3_m05\\S6_missing_collinear.do",
+    "_log_hash": "81389b921e07ad86",
+    "_exit_code": 0
+  },
+  "comparisons": [
+    {
+      "passed": true,
+      "message": "beta[x1]: Python=0.583918306686059, Stata=0.5839183, abs_diff=6.69e-09, rel_diff=1.15e-08 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "std_err[x1]: Python=0.17790618566103, Stata=0.17790619, abs_diff=4.34e-09, rel_diff=2.44e-08 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "beta[x2]: Python=-0.426447005346477, Stata=-0.426447, abs_diff=5.35e-09, rel_diff=1.25e-08 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "std_err[x2]: Python=0.208030582521326, Stata=0.20803058, abs_diff=2.52e-09, rel_diff=1.21e-08 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "beta[_cons]: Python=-0.671673619076898, Stata=-0.67167362, abs_diff=9.23e-10, rel_diff=1.37e-09 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "std_err[_cons]: Python=0.175977145015256, Stata=0.17597714, abs_diff=5.02e-09, rel_diff=2.85e-08 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "Stata omitted coefficients: ['o.x3']"
+    },
+    {
+      "passed": true,
+      "message": "nobs: Python=108, Stata=108, abs_diff=0.00e+00, rel_diff=0.00e+00 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "df_model: Python=2, Stata=2, abs_diff=0.00e+00, rel_diff=0.00e+00 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "ll: Python=-65.1846027790622, Stata=-65.184603, abs_diff=2.21e-07, rel_diff=3.39e-09 -> PASS"
+    },
+    {
+      "passed": "True",
+      "message": "pseudo_r2: Python=0.0843376406179158, Stata=0.08433764, abs_diff=6.18e-10, rel_diff=7.33e-09 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "deviance: Python=130.369205558124, Stata=130.36921, abs_diff=4.44e-06, rel_diff=3.41e-08 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "cluster_count: Python=20, Stata=20, abs_diff=0.00e+00, rel_diff=0.00e+00 -> PASS"
+    },
+    {
+      "passed": "True",
+      "message": "VCE(non-omitted) max_abs_diff=5.10e-09, max_rel_diff=2.13e-06 -> PASS"
+    }
+  ]
+}

@@ -23,6 +23,7 @@ result = regress(data, y="depvar", x=["x1", "x2"], vce="robust")
 | `cluster` | `str` or `list[str]` | Cluster variable(s). Single `str` for one-way; list of two `str` for two-way clustering (requires `vce="cluster"`) |
 | `aweight` | `str` | Variable name for analytical weights |
 | `noconstant` | `bool` | Drop constant term |
+| `level` | `int` | Confidence level (default 95) |
 | `missing` | `str` | `"drop"` only |
 
 ## Supported Result Fields
@@ -32,7 +33,6 @@ Coefficients, standard errors, t-statistics, p-values, confidence intervals, R-s
 ## Planned Parameters
 
 - `fweight`, `pweight`, `iweight`
-- `level` (confidence level other than 95%)
 - `beta` (standardized coefficients)
 - `hascons`, `tsscons`
 
@@ -53,7 +53,7 @@ The wrapper layer automatically expands Stata-style factor terms in `x`:
 - `x1#x2`, `x1##x2` (bare variables inside `#` / `##` are treated as continuous)
 - `x1##i.g`, `i.g##x1` (mixed bare continuous and categorical)
 
-Unsupported factor syntax (`ib.` without level, `o.` without level, `b.` without level, time-series operators are supported). The following remain hard-rejected with `ValueError`.
+Unsupported factor syntax (`ib.` without level, `o.` without level, `b.` without level, time-series operators) remain hard-rejected with `ValueError`.
 
 ## Alignment Evidence
 

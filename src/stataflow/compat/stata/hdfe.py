@@ -5,7 +5,12 @@ from __future__ import annotations
 from typing import Optional
 
 from stataflow.estimators import AbsorbingOLS, PPMLHDFE
-from stataflow.compat.stata.factor_variables import expand_factor_terms, get_underlying_vars, parse_absorb
+from stataflow.compat.stata.factor_variables import (
+    expand_factor_terms,
+    get_underlying_vars,
+    parse_absorb,
+    restore_factor_omitted_rows,
+)
 
 
 def reghdfe(
@@ -89,7 +94,10 @@ def reghdfe(
         weights=weights,
         weight_type=weight_type,
     )
-    return model.fit(vce=vce, cluster=cluster, savefe=savefe, timevar=timevar)
+    return restore_factor_omitted_rows(
+        model.fit(vce=vce, cluster=cluster, savefe=savefe, timevar=timevar),
+        data_expanded,
+    )
 
 
 def ppmlhdfe(
@@ -107,8 +115,9 @@ def ppmlhdfe(
     maxiter: int = 100,
     tolerance: float = 1e-8,
     eform: bool = False,
-    separation: Optional[str] = None,
+    separation: Optional[str] = "fe",
     aweight: Optional[str] = None,
+    pweight: Optional[str] = None,
     **kwargs,
 ) -> object:
     """
@@ -118,7 +127,8 @@ def ppmlhdfe(
     """
     if kwargs:
         raise ValueError(f"Unsupported arguments: {list(kwargs.keys())}")
-
+    if aweight is not None:
+        raise ValueError("aweights not allowed by Stata's ppmlhdfe command")
     screen_vars = [y]
     for term in x:
         screen_vars.extend(get_underlying_vars(term))
@@ -127,6 +137,8 @@ def ppmlhdfe(
             screen_vars.append(cluster)
         else:
             screen_vars.extend(cluster)
+    if pweight is not None:
+        screen_vars.append(pweight)
     data_expanded, x_expanded = expand_factor_terms(data, x, screen_vars=list(dict.fromkeys(screen_vars)))
     absorb_vars = parse_absorb(absorb)
 
@@ -142,6 +154,8 @@ def ppmlhdfe(
         max_iter=maxiter,
         tol=tolerance,
         separation=separation,
-        weights=aweight,
+        weights=pweight,
     )
-    return model.fit(vce=vce, cluster=cluster, eform=eform)
+    return restore_factor_omitted_rows(
+        model.fit(vce=vce, cluster=cluster, eform=eform), data_expanded
+    )

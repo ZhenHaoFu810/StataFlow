@@ -19,13 +19,12 @@
 | `DID / Event Study Extensions` | P4 | done | Panel / FE / HDFE | `did_imputation`、`eventstudyinteract`、`csdid` 最小子集已完成 |
 | `Postestimation` | P5 | done | 前述命令族稳定 | `predict`、`margins` 子集、输出层已完成 |
 | `RD / Local Polynomial` | P5 | done | Linear Base | `rdrobust` minimal subset (Sharp RD) 已完成 |
-| `RD Completion` | P7 | done | HDFE Hardening | `rdrobust` 完整带宽选择器、fuzzy RD、weights、cluster、masspoints 已完成；`rdplot` golden 双跑因算法差异推迟 |
 | `HDFE Hardening` | P6 | done | Wave 0-6 完成 | `reghdfe`/`ivreghdfe`/`ppmlhdfe` 多向聚类、savefe、separation、一阶段诊断 |
 | `RD Completion` | P7 | done | HDFE Hardening | `rdrobust` 完整带宽选择器、fuzzy RD、weights、cluster、masspoints、rdplot |
 | `DID Hardening` | P8 | done | HDFE Hardening | `did_imputation` controls/pretrends、`csdid` DR/aggtype |
 | `IV Completion` | P9 | done | HDFE Hardening | `ivreghdfe` GMM/LIML、弱工具变量、HAC |
 | `Postestimation Ecosystem` | P10 | done | IV Completion | `predict` 扩展（stdp, pearson, deviance, working）、`estat` 生态（summarize, vce, ic） |
-| `Advanced HDFE & Performance` | P11 | in_progress | Postestimation Ecosystem | MAP/LSMR 迭代内核（done）、个体斜率（in_progress）、Driscoll-Kraay（in_progress）、团队/个体 FE（planned） |
+| `Advanced HDFE & Performance` | P11 | done | Postestimation Ecosystem | MAP/LSMR 迭代内核、个体斜率、Driscoll-Kraay 已完成；团队/个体 FE 推迟至 v1.2.0+ |
 
 ## High-Value Commands
 

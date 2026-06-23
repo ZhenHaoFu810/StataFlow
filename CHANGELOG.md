@@ -87,7 +87,7 @@ The following are scheduled for future releases and are **not** regressions:
 
 ## Verification Status
 
-- Non-golden tests: **301 passed, 0 failed** (synthetic / controlled cases)
+- Non-golden tests: **392 passed, 0 failed** (synthetic / controlled cases; excludes internal `tests/audit_v1_3/`)
 - Golden dual-run tests: **~606 passed** against Stata 17 (requires local Stata 17; real-data tests may skip when external datasets are unavailable)
 
 No breaking API changes were introduced relative to v1.0.0.

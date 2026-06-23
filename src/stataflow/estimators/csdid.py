@@ -1,5 +1,7 @@
 """Callaway-Sant'Anna CSDID estimator (method='reg')."""
 
+import warnings
+
 import numpy as np
 import pandas as pd
 from stataflow.results.result import (
@@ -209,14 +211,16 @@ class CSDID:
         att_gt = {}
         if_gt = {}  # dict of dicts: {(g,t): {unit_id: if_value}}
 
-        # Determine control group strategy: Stata default is never-treated if
-        # available, unless notyet=True forces not-yet-treated controls.
-        has_never_treated = (df[ft] == 0).any() and not notyet
+        # Stata defaults to never-treated controls when available.  The
+        # notyet option augments them with cohorts treated after both g and t.
+        has_never_treated = (df[ft] == 0).any()
 
         for g in cohorts:
             for t in years:
                 # Control group: never-treated by default; fall back to not-yet-treated
-                if has_never_treated:
+                if notyet:
+                    control_mask = (df[ft] == 0) | (df[ft] > max(g, t))
+                elif has_never_treated:
                     control_mask = df[ft] == 0
                 else:
                     control_mask = df[ft] > max(g, t)
@@ -267,7 +271,9 @@ class CSDID:
                 for u in units:
                     c = cohort_map.loc[u]
                     is_treat = 1 if c == g else 0
-                    if has_never_treated:
+                    if notyet:
+                        is_ctrl = 1 if c == 0 or c > max(g, t) else 0
+                    elif has_never_treated:
                         is_ctrl = 1 if c == 0 else 0
                     else:
                         is_ctrl = 1 if c > max(g, t) else 0
@@ -294,7 +300,9 @@ class CSDID:
         available_pairs = set(zip(df[uid], df[time]))
         used_rows = set()
         for (g, t), (att, N_g) in att_gt.items():
-            if has_never_treated:
+            if notyet:
+                ctrl_ids = df.loc[(df[ft] == 0) | (df[ft] > max(g, t)), uid].unique()
+            elif has_never_treated:
                 ctrl_ids = df.loc[df[ft] == 0, uid].unique()
             else:
                 ctrl_ids = df.loc[df[ft] > max(g, t), uid].unique()
@@ -483,15 +491,17 @@ class CSDID:
         # Covariates in wide format (unit-level, first observation)
         X_wide = df.groupby(uid)[xvars].first()
 
-        # Control group strategy: never-treated by default; fall back to not-yet-treated
-        has_never_treated = (df[ft] == 0).any() and not notyet
+        # Stata's notyet option combines never-treated and future cohorts.
+        has_never_treated = (df[ft] == 0).any()
 
         att_gt = {}
         if_gt = {}
 
         for g in cohorts:
             for t in years:
-                if has_never_treated:
+                if notyet:
+                    control_mask = (df[ft] == 0) | (df[ft] > max(g, t))
+                elif has_never_treated:
                     control_mask = df[ft] == 0
                 else:
                     control_mask = df[ft] > max(g, t)
@@ -518,10 +528,16 @@ class CSDID:
                     continue
 
                 try:
-                    ps_model = LogisticRegression(
-                        penalty=None, solver="lbfgs", max_iter=1000
-                    )
-                    ps_model.fit(ps_X, ps_y)
+                    with warnings.catch_warnings():
+                        warnings.filterwarnings(
+                            "ignore",
+                            message=".*Setting penalty=None will ignore.*",
+                            category=UserWarning,
+                        )
+                        ps_model = LogisticRegression(
+                            C=np.inf, solver="lbfgs", max_iter=1000
+                        )
+                        ps_model.fit(ps_X, ps_y)
                     p_hat = ps_model.predict_proba(X_wide)[:, 1]
                 except Exception:
                     # Fall back to uniform weights if PS fails
@@ -605,7 +621,9 @@ class CSDID:
         available_pairs = set(zip(df[uid], df[time]))
         used_rows = set()
         for (g, t), (att, N_g) in att_gt.items():
-            if has_never_treated:
+            if notyet:
+                ctrl_ids = df.loc[(df[ft] == 0) | (df[ft] > max(g, t)), uid].unique()
+            elif has_never_treated:
                 ctrl_ids = df.loc[df[ft] == 0, uid].unique()
             else:
                 ctrl_ids = df.loc[df[ft] > max(g, t), uid].unique()

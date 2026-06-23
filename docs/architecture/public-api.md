@@ -26,6 +26,7 @@ from stataflow import (
     DIDImputation,
     EventStudyInteract,
     CSDID,
+    RDRobust,
 )
 ```
 
@@ -54,6 +55,7 @@ from stataflow.compat.stata import (
     did_imputation,
     eventstudyinteract,
     csdid,
+    rdrobust,
 )
 ```
 
@@ -74,6 +76,7 @@ from stataflow.compat.stata import (
 | `did_imputation` | `did_imputation(...)` | `DIDImputation` |
 | `eventstudyinteract` | `eventstudyinteract(...)` | `EventStudyInteract` |
 | `csdid` | `csdid(...)` | `CSDID` |
+| `rdrobust` | `rdrobust(...)` | `RDRobust` |
 
 ### 映射原则
 
@@ -93,6 +96,7 @@ from stataflow.compat.stata import (
 - `did_imputation`
 - `eventstudyinteract`
 - `csdid`
+- `rdrobust`
 
 每份命令的当前支持边界见 `docs/command-support-matrix/`。
 

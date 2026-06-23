@@ -1,0 +1,88 @@
+{
+  "prefix": "S03",
+  "python": {
+    "seed": 202603,
+    "data_hash": "435d997fe3f15b2f",
+    "nobs": 90,
+    "xb_mean": 0.39961827393402055,
+    "xb_sd": 1.9589599845280643,
+    "xbd_mean": 0.39961827393402055,
+    "xbd_sd": 2.2505584349010124,
+    "d_mean": 1.0022846750088219e-17,
+    "d_sd": 1.4537059286698901,
+    "dresiduals_mean": 2.0354088784794535e-17,
+    "dresiduals_sd": 1.5012763290387925,
+    "stdp_mean": 0.059216766685109154,
+    "stdp_sd": 0.019962127400676193
+  },
+  "stata": {
+    "log_path": "D:\\OneDrive - SAIF\\PhD3\\StataFlow\\stata\\output\\audit_v1_3_m09\\S03.log",
+    "xb_mean": 0.39961827,
+    "xb_sd": 1.95896,
+    "xbd_mean": 0.39961828,
+    "xbd_sd": 2.2505584,
+    "d_mean": -5.588e-09,
+    "d_sd": 1.4537059,
+    "dresiduals_mean": 2.416e-09,
+    "dresiduals_sd": 1.5012763,
+    "stdp_mean": 0.05921677,
+    "stdp_sd": 0.01996213
+  },
+  "diffs": {
+    "passed": true,
+    "messages": [
+      "xb.mean: Python=0.399618273934, Stata=0.39961827, abs=3.93e-09, rel=9.84e-09 PASS",
+      "xb.sd: Python=1.95895998453, Stata=1.95896, abs=1.55e-08, rel=7.90e-09 PASS",
+      "xbd.mean: Python=0.399618273934, Stata=0.39961828, abs=6.07e-09, rel=1.52e-08 PASS",
+      "xbd.sd: Python=2.2505584349, Stata=2.2505584, abs=3.49e-08, rel=1.55e-08 PASS",
+      "d.mean: Python=1.00228467501e-17, Stata=-5.588e-09, abs=5.59e-09, rel=1.00e+00 PASS",
+      "d.sd: Python=1.45370592867, Stata=1.4537059, abs=2.87e-08, rel=1.97e-08 PASS",
+      "dresiduals.mean: Python=2.03540887848e-17, Stata=2.416e-09, abs=2.42e-09, rel=1.00e+00 PASS",
+      "dresiduals.sd: Python=1.50127632904, Stata=1.5012763, abs=2.90e-08, rel=1.93e-08 PASS",
+      "stdp.mean: Python=0.0592167666851, Stata=0.05921677, abs=3.31e-09, rel=5.60e-08 PASS",
+      "stdp.sd: Python=0.0199621274007, Stata=0.01996213, abs=2.60e-09, rel=1.30e-07 PASS"
+    ],
+    "field_results": {
+      "xb.mean": {
+        "passed": true,
+        "message": "xb.mean: Python=0.399618273934, Stata=0.39961827, abs=3.93e-09, rel=9.84e-09 PASS"
+      },
+      "xb.sd": {
+        "passed": true,
+        "message": "xb.sd: Python=1.95895998453, Stata=1.95896, abs=1.55e-08, rel=7.90e-09 PASS"
+      },
+      "xbd.mean": {
+        "passed": true,
+        "message": "xbd.mean: Python=0.399618273934, Stata=0.39961828, abs=6.07e-09, rel=1.52e-08 PASS"
+      },
+      "xbd.sd": {
+        "passed": true,
+        "message": "xbd.sd: Python=2.2505584349, Stata=2.2505584, abs=3.49e-08, rel=1.55e-08 PASS"
+      },
+      "d.mean": {
+        "passed": true,
+        "message": "d.mean: Python=1.00228467501e-17, Stata=-5.588e-09, abs=5.59e-09, rel=1.00e+00 PASS"
+      },
+      "d.sd": {
+        "passed": true,
+        "message": "d.sd: Python=1.45370592867, Stata=1.4537059, abs=2.87e-08, rel=1.97e-08 PASS"
+      },
+      "dresiduals.mean": {
+        "passed": true,
+        "message": "dresiduals.mean: Python=2.03540887848e-17, Stata=2.416e-09, abs=2.42e-09, rel=1.00e+00 PASS"
+      },
+      "dresiduals.sd": {
+        "passed": true,
+        "message": "dresiduals.sd: Python=1.50127632904, Stata=1.5012763, abs=2.90e-08, rel=1.93e-08 PASS"
+      },
+      "stdp.mean": {
+        "passed": true,
+        "message": "stdp.mean: Python=0.0592167666851, Stata=0.05921677, abs=3.31e-09, rel=5.60e-08 PASS"
+      },
+      "stdp.sd": {
+        "passed": true,
+        "message": "stdp.sd: Python=0.0199621274007, Stata=0.01996213, abs=2.60e-09, rel=1.30e-07 PASS"
+      }
+    }
+  }
+}

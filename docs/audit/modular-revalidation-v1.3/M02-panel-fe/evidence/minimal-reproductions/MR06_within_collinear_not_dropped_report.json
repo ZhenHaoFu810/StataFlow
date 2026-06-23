@@ -1,0 +1,148 @@
+{
+  "test_id": "MR06_within_collinear_not_dropped",
+  "python": {
+    "nobs": 40,
+    "n_input_rows": 40,
+    "df_model": 9.0,
+    "df_resid": 30.0,
+    "r2": 0.9909681421178477,
+    "r2_adj": 0.9882585847532019,
+    "rmse": 0.1114843542365432,
+    "f_stat": 1645.7878684230789,
+    "f_pvalue": 0.0,
+    "rss": 0.3728628371861714,
+    "tss": 41.28307177230687,
+    "mss": 40.9102089351207,
+    "cluster_count": null,
+    "coefficients": [
+      {
+        "name": "x",
+        "beta": -8989.992841071587,
+        "std_err": 1322570.4670227699,
+        "t_stat": -0.00679736397056325,
+        "p_value": 0.994621530880162,
+        "ci_low": -2710039.2291591386,
+        "ci_high": 2692059.2434769957
+      },
+      {
+        "name": "w",
+        "beta": 8991.0,
+        "std_err": 1322570.467007611,
+        "t_stat": 0.006798125486910831,
+        "p_value": 0.994620928333795,
+        "ci_low": -2692058.2362871086,
+        "ci_high": 2710040.2362871086
+      },
+      {
+        "name": "_cons",
+        "beta": 0.6508055920670239,
+        "std_err": 0.017865504917750796,
+        "t_stat": 36.428054794040385,
+        "p_value": 0.0,
+        "ci_low": 0.6143193634555871,
+        "ci_high": 0.6872918206784607
+      }
+    ],
+    "vce": [
+      [
+        1749192640240.8274,
+        -1749192640220.7786,
+        -18.094105220438266
+      ],
+      [
+        -1749192640220.7786,
+        1749192640200.7302,
+        18.0941562713803
+      ],
+      [
+        -18.094105220438266,
+        18.0941562713803,
+        0.0003191762659661779
+      ]
+    ],
+    "vce_row_names": [
+      "x",
+      "w",
+      "_cons"
+    ],
+    "sample_mask": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ],
+    "warnings": []
+  },
+  "stata": {
+    "nobs": 40.0,
+    "df_model": 8.0,
+    "df_resid": 31.0,
+    "r2": 0.99096812,
+    "r2_adj": 0.98863731,
+    "rmse": 0.10967164,
+    "f_stat": 3401.2849,
+    "f_pvalue": 2.081e-43,
+    "coefficients": [
+      {
+        "name": "x",
+        "beta": 1.007159,
+        "std_err": 0.01726937
+      },
+      {
+        "name": "o.w",
+        "beta": 0.0,
+        "std_err": 0.0
+      },
+      {
+        "name": "_cons",
+        "beta": 0.6508055,
+        "std_err": 0.01757501
+      }
+    ],
+    "_do_file": "D:\\OneDrive - SAIF\\PhD3\\StataFlow\\stata\\cases\\audit_v1_3_m02\\MR06_within_collinear_not_dropped.do",
+    "_log_hash": "7ac391990c8d6308",
+    "_exit_code": 0
+  },
+  "comparisons": [
+    {
+      "passed": false,
+      "message": "Stata kept=['x', 'o.w', '_cons']; Python kept=['x', 'w', '_cons']"
+    }
+  ]
+}

@@ -1,0 +1,151 @@
+{
+  "test_id": "MR02_slope_absorption",
+  "python": {
+    "nobs": 60,
+    "n_input_rows": 60,
+    "df_model": 1.0,
+    "df_resid": 11.0,
+    "r2": 0.9704248587454027,
+    "r2_adj": 0.9501447618851075,
+    "rmse": 0.41400019583806513,
+    "f_stat": 101.02114761146115,
+    "f_pvalue": 7.026917148156286e-07,
+    "rss": 5.99886567538847,
+    "tss": 202.8347260879436,
+    "mss": null,
+    "cluster_count": 12,
+    "coefficients": [
+      {
+        "name": "x",
+        "beta": 0.9442661726360293,
+        "std_err": 0.09394816089718806,
+        "t_stat": 10.050927699046548,
+        "p_value": 7.026917148156286e-07,
+        "ci_low": 0.7374876646834168,
+        "ci_high": 1.1510446805886418
+      },
+      {
+        "name": "_cons",
+        "beta": 1.1326433202695394,
+        "std_err": 0.0008894543100990388,
+        "t_stat": 1273.4137182869147,
+        "p_value": 0.0,
+        "ci_low": 1.1306856445324318,
+        "ci_high": 1.134600996006647
+      }
+    ],
+    "vce": [
+      [
+        0.008826256935963936,
+        8.356259663584351e-05
+      ],
+      [
+        8.356259663584286e-05,
+        7.911289697537571e-07
+      ]
+    ],
+    "vce_row_names": [
+      "x",
+      "_cons"
+    ],
+    "sample_mask": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ],
+    "warnings": [],
+    "df_a": 12.0,
+    "num_singletons": 0,
+    "dropped_vars": []
+  },
+  "stata": {
+    "nobs": 60.0,
+    "df_model": 1.0,
+    "df_resid": 11.0,
+    "r2": 0.97042486,
+    "r2_adj": 0.95014476,
+    "rmse": 0.41400019,
+    "f_stat": 101.02115,
+    "f_pvalue": 7.027e-07,
+    "n_clust": 12.0,
+    "df_a": 12.0,
+    "coefficients": [
+      {
+        "name": "x",
+        "beta": 0.94426617,
+        "std_err": 0.09394816
+      },
+      {
+        "name": "_cons",
+        "beta": 1.1326433,
+        "std_err": 0.00088945
+      }
+    ],
+    "_do_file": "D:\\OneDrive - SAIF\\PhD3\\StataFlow\\stata\\cases\\audit_v1_3_m03\\MR02_slope_absorption.do",
+    "_log_hash": "475d4af651c63cfd",
+    "_exit_code": 0
+  },
+  "comparisons": [
+    {
+      "passed": false,
+      "message": "Stata df_a=12.0 x_beta=0.94426617 x_se=0.09394816; Python df_a=12.0 x_beta=0.9442661726360293 x_se=0.09394816089718806"
+    }
+  ]
+}

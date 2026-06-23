@@ -1,0 +1,16 @@
+{
+  "test_id": "MR05_wrapper_default_constant",
+  "python": {
+    "coefficient_names": [
+      "x",
+      "_cons"
+    ]
+  },
+  "stata": {},
+  "comparisons": [
+    {
+      "passed": false,
+      "message": "Python xtreg_fe names=['x', '_cons']; Stata xtreg, fe always reports _cons"
+    }
+  ]
+}

@@ -35,6 +35,9 @@ htmlcov/
 stata/output/
 stata/cases/*probe*.py
 
+# Internal audit materials are tracked in the dev repo but excluded from public
+# release via scripts/release/open_source_manifest.yml blacklist.
+
 # Temporary build/diagnostic outputs
 dist_tmp/
 dist_acceptance/
@@ -44,13 +47,18 @@ golden_full_output.txt
 vce005_output.txt
 kimi-export-session_*.md
 
-# Workspace reports
+# Workspace reports and task state (internal)
 workspace/qwencode-current/*report*.md
 workspace/qwencode-current/review-*.md
+workspace/current-task/*
+!workspace/current-task/README.md
+
+# Agent / session state (internal, never public)
+.claude/
+session_restore/
 
 # Internal scripts and their outputs
-scripts/internal/*.log
-scripts/internal/__pycache__/
+scripts/internal/
 
 # Credentials
 *token*

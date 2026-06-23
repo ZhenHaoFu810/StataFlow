@@ -1,0 +1,14 @@
+{
+  "test_id": "P1_instrument_label_invariance",
+  "python": {
+    "base_slope": 1.4786466242653338,
+    "renamed_slope": 1.4786466242653338
+  },
+  "stata": {},
+  "comparisons": [
+    {
+      "passed": "True",
+      "message": "instrument label invariant: base=1.4786466242653338 renamed=1.4786466242653338"
+    }
+  ]
+}

@@ -35,7 +35,7 @@ result.display()
 pip install StataFlow
 ```
 
-Python 3.10+ required. Dependencies: NumPy, pandas, SciPy.
+Python 3.10+ required. Dependencies: NumPy, pandas, SciPy, scikit-learn, PyYAML.
 
 ## Quick Start
 
@@ -118,7 +118,7 @@ print(f"R² = {result.fit.r2:.4f}, N = {result.sample.nobs}")
 
 ```bash
 # Unit and integration tests
-pytest tests/ -v --ignore=tests/golden/
+pytest tests/ -v --ignore=tests/golden/ --ignore=tests/audit_v1_3
 
 # Golden dual-run tests (require local Stata 17)
 pytest tests/golden/ -v

@@ -8,7 +8,7 @@
 meta:
   source_repo: "StataFlow"
   target_repo: "StataFlow_open_source"
-  manifest_version: "2.1.0"
+  manifest_version: "2.2.0"
 
 whitelist:
   files:
@@ -17,6 +17,8 @@ whitelist:
     - "LICENSE"
     - "pyproject.toml"
     - ".gitignore"
+    - ".gitattributes"
+    - ".pre-commit-config.yaml"
     - "VALIDATION.md"
 
   directories:
@@ -32,6 +34,7 @@ whitelist:
     - "docs/cookbook.md"
     - "docs/cookbook.zh-CN.md"
     - ".github/workflows/ci.yml"
+    - "scripts/release/PRE_PUBLIC_SYNC_CHECKLIST.md"
 
 blacklist:
   patterns:
@@ -47,6 +50,10 @@ blacklist:
     - "*secret*"
     - "*credential*"
     - "tests/golden/**"
+    - "tests/audit_v1_3/**"
     - "tests/test_validation_summary.py"
     - "tests/test_export_safety.py"
     - "workspace/**"
+    - ".claude/**"
+    - "session_restore/**"
+    - "docs/audit/**"

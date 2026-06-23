@@ -1,0 +1,349 @@
+{
+  "prefix": "S8_EFORM_PREDICT_EFORM",
+  "python": {
+    "model": {
+      "command": "ppmlhdfe",
+      "estimator_family": "ppmlhdfe",
+      "vcetype": "robust",
+      "weight_type": null,
+      "fe_vars": [],
+      "absorb_var": null,
+      "absorb_vars": [
+        "entity_id"
+      ],
+      "cluster_var": null,
+      "has_constant": true
+    },
+    "sample": {
+      "nobs": 100,
+      "n_input_rows": 100,
+      "sample_mask": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "dropped_rows_reason": null
+    },
+    "fit": {
+      "df_model": 2.0,
+      "df_resid": 88.0,
+      "df_a": 10.0,
+      "rank": 12,
+      "rss": 0.0,
+      "tss": 0.0,
+      "mss": 0.0,
+      "rmse": 0.0,
+      "r2": 0.0,
+      "r2_adj": 0.0,
+      "f_stat": null,
+      "f_pvalue": null,
+      "ll": -147.7265771721769,
+      "deviance": 103.4210814715858,
+      "pseudo_r2": 0.23082957310103613
+    },
+    "coefficients": [
+      {
+        "name": "x1",
+        "beta": 1.5687774881495482,
+        "std_err": 0.14732389130437815,
+        "t_stat": 4.794980875747463,
+        "p_value": 1.626903507689903e-06,
+        "ci_low": 1.3050435756771932,
+        "ci_high": 1.8858089133519922
+      },
+      {
+        "name": "x2",
+        "beta": 0.7297833131622536,
+        "std_err": 0.05209444564749393,
+        "t_stat": -4.412894731374951,
+        "p_value": 1.0199759755247229e-05,
+        "ci_low": 0.6345008844760567,
+        "ci_high": 0.8393742186976784
+      },
+      {
+        "name": "_cons",
+        "beta": 1.7445612040098655,
+        "std_err": 0.14796713616036022,
+        "t_stat": 6.56127895914893,
+        "p_value": 5.33482147346831e-11,
+        "ci_low": 1.4773741265703846,
+        "ci_high": 2.0600697817834392
+      }
+    ],
+    "variance": {
+      "row_names": [
+        "x1",
+        "x2",
+        "_cons"
+      ],
+      "values": [
+        [
+          0.021704328949064225,
+          -0.0018799260183619878,
+          -0.005779724235795605
+        ],
+        [
+          -0.0018799260183619848,
+          0.0027138312673196992,
+          0.004213426701032339
+        ],
+        [
+          -0.005779724235795597,
+          0.004213426701032329,
+          0.021894273383498586
+        ]
+      ]
+    },
+    "diagnostics": {
+      "residual_df_correction": null,
+      "cluster_count": null,
+      "warnings": []
+    },
+    "provenance": {
+      "source": "python",
+      "stata_version_target": "17",
+      "stata_command": "ppmlhdfe y x1 x2, absorb(entity_id)"
+    }
+  },
+  "stata": {
+    "nobs": 100.0,
+    "df_model": 2.0,
+    "df_a": 10.0,
+    "df_resid": NaN,
+    "ll": -147.72658,
+    "deviance": 103.42108,
+    "pseudo_r2": 0.23082957,
+    "chi2": 34.148253,
+    "n_clust": NaN,
+    "coefficients": [
+      {
+        "name": "x1",
+        "beta": 0.45029665,
+        "std_err": 0.09391,
+        "z_stat": 4.794980832712172,
+        "p_value": 1.6269038569660665e-06
+      },
+      {
+        "name": "x2",
+        "beta": -0.31500762,
+        "std_err": 0.07138344,
+        "z_stat": -4.412894923528482,
+        "p_value": 1.0199750699158017e-05
+      },
+      {
+        "name": "_cons",
+        "beta": 0.55650306,
+        "std_err": 0.08481625,
+        "z_stat": 6.561278764387722,
+        "p_value": 5.33482147346831e-11
+      }
+    ],
+    "vce_matrix": [
+      [
+        0.00881909,
+        -0.00164205,
+        -0.00211183
+      ],
+      [
+        -0.00164205,
+        0.0050956,
+        0.00330945
+      ],
+      [
+        -0.00211183,
+        0.00330945,
+        0.0071938
+      ]
+    ],
+    "vce_names": [
+      "x1",
+      "x2",
+      "_cons"
+    ],
+    "predict": {
+      "xb": {
+        "mean": 0.51423902,
+        "sd": 0.56364286,
+        "min": -0.86168762,
+        "max": 2.0894357
+      },
+      "mu": {
+        "mean": 1.77,
+        "sd": 1.3665763,
+        "min": 0.2694534,
+        "max": 6.5702649
+      },
+      "residuals": {
+        "mean": -2.203e-08,
+        "sd": 1.3347976,
+        "min": -2.4654448,
+        "max": 6.3573879
+      },
+      "pearson": {
+        "mean": 0.00481353,
+        "sd": 0.98454913,
+        "min": -1.5701735,
+        "max": 3.3309817
+      },
+      "deviance": {
+        "mean": 1.0344227,
+        "sd": 1.2621607,
+        "min": 0.00011167,
+        "max": 7.4829053
+      }
+    },
+    "_log_path": "D:\\OneDrive - SAIF\\PhD3\\StataFlow\\stata\\output\\audit_v1_3_m06\\S8_EFORM_PREDICT.log",
+    "_csv_path": "D:\\OneDrive - SAIF\\PhD3\\StataFlow\\stata\\cases\\audit_v1_3_m06\\S8_EFORM_PREDICT.csv",
+    "_command": "ppmlhdfe y x1 x2, absorb(entity_id) vce(robust) d",
+    "_exit_code": 0
+  },
+  "diffs": {
+    "passed": true,
+    "messages": [
+      "eform.x1.beta: Python=1.56877748815, Stata=1.56877749431, abs=6.16e-09, rel=3.93e-09 PASS",
+      "eform.x1.std_err: Python=0.147323891304, Stata=0.147323894491, abs=3.19e-09, rel=2.16e-08 PASS",
+      "eform.x1.t_stat: Python=4.79498087575, Stata=4.79498083271, abs=4.30e-08, rel=8.98e-09 PASS",
+      "eform.x2.beta: Python=0.729783313162, Stata=0.729783313299, abs=1.37e-10, rel=1.87e-10 PASS",
+      "eform.x2.std_err: Python=0.0520944456475, Stata=0.0520944433579, abs=2.29e-09, rel=4.40e-08 PASS",
+      "eform.x2.t_stat: Python=-4.41289473137, Stata=-4.41289492353, abs=1.92e-07, rel=4.35e-08 PASS",
+      "eform._cons.beta: Python=1.74456120401, Stata=1.74456119526, abs=8.75e-09, rel=5.01e-09 PASS",
+      "eform._cons.std_err: Python=0.14796713616, Stata=0.147967138478, abs=2.32e-09, rel=1.57e-08 PASS",
+      "eform._cons.t_stat: Python=6.56127895915, Stata=6.56127876439, abs=1.95e-07, rel=2.97e-08 PASS"
+    ],
+    "field_results": {
+      "eform.x1.beta": {
+        "passed": "True",
+        "message": "eform.x1.beta: Python=1.56877748815, Stata=1.56877749431, abs=6.16e-09, rel=3.93e-09 PASS"
+      },
+      "eform.x1.std_err": {
+        "passed": "True",
+        "message": "eform.x1.std_err: Python=0.147323891304, Stata=0.147323894491, abs=3.19e-09, rel=2.16e-08 PASS"
+      },
+      "eform.x1.t_stat": {
+        "passed": true,
+        "message": "eform.x1.t_stat: Python=4.79498087575, Stata=4.79498083271, abs=4.30e-08, rel=8.98e-09 PASS"
+      },
+      "eform.x2.beta": {
+        "passed": "True",
+        "message": "eform.x2.beta: Python=0.729783313162, Stata=0.729783313299, abs=1.37e-10, rel=1.87e-10 PASS"
+      },
+      "eform.x2.std_err": {
+        "passed": "True",
+        "message": "eform.x2.std_err: Python=0.0520944456475, Stata=0.0520944433579, abs=2.29e-09, rel=4.40e-08 PASS"
+      },
+      "eform.x2.t_stat": {
+        "passed": true,
+        "message": "eform.x2.t_stat: Python=-4.41289473137, Stata=-4.41289492353, abs=1.92e-07, rel=4.35e-08 PASS"
+      },
+      "eform._cons.beta": {
+        "passed": "True",
+        "message": "eform._cons.beta: Python=1.74456120401, Stata=1.74456119526, abs=8.75e-09, rel=5.01e-09 PASS"
+      },
+      "eform._cons.std_err": {
+        "passed": "True",
+        "message": "eform._cons.std_err: Python=0.14796713616, Stata=0.147967138478, abs=2.32e-09, rel=1.57e-08 PASS"
+      },
+      "eform._cons.t_stat": {
+        "passed": true,
+        "message": "eform._cons.t_stat: Python=6.56127895915, Stata=6.56127876439, abs=1.95e-07, rel=2.97e-08 PASS"
+      }
+    }
+  }
+}

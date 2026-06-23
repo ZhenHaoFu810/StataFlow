@@ -1,0 +1,14 @@
+{
+  "finding": "M09-FE-001",
+  "seed": 202602,
+  "data_hash": "8e8c638f797983e9",
+  "python": {
+    "xb_in_mean": 0.48920459082890116,
+    "xb_in_sd": 1.7615261847787969
+  },
+  "stata": {
+    "log_path": "D:\\OneDrive - SAIF\\PhD3\\StataFlow\\stata\\output\\audit_v1_3_m09\\REPRO_FE001.log",
+    "xb_in_mean": 0.40991336,
+    "xb_in_sd": 1.7615262
+  }
+}

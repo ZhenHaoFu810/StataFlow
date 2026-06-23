@@ -1,0 +1,14 @@
+{
+  "test_id": "P2_redundant_absorb_fe",
+  "python": {
+    "base_slope": 1.480677784024474,
+    "redundant_slope": 1.4806777840244747
+  },
+  "stata": {},
+  "comparisons": [
+    {
+      "passed": "True",
+      "message": "redundant FE slope unchanged: base=1.480677784024474 redundant=1.4806777840244747"
+    }
+  ]
+}

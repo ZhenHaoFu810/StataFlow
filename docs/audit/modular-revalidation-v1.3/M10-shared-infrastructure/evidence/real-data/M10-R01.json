@@ -1,0 +1,77 @@
+{
+  "test_id": "M10-R01",
+  "timestamp": "2026-06-14T07:36:44.860898+00:00",
+  "data_source": "research/data/public/binary/oos/vote1.csv",
+  "data_hash": "f4c922c21544b5399f08652e96e109566dacbc75ea6e0b943784e06683d21a29",
+  "stata_command": "regress voteA i.democA##c.lexpendA",
+  "python_call": "regress(df, 'voteA', ['i.democA##c.lexpendA'])",
+  "scalars_comparison": {
+    "passed": true,
+    "messages": [
+      "nobs: Python=173, Stata=173.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "df_model: Python=3.0, Stata=3.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "df_resid: Python=169.0, Stata=169.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "r2: Python=0.4202394399962306, Stata=0.42023944, abs=3.77e-12, rel=8.97e-12 PASS",
+      "rss: Python=28093.601558438375, Stata=28093.602, abs=4.42e-04, rel=1.57e-08 PASS"
+    ]
+  },
+  "coefficients_comparison": {
+    "passed": true,
+    "messages": [
+      "coef_names/order: Python(active)=['1.democA', 'lexpendA', '1.democA#c.lexpendA', '_cons'], Stata=['1.democA', 'lexpendA', '1.democA#c.lexpendA', '_cons'] PASS",
+      "0b.democA.beta: Python=0.0, Stata=0.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "0b.democA.std_err: Python=0.0, Stata=0.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "1.democA.beta: Python=3.0170807738355383, Stata=3.0170808, abs=2.62e-08, rel=8.67e-09 PASS",
+      "1.democA.std_err: Python=6.640403345814017, Stata=6.6404033, abs=4.58e-08, rel=6.90e-09 PASS",
+      "lexpendA.beta: Python=6.011893171333064, Stata=6.0118932, abs=2.87e-08, rel=4.77e-09 PASS",
+      "lexpendA.std_err: Python=0.8043406986122585, Stata=0.8043407, abs=1.39e-09, rel=1.73e-09 PASS",
+      "0b.democA#co.lexpendA.beta: Python=0.0, Stata=0.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "0b.democA#co.lexpendA.std_err: Python=0.0, Stata=0.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "1.democA#c.lexpendA.beta: Python=0.6411044443019467, Stata=0.64110444, abs=4.30e-09, rel=6.71e-09 PASS",
+      "1.democA#c.lexpendA.std_err: Python=1.2573693541758137, Stata=1.2573694, abs=4.58e-08, rel=3.64e-08 PASS",
+      "_cons.beta: Python=16.766989039169378, Stata=16.766989, abs=3.92e-08, rel=2.34e-09 PASS",
+      "_cons.std_err: Python=4.140630608623096, Stata=4.1406306, abs=8.62e-09, rel=2.08e-09 PASS"
+    ]
+  },
+  "vce_comparison": {
+    "passed": true,
+    "messages": [
+      "VCE[0b.democA,0b.democA]: Python=0.0, Stata=0.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "VCE[0b.democA,1.democA]: Python=0.0, Stata=0.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "VCE[0b.democA,lexpendA]: Python=0.0, Stata=0.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "VCE[0b.democA,0b.democA#co.lexpendA]: Python=0.0, Stata=0.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "VCE[0b.democA,1.democA#c.lexpendA]: Python=0.0, Stata=0.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "VCE[0b.democA,_cons]: Python=0.0, Stata=0.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "VCE[1.democA,0b.democA]: Python=0.0, Stata=0.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "VCE[1.democA,1.democA]: Python=44.09495659509798, Stata=44.094957, abs=4.05e-07, rel=9.18e-09 PASS",
+      "VCE[1.democA,lexpendA]: Python=3.1137372220871935, Stata=3.1137372, abs=2.21e-08, rel=7.09e-09 PASS",
+      "VCE[1.democA,0b.democA#co.lexpendA]: Python=0.0, Stata=0.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "VCE[1.democA,1.democA#c.lexpendA]: Python=-7.967029991889586, Stata=-7.96703, abs=8.11e-09, rel=1.02e-09 PASS",
+      "VCE[1.democA,_cons]: Python=-17.144821837066466, Stata=-17.144822, abs=1.63e-07, rel=9.50e-09 PASS",
+      "VCE[lexpendA,0b.democA]: Python=0.0, Stata=0.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "VCE[lexpendA,1.democA]: Python=3.113737222087195, Stata=3.1137372, abs=2.21e-08, rel=7.09e-09 PASS",
+      "VCE[lexpendA,lexpendA]: Python=0.6469639594440562, Stata=0.64696396, abs=5.56e-10, rel=8.59e-10 PASS",
+      "VCE[lexpendA,0b.democA#co.lexpendA]: Python=0.0, Stata=0.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "VCE[lexpendA,1.democA#c.lexpendA]: Python=-0.6469639594440562, Stata=-0.64696396, abs=5.56e-10, rel=8.59e-10 PASS",
+      "VCE[lexpendA,_cons]: Python=-3.113737222087195, Stata=-3.1137372, abs=2.21e-08, rel=7.09e-09 PASS",
+      "VCE[0b.democA#co.lexpendA,0b.democA]: Python=0.0, Stata=0.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "VCE[0b.democA#co.lexpendA,1.democA]: Python=0.0, Stata=0.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "VCE[0b.democA#co.lexpendA,lexpendA]: Python=0.0, Stata=0.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "VCE[0b.democA#co.lexpendA,0b.democA#co.lexpendA]: Python=0.0, Stata=0.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "VCE[0b.democA#co.lexpendA,1.democA#c.lexpendA]: Python=0.0, Stata=0.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "VCE[0b.democA#co.lexpendA,_cons]: Python=0.0, Stata=0.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "VCE[1.democA#c.lexpendA,0b.democA]: Python=0.0, Stata=0.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "VCE[1.democA#c.lexpendA,1.democA]: Python=-7.967029991889589, Stata=-7.96703, abs=8.11e-09, rel=1.02e-09 PASS",
+      "VCE[1.democA#c.lexpendA,lexpendA]: Python=-0.646963959444056, Stata=-0.64696396, abs=5.56e-10, rel=8.59e-10 PASS",
+      "VCE[1.democA#c.lexpendA,0b.democA#co.lexpendA]: Python=0.0, Stata=0.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "VCE[1.democA#c.lexpendA,1.democA#c.lexpendA]: Python=1.580977692820503, Stata=1.5809777, abs=7.18e-09, rel=4.54e-09 PASS",
+      "VCE[1.democA#c.lexpendA,_cons]: Python=3.1137372220871953, Stata=3.1137372, abs=2.21e-08, rel=7.09e-09 PASS",
+      "VCE[_cons,0b.democA]: Python=0.0, Stata=0.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "VCE[_cons,1.democA]: Python=-17.144821837066466, Stata=-17.144822, abs=1.63e-07, rel=9.50e-09 PASS",
+      "VCE[_cons,lexpendA]: Python=-3.1137372220871953, Stata=-3.1137372, abs=2.21e-08, rel=7.09e-09 PASS",
+      "VCE[_cons,0b.democA#co.lexpendA]: Python=0.0, Stata=0.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "VCE[_cons,1.democA#c.lexpendA]: Python=3.1137372220871953, Stata=3.1137372, abs=2.21e-08, rel=7.09e-09 PASS",
+      "VCE[_cons,_cons]: Python=17.144821837066466, Stata=17.144822, abs=1.63e-07, rel=9.50e-09 PASS"
+    ]
+  }
+}

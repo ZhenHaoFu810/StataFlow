@@ -1,0 +1,265 @@
+{
+  "test_id": "S6_liml",
+  "python": {
+    "nobs": 120,
+    "n_input_rows": 120,
+    "df_model": 1.0,
+    "df_resid": 118.0,
+    "r2": 0.7603714951546271,
+    "r2_adj": 0.7583407451135646,
+    "rmse": 1.034850568278767,
+    "f_stat": 23.201255313582678,
+    "f_pvalue": 4.37530351815596e-06,
+    "rss": 128.50988384002642,
+    "tss": 536.2879675894613,
+    "mss": 407.7780837494349,
+    "cluster_count": null,
+    "coefficients": [
+      {
+        "name": "x",
+        "beta": 1.0239032675363864,
+        "std_err": 0.2107917298962454,
+        "t_stat": 4.857416692962127,
+        "p_value": 3.689425664088475e-06,
+        "ci_low": 0.6064782544466072,
+        "ci_high": 1.4413282806261656
+      },
+      {
+        "name": "_cons",
+        "beta": 1.0376204717547444,
+        "std_err": 0.09452728480684824,
+        "t_stat": 10.976941460605367,
+        "p_value": 0.0,
+        "ci_low": 0.85043071285262,
+        "ci_high": 1.224810230656869
+      }
+    ],
+    "vce": [
+      [
+        0.04443315339265168,
+        -0.000702606624956888
+      ],
+      [
+        -0.000702606624956888,
+        0.008935407572955004
+      ]
+    ],
+    "vce_row_names": [
+      "x",
+      "_cons"
+    ],
+    "sample_mask": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ],
+    "warnings": [],
+    "widstat": 9.798844572960663,
+    "idstat": 17.21641641388469,
+    "df_a": 0.0,
+    "num_singletons": 0,
+    "dropped_vars": []
+  },
+  "stata": {
+    "nobs": 120.0,
+    "df_model": 1.0,
+    "r2": 0.76037149,
+    "r2_adj": 0.75834074,
+    "rmse": 1.0348506,
+    "f_stat": 23.201253,
+    "widstat": 9.7988442,
+    "idstat": 17.216416,
+    "j_stat": 0.73223849,
+    "j_pvalue": 0.39215857,
+    "j_df": 1.0,
+    "coefficients": [
+      {
+        "name": "x",
+        "beta": 1.0239033,
+        "std_err": 0.21079174
+      },
+      {
+        "name": "_cons",
+        "beta": 1.0376205,
+        "std_err": 0.09452729
+      }
+    ],
+    "vce": [
+      [
+        0.04443316,
+        -0.00070261
+      ],
+      [
+        -0.00070261,
+        0.00893541
+      ]
+    ],
+    "vce_rows": 2,
+    "_do_file": "D:\\OneDrive - SAIF\\PhD3\\StataFlow\\stata\\cases\\audit_v1_3_m04\\S6_liml.do",
+    "_log_hash": "55f3c0022c88f539",
+    "_exit_code": 0
+  },
+  "comparisons": [
+    {
+      "passed": true,
+      "message": "beta[x]: Python=1.02390326753639, Stata=1.0239033, abs_diff=3.25e-08, rel_diff=3.17e-08 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "std_err[x]: Python=0.210791729896245, Stata=0.21079174, abs_diff=1.01e-08, rel_diff=4.79e-08 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "beta[_cons]: Python=1.03762047175474, Stata=1.0376205, abs_diff=2.82e-08, rel_diff=2.72e-08 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "std_err[_cons]: Python=0.0945272848068482, Stata=0.09452729, abs_diff=5.19e-09, rel_diff=5.49e-08 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "nobs: Python=120, Stata=120, abs_diff=0.00e+00, rel_diff=0.00e+00 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "df_model: Python=1, Stata=1, abs_diff=0.00e+00, rel_diff=0.00e+00 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "r2: Python=0.760371495154627, Stata=0.76037149, abs_diff=5.15e-09, rel_diff=6.78e-09 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "r2_adj: Python=0.758340745113565, Stata=0.75834074, abs_diff=5.11e-09, rel_diff=6.74e-09 -> PASS"
+    },
+    {
+      "passed": "True",
+      "message": "rmse: Python=1.03485056827877, Stata=1.0348506, abs_diff=3.17e-08, rel_diff=3.07e-08 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "f_stat: Python=23.2012553135827, Stata=23.201253, abs_diff=2.31e-06, rel_diff=9.97e-08 -> PASS"
+    },
+    {
+      "passed": "True",
+      "message": "VCE(non-omitted) max_abs_diff=6.61e-09, max_rel_diff=4.80e-06 -> PASS"
+    }
+  ]
+}

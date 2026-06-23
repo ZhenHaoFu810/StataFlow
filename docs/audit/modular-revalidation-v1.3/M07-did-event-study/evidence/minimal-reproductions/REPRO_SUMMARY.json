@@ -1,0 +1,76 @@
+{
+  "findings": [
+    {
+      "name": "REPRO_DIDIMP_MISSING_NEVER",
+      "path": "D:\\OneDrive - SAIF\\PhD3\\StataFlow\\docs\\audit\\modular-revalidation-v1.3\\M07-did-event-study\\evidence\\minimal-reproductions\\REPRO_DIDIMP_MISSING_NEVER.json",
+      "python_nobs": 405,
+      "stata_nobs": 600.0,
+      "python_n_input_rows": 600,
+      "python_sum_mask": 405,
+      "python_tau_beta": 1.9635775632401076,
+      "python_tau_se": 0.1496594621347706,
+      "stata_tau_beta": 1.399811,
+      "stata_tau_se": 0.0832771
+    },
+    {
+      "name": "REPRO_DIDIMP_ZERO_NEVER",
+      "path": "D:\\OneDrive - SAIF\\PhD3\\StataFlow\\docs\\audit\\modular-revalidation-v1.3\\M07-did-event-study\\evidence\\minimal-reproductions\\REPRO_DIDIMP_ZERO_NEVER.json",
+      "python_nobs": 600,
+      "stata_nobs": 280.0,
+      "python_tau_beta": 1.9368653179907471,
+      "python_tau_se": 0.06971785119737181,
+      "stata_tau_beta": 2.016069,
+      "stata_tau_se": 0.1272326
+    },
+    {
+      "name": "REPRO_CSDID_NOTYET_REAL",
+      "path": "D:\\OneDrive - SAIF\\PhD3\\StataFlow\\docs\\audit\\modular-revalidation-v1.3\\M07-did-event-study\\evidence\\minimal-reproductions\\REPRO_CSDID_NOTYET_REAL.json",
+      "python_nobs": 50,
+      "stata_nobs": 198.0,
+      "coefficients": [
+        {
+          "name": "Pre_avg",
+          "python_beta": 13381.194444444445,
+          "python_se": 11125.181334840747,
+          "stata_beta": 3165.482,
+          "stata_se": 5921.608
+        },
+        {
+          "name": "Post_avg",
+          "python_beta": -43924.33333333333,
+          "python_se": 18013.73360324571,
+          "stata_beta": -9375.683,
+          "stata_se": 18480.53
+        },
+        {
+          "name": "Tm3",
+          "python_beta": 7942.9999999999945,
+          "python_se": 19036.877939607115,
+          "stata_beta": -7186.079,
+          "stata_se": 11816.71
+        },
+        {
+          "name": "Tm2",
+          "python_beta": 35741.5,
+          "python_se": 26432.489835349097,
+          "stata_beta": 8935.592,
+          "stata_se": 15992.89
+        },
+        {
+          "name": "Tm1",
+          "python_beta": -3540.9166666666656,
+          "python_se": 17012.80930204653,
+          "stata_beta": 12890.67,
+          "stata_se": 13976.44
+        },
+        {
+          "name": "Tp0",
+          "python_beta": -43924.33333333333,
+          "python_se": 18013.73360324571,
+          "stata_beta": -13763.7,
+          "stata_se": 12127.13
+        }
+      ]
+    }
+  ]
+}

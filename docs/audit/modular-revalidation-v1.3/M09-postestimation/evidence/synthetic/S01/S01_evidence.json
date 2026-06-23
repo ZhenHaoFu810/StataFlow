@@ -1,0 +1,49 @@
+{
+  "prefix": "S01",
+  "python": {
+    "seed": 202601,
+    "data_hash": "fb6ba447016bccd8",
+    "nobs": 40,
+    "dropped": [
+      "Collinear variables dropped: x2"
+    ],
+    "xb_mean": 1.2277453005833106,
+    "xb_sd": 2.795552767157252,
+    "resid_mean": 0.495350718623885,
+    "resid_sd": 1.2650986647449962
+  },
+  "stata": {
+    "log_path": "D:\\OneDrive - SAIF\\PhD3\\StataFlow\\stata\\output\\audit_v1_3_m09\\S01.log",
+    "xb_mean": 1.2277453,
+    "xb_sd": 2.7955528,
+    "resid_mean": 0.49535071,
+    "resid_sd": 1.2650987
+  },
+  "diffs": {
+    "passed": true,
+    "messages": [
+      "xb.mean: Python=1.22774530058, Stata=1.2277453, abs=5.83e-10, rel=4.75e-10 PASS",
+      "xb.sd: Python=2.79555276716, Stata=2.7955528, abs=3.28e-08, rel=1.17e-08 PASS",
+      "resid.mean: Python=0.495350718624, Stata=0.49535071, abs=8.62e-09, rel=1.74e-08 PASS",
+      "resid.sd: Python=1.26509866474, Stata=1.2650987, abs=3.53e-08, rel=2.79e-08 PASS"
+    ],
+    "field_results": {
+      "xb.mean": {
+        "passed": true,
+        "message": "xb.mean: Python=1.22774530058, Stata=1.2277453, abs=5.83e-10, rel=4.75e-10 PASS"
+      },
+      "xb.sd": {
+        "passed": true,
+        "message": "xb.sd: Python=2.79555276716, Stata=2.7955528, abs=3.28e-08, rel=1.17e-08 PASS"
+      },
+      "resid.mean": {
+        "passed": true,
+        "message": "resid.mean: Python=0.495350718624, Stata=0.49535071, abs=8.62e-09, rel=1.74e-08 PASS"
+      },
+      "resid.sd": {
+        "passed": true,
+        "message": "resid.sd: Python=1.26509866474, Stata=1.2650987, abs=3.53e-08, rel=2.79e-08 PASS"
+      }
+    }
+  }
+}

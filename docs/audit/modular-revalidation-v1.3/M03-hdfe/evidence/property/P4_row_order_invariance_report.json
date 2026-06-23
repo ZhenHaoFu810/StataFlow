@@ -1,0 +1,20 @@
+{
+  "test_id": "P4_row_order_invariance",
+  "python": {
+    "base": {
+      "x": 1.5461649001736972,
+      "_cons": 0.8712608495659208
+    },
+    "shuffled": {
+      "x": 1.5461649001736975,
+      "_cons": 0.8712608495659218
+    }
+  },
+  "stata": {},
+  "comparisons": [
+    {
+      "passed": true,
+      "message": "row order invariant"
+    }
+  ]
+}

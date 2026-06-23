@@ -243,6 +243,44 @@ def test_csdid_not_yet_treated_fallback():
     assert "Pre_avg" in names or any(k.startswith("Tm") for k in names)
 
 
+@pytest.mark.parametrize("method", ["reg", "drimp"])
+def test_csdid_notyet_includes_never_treated_units(method):
+    """Stata's notyet controls combine never-treated and future cohorts."""
+    rng = np.random.default_rng(20260616)
+    n_per_group = 12
+    periods = np.arange(5)
+    unit_cohorts = np.repeat([0, 2, 4], n_per_group)
+    units = np.repeat(np.arange(len(unit_cohorts)), len(periods))
+    time = np.tile(periods, len(unit_cohorts))
+    first_treat = np.repeat(unit_cohorts, len(periods))
+    x = rng.normal(size=len(units))
+    treated = (first_treat > 0) & (time >= first_treat)
+    y = 1.0 + 0.3 * x + 1.5 * treated + rng.normal(scale=0.2, size=len(units))
+    df = pd.DataFrame(
+        {
+            "id": units,
+            "time": time,
+            "y": y,
+            "first_treat": first_treat,
+            "x": x,
+        }
+    )
+
+    model = CSDID(
+        df,
+        y="y",
+        id="id",
+        time="time",
+        first_treat="first_treat",
+        xvars=["x"] if method == "drimp" else None,
+    )
+    model.fit(method=method, notyet=True)
+
+    never_units = set(np.flatnonzero(unit_cohorts == 0))
+    used_units = {unit for unit, _ in model._used_rows}
+    assert never_units <= used_units
+
+
 # ---------------------------------------------------------------------------
 # Edge-case / synthetic tests (Package 005)
 # ---------------------------------------------------------------------------
@@ -298,7 +336,7 @@ def test_did_imputation_sample_mask_nobs_consistency():
 
 
 def test_did_imputation_first_treat_zero_negative_never_treated():
-    """first_treat equal to 0 or negative values must identify never-treated units."""
+    """first_treat equal to 0, negative, or missing values identify never-treated units."""
     df = pd.DataFrame({
         "id": [0, 0, 1, 1, 2, 2, 3, 3],
         "time": [0, 1, 0, 1, 0, 1, 0, 1],
@@ -308,7 +346,7 @@ def test_did_imputation_first_treat_zero_negative_never_treated():
     model = DIDImputation(df, y="y", id="id", time="time", first_treat="first_treat")
     res = model.fit(autosample=True, saveestimates="effect")
 
-    # Units with first_treat <= 0 are never-treated -> no saved effect.
+    # Units with first_treat <= 0 are never-treated -> no treatment effect estimated.
     never_treated = df["first_treat"] <= 0
     assert model.saveestimates_[never_treated].isna().all()
 
@@ -319,8 +357,8 @@ def test_did_imputation_first_treat_zero_negative_never_treated():
     assert len(res.coefficients) > 0
 
 
-def test_did_imputation_first_treat_missing_dropped():
-    """Rows with missing first_treat must be excluded from the estimation sample."""
+def test_did_imputation_first_treat_missing_never_treated():
+    """Rows with missing first_treat are treated as never-treated controls."""
     df = pd.DataFrame({
         "id": [0, 0, 1, 1, 2, 2],
         "time": [0, 1, 0, 1, 0, 1],
@@ -331,10 +369,10 @@ def test_did_imputation_first_treat_missing_dropped():
         df, y="y", id="id", time="time", first_treat="first_treat",
         autosample=True,
     )
-    # Rows 4 and 5 (id 2) have missing first_treat and must be dropped.
+    # Rows 4 and 5 (id 2) have missing first_treat and are kept as never-treated.
     missing_rows = df["first_treat"].isna()
-    assert all(not m for m in np.array(res.sample.sample_mask)[missing_rows.values])
-    assert res.sample.nobs == 4
+    assert all(np.array(res.sample.sample_mask)[missing_rows.values])
+    assert res.sample.nobs == 6
 
 
 def test_did_imputation_negative_zero_time_values():
@@ -1017,8 +1055,8 @@ def test_did_imputation_saveestimates():
     saved_effect = model.saveestimates_[ever_treated]
     assert saved_effect.notna().all()
 
-    # For control observations, effect should be NaN
-    control = df["first_treat"] < 0
+    # For control observations (first_treat <= 0 or missing), effect should be NaN
+    control = df["first_treat"] <= 0
     assert model.saveestimates_[control].isna().all()
 
 
@@ -1051,6 +1089,43 @@ def test_did_imputation_saveweights():
     # Should have one column per non-dropped coefficient
     active_names = [c.name for c in res.coefficients if c.std_err > 0]
     assert list(model.saveweights_.columns) == active_names
+
+
+def test_did_imputation_weights_project_out_controls_and_fixed_effects():
+    """SE weights must be orthogonal to the untreated regression design."""
+    df = pd.DataFrame(
+        {
+            "id": np.repeat(np.arange(4), 4),
+            "time": np.tile(np.arange(4), 4),
+            "first_treat": np.repeat([2.0, 3.0, np.nan, np.nan], 4),
+            "x": np.linspace(-1.5, 2.0, 16),
+            "y": np.zeros(16),
+        }
+    )
+    model = DIDImputation(
+        df,
+        y="y",
+        id="id",
+        time="time",
+        first_treat="first_treat",
+    )
+    treated = df["first_treat"].notna() & (df["time"] >= df["first_treat"])
+    control = ~treated
+    effective = treated & (df["time"] == df["first_treat"])
+
+    weights = model._compute_imputation_weights(
+        df,
+        effective,
+        control,
+        "id",
+        "time",
+        controls=["x"],
+    )
+
+    demeaned_x = df["x"] - df.loc[control, "x"].mean()
+    assert float(np.dot(weights, demeaned_x)) == pytest.approx(0.0, abs=1e-11)
+    assert weights.groupby(df["id"]).sum().abs().max() < 1e-11
+    assert weights.groupby(df["time"]).sum().abs().max() < 1e-11
 
 
 def test_did_imputation_sum_option():

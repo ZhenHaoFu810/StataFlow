@@ -22,6 +22,7 @@ result = areg(data, y="depvar", x=["x1", "x2"], absorb="firm_id")
 | `absorb` | `str` | Single categorical variable to absorb |
 | `vce` | `str` | `"ols"`, `"cluster"` |
 | `cluster` | `str` | Cluster variable (required when `vce="cluster"`) |
+| `level` | `int` | Confidence level (default 95) |
 | `missing` | `str` | `"drop"` only |
 
 ## Supported Result Fields
@@ -37,7 +38,7 @@ The wrapper layer automatically expands Stata-style factor terms in `x`:
 - `i.g1#i.g2`, `i.g1##i.g2`
 - `i.g1#c.x1`, `i.g1##c.x1`
 
-Unsupported factor syntax (`ib#.`, `o.`, `b.`, time-series operators are supported). The following remain hard-rejected with `ValueError`.
+Unsupported factor syntax (`ib#.`, `o.`, `b.` without level, time-series operators) remain hard-rejected with `ValueError`.
 
 ## Planned Parameters
 

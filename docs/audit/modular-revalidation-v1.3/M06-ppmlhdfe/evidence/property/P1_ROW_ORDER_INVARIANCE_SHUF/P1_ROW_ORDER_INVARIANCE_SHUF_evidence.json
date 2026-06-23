@@ -1,0 +1,434 @@
+{
+  "prefix": "P1_ROW_ORDER_INVARIANCE_SHUF",
+  "python": {
+    "model": {
+      "command": "ppmlhdfe",
+      "estimator_family": "ppmlhdfe",
+      "vcetype": "robust",
+      "weight_type": null,
+      "fe_vars": [],
+      "absorb_var": null,
+      "absorb_vars": [
+        "entity_id",
+        "time_id"
+      ],
+      "cluster_var": null,
+      "has_constant": true
+    },
+    "sample": {
+      "nobs": 200,
+      "n_input_rows": 200,
+      "sample_mask": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "dropped_rows_reason": null
+    },
+    "fit": {
+      "df_model": 2.0,
+      "df_resid": 169.0,
+      "df_a": 29.0,
+      "rank": 31,
+      "rss": 0.0,
+      "tss": 0.0,
+      "mss": 0.0,
+      "rmse": 0.0,
+      "r2": 0.0,
+      "r2_adj": 0.0,
+      "f_stat": null,
+      "f_pvalue": null,
+      "ll": -220.2834254185775,
+      "deviance": 197.3911778390305,
+      "pseudo_r2": 0.5065328023832512
+    },
+    "coefficients": [
+      {
+        "name": "x1",
+        "beta": 0.764336869319057,
+        "std_err": 0.09664362439884393,
+        "t_stat": 7.908818342373759,
+        "p_value": 2.6645352591003757e-15,
+        "ci_low": 0.5749188461619065,
+        "ci_high": 0.9537548924762075
+      },
+      {
+        "name": "x2",
+        "beta": -0.31389328884657036,
+        "std_err": 0.0890359918770124,
+        "t_stat": -3.525465176826006,
+        "p_value": 0.0004227397519271925,
+        "ci_low": -0.4884006262533155,
+        "ci_high": -0.13938595143982524
+      },
+      {
+        "name": "_cons",
+        "beta": 0.47000012760177023,
+        "std_err": 0.1088882401618707,
+        "t_stat": 4.316353417991503,
+        "p_value": 1.5862793382837026e-05,
+        "ci_low": 0.2565830985445558,
+        "ci_high": 0.6834171566589846
+      }
+    ],
+    "variance": {
+      "row_names": [
+        "x1",
+        "x2",
+        "_cons"
+      ],
+      "values": [
+        [
+          0.009339990136944821,
+          0.0007446341558987807,
+          -0.008018668562373658
+        ],
+        [
+          0.0007446341558987826,
+          0.007927407849523418,
+          0.0029040189465052344
+        ],
+        [
+          -0.008018668562373805,
+          0.0029040189465052257,
+          0.011856648845549229
+        ]
+      ]
+    },
+    "diagnostics": {
+      "residual_df_correction": null,
+      "cluster_count": null,
+      "warnings": []
+    },
+    "provenance": {
+      "source": "python",
+      "stata_version_target": "17",
+      "stata_command": "ppmlhdfe y x1 x2, absorb(entity_id time_id)"
+    }
+  },
+  "stata": {
+    "nobs": 200.0,
+    "df_model": 2.0,
+    "df_a": 29.0,
+    "df_resid": NaN,
+    "ll": -220.28343,
+    "deviance": 197.39118,
+    "pseudo_r2": 0.5065328,
+    "chi2": 80.406171,
+    "n_clust": NaN,
+    "coefficients": [
+      {
+        "name": "x1",
+        "beta": 0.76433687,
+        "std_err": 0.09664363,
+        "z_stat": 7.9088178910498295,
+        "p_value": 2.6645352591003757e-15
+      },
+      {
+        "name": "x2",
+        "beta": -0.31389328,
+        "std_err": 0.08903599,
+        "z_stat": -3.5254651517886195,
+        "p_value": 0.0004227397918874498
+      },
+      {
+        "name": "_cons",
+        "beta": 0.47000013,
+        "std_err": 0.10888824,
+        "z_stat": 4.3163534464327835,
+        "p_value": 1.586279134002666e-05
+      }
+    ],
+    "vce_matrix": [
+      [
+        0.00933999,
+        0.00074463,
+        -0.00801867
+      ],
+      [
+        0.00074463,
+        0.00792741,
+        0.00290402
+      ],
+      [
+        -0.00801867,
+        0.00290402,
+        0.01185665
+      ]
+    ],
+    "vce_names": [
+      "x1",
+      "x2",
+      "_cons"
+    ],
+    "predict": {},
+    "_log_path": "D:\\OneDrive - SAIF\\PhD3\\StataFlow\\stata\\output\\audit_v1_3_m06\\P1_ROW_ORDER_SHUF.log",
+    "_csv_path": "D:\\OneDrive - SAIF\\PhD3\\StataFlow\\stata\\cases\\audit_v1_3_m06\\P1_ROW_ORDER_SHUF.csv",
+    "_command": "ppmlhdfe y x1 x2, absorb(entity_id time_id) vce(robust) separation(none)",
+    "_exit_code": 0
+  },
+  "diffs": {
+    "passed": true,
+    "messages": [
+      "shuf.x1.beta: Python=0.764336869319, Stata=0.76433687, abs=6.81e-10, rel=8.91e-10 PASS",
+      "shuf.x1.std_err: Python=0.0966436243988, Stata=0.09664363, abs=5.60e-09, rel=5.80e-08 PASS",
+      "shuf.x1.t_stat: Python=7.90881834237, Stata=7.90881789105, abs=4.51e-07, rel=5.71e-08 PASS",
+      "shuf.x1.p_value: Python=2.6645352591e-15, Stata=2.6645352591e-15, abs=0.00e+00, rel=0.00e+00 PASS",
+      "shuf.x2.beta: Python=-0.313893288847, Stata=-0.31389328, abs=8.85e-09, rel=2.82e-08 PASS",
+      "shuf.x2.std_err: Python=0.089035991877, Stata=0.08903599, abs=1.88e-09, rel=2.11e-08 PASS",
+      "shuf.x2.t_stat: Python=-3.52546517683, Stata=-3.52546515179, abs=2.50e-08, rel=7.10e-09 PASS",
+      "shuf.x2.p_value: Python=0.000422739751927, Stata=0.000422739791887, abs=4.00e-11, rel=9.45e-08 PASS",
+      "shuf._cons.beta: Python=0.470000127602, Stata=0.47000013, abs=2.40e-09, rel=5.10e-09 PASS",
+      "shuf._cons.std_err: Python=0.108888240162, Stata=0.10888824, abs=1.62e-10, rel=1.49e-09 PASS",
+      "shuf._cons.t_stat: Python=4.31635341799, Stata=4.31635344643, abs=2.84e-08, rel=6.59e-09 PASS",
+      "shuf._cons.p_value: Python=1.58627933828e-05, Stata=1.586279134e-05, abs=2.04e-12, rel=1.29e-07 PASS"
+    ],
+    "field_results": {
+      "shuf.x1.beta": {
+        "passed": true,
+        "message": "shuf.x1.beta: Python=0.764336869319, Stata=0.76433687, abs=6.81e-10, rel=8.91e-10 PASS"
+      },
+      "shuf.x1.std_err": {
+        "passed": true,
+        "message": "shuf.x1.std_err: Python=0.0966436243988, Stata=0.09664363, abs=5.60e-09, rel=5.80e-08 PASS"
+      },
+      "shuf.x1.t_stat": {
+        "passed": true,
+        "message": "shuf.x1.t_stat: Python=7.90881834237, Stata=7.90881789105, abs=4.51e-07, rel=5.71e-08 PASS"
+      },
+      "shuf.x1.p_value": {
+        "passed": "True",
+        "message": "shuf.x1.p_value: Python=2.6645352591e-15, Stata=2.6645352591e-15, abs=0.00e+00, rel=0.00e+00 PASS"
+      },
+      "shuf.x2.beta": {
+        "passed": true,
+        "message": "shuf.x2.beta: Python=-0.313893288847, Stata=-0.31389328, abs=8.85e-09, rel=2.82e-08 PASS"
+      },
+      "shuf.x2.std_err": {
+        "passed": true,
+        "message": "shuf.x2.std_err: Python=0.089035991877, Stata=0.08903599, abs=1.88e-09, rel=2.11e-08 PASS"
+      },
+      "shuf.x2.t_stat": {
+        "passed": true,
+        "message": "shuf.x2.t_stat: Python=-3.52546517683, Stata=-3.52546515179, abs=2.50e-08, rel=7.10e-09 PASS"
+      },
+      "shuf.x2.p_value": {
+        "passed": "True",
+        "message": "shuf.x2.p_value: Python=0.000422739751927, Stata=0.000422739791887, abs=4.00e-11, rel=9.45e-08 PASS"
+      },
+      "shuf._cons.beta": {
+        "passed": true,
+        "message": "shuf._cons.beta: Python=0.470000127602, Stata=0.47000013, abs=2.40e-09, rel=5.10e-09 PASS"
+      },
+      "shuf._cons.std_err": {
+        "passed": true,
+        "message": "shuf._cons.std_err: Python=0.108888240162, Stata=0.10888824, abs=1.62e-10, rel=1.49e-09 PASS"
+      },
+      "shuf._cons.t_stat": {
+        "passed": true,
+        "message": "shuf._cons.t_stat: Python=4.31635341799, Stata=4.31635344643, abs=2.84e-08, rel=6.59e-09 PASS"
+      },
+      "shuf._cons.p_value": {
+        "passed": "True",
+        "message": "shuf._cons.p_value: Python=1.58627933828e-05, Stata=1.586279134e-05, abs=2.04e-12, rel=1.29e-07 PASS"
+      }
+    }
+  }
+}

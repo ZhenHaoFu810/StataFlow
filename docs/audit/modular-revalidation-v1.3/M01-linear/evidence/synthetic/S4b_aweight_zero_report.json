@@ -1,0 +1,259 @@
+{
+  "test_id": "S4b_aweight_zero",
+  "python": {
+    "nobs": 90,
+    "n_input_rows": 100,
+    "df_model": 1.0,
+    "df_resid": 88.0,
+    "r2": 0.8784332192978582,
+    "r2_adj": 0.8770517786080612,
+    "rmse": 0.678360713507336,
+    "f_stat": 635.8819642317764,
+    "f_pvalue": 0.0,
+    "rss": 40.49524667145601,
+    "tss": 333.1111216202714,
+    "mss": 292.61587494881536,
+    "cluster_count": null,
+    "coefficients": [
+      {
+        "name": "x",
+        "beta": 1.917915149095676,
+        "std_err": 0.07605734061316026,
+        "t_stat": 25.216700105917425,
+        "p_value": 0.0,
+        "ci_low": 1.7667671669491307,
+        "ci_high": 2.0690631312422214,
+        "is_omitted": false
+      },
+      {
+        "name": "_cons",
+        "beta": 1.1144379660465908,
+        "std_err": 0.0717982244289293,
+        "t_stat": 15.521803984856705,
+        "p_value": 0.0,
+        "ci_low": 0.9717540823261059,
+        "ci_high": 1.2571218497670757,
+        "is_omitted": false
+      }
+    ],
+    "vce": [
+      [
+        0.005784719061146277,
+        -0.0004926075790101129
+      ],
+      [
+        -0.000492607579010113,
+        0.0051549850311469
+      ]
+    ],
+    "vce_row_names": [
+      "x",
+      "_cons"
+    ],
+    "sample_mask": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ],
+    "warnings": [],
+    "dropped_vars": []
+  },
+  "stata": {
+    "nobs": 90.0,
+    "df_model": 1.0,
+    "df_resid": 88.0,
+    "r2": 0.87843322,
+    "r2_adj": 0.87705178,
+    "rmse": 0.67836072,
+    "f_stat": 635.88196,
+    "f_pvalue": 4.873e-42,
+    "rss": 40.495247,
+    "mss": 292.61588,
+    "tss": 333.111127,
+    "coefficients": [
+      {
+        "name": "x",
+        "beta": 1.9179152,
+        "std_err": 0.07605734
+      },
+      {
+        "name": "_cons",
+        "beta": 1.114438,
+        "std_err": 0.07179822
+      }
+    ],
+    "vce": [
+      [
+        0.00578472,
+        -0.00049261
+      ],
+      [
+        -0.00049261,
+        0.00515499
+      ]
+    ],
+    "vce_rows": 2,
+    "_do_file": "D:\\OneDrive - SAIF\\PhD3\\StataFlow\\stata\\cases\\audit_v1_3_m01\\S4b_aweight_zero.do",
+    "_log_hash": "b17af401edde36d6",
+    "_exit_code": 0
+  },
+  "comparisons": [
+    {
+      "passed": true,
+      "message": "beta[x]: Python=1.91791514909568, Stata=1.9179152, abs_diff=5.09e-08, rel_diff=2.65e-08 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "std_err[x]: Python=0.0760573406131603, Stata=0.07605734, abs_diff=6.13e-10, rel_diff=8.06e-09 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "beta[_cons]: Python=1.11443796604659, Stata=1.114438, abs_diff=3.40e-08, rel_diff=3.05e-08 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "std_err[_cons]: Python=0.0717982244289293, Stata=0.07179822, abs_diff=4.43e-09, rel_diff=6.17e-08 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "nobs: Python=90, Stata=90, abs_diff=0.00e+00, rel_diff=0.00e+00 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "df_model: Python=1, Stata=1, abs_diff=0.00e+00, rel_diff=0.00e+00 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "df_resid: Python=88, Stata=88, abs_diff=0.00e+00, rel_diff=0.00e+00 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "r2: Python=0.878433219297858, Stata=0.87843322, abs_diff=7.02e-10, rel_diff=7.99e-10 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "r2_adj: Python=0.877051778608061, Stata=0.87705178, abs_diff=1.39e-09, rel_diff=1.59e-09 -> PASS"
+    },
+    {
+      "passed": "True",
+      "message": "rmse: Python=0.678360713507336, Stata=0.67836072, abs_diff=6.49e-09, rel_diff=9.57e-09 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "f_stat: Python=635.881964231776, Stata=635.88196, abs_diff=4.23e-06, rel_diff=6.65e-09 -> PASS"
+    },
+    {
+      "passed": "True",
+      "message": "f_pvalue: Python=0, Stata=4.873e-42, abs_diff=4.87e-42, rel_diff=4.87e-27 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "rss: Python=40.495246671456, Stata=40.495247, abs_diff=3.29e-07, rel_diff=8.11e-09 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "tss: Python=333.111121620271, Stata=333.111127, abs_diff=5.38e-06, rel_diff=1.61e-08 -> PASS"
+    },
+    {
+      "passed": "True",
+      "message": "VCE(non-omitted) max_abs_diff=4.97e-09, max_rel_diff=4.91e-06 -> PASS"
+    }
+  ]
+}

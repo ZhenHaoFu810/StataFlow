@@ -1,0 +1,20 @@
+{
+  "test_id": "P1_entity_label_invariance",
+  "python": {
+    "base": {
+      "x": 2.0319368337904793,
+      "_cons": 0.998736341399197
+    },
+    "renamed": {
+      "x": 2.0319368337904793,
+      "_cons": 0.998736341399197
+    }
+  },
+  "stata": {},
+  "comparisons": [
+    {
+      "passed": true,
+      "message": "coefficients invariant under entity relabeling"
+    }
+  ]
+}

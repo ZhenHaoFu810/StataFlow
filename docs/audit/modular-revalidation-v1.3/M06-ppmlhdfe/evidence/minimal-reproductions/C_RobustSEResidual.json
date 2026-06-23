@@ -1,0 +1,6 @@
+{
+  "finding": "C_RobustSEResidual",
+  "max_relative_se_diff": 3.773689967968037e-08,
+  "max_diff_coef": "_cons",
+  "note": "Residual robust SE differences are typically < 1e-5 on clean designs but can exceed tolerance when FE and cluster interact."
+}

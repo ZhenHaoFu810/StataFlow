@@ -13,7 +13,7 @@ The project provides two APIs:
 - **Stata-compatible command layer** (`compat.stata`): `regress()`, `xtreg_fe()`, `areg()`, `reghdfe()`, `ivregress_2sls()`, `ivreghdfe()`, `logit()`, `probit()`, `poisson()`, `ppmlhdfe()`, `did_imputation()`, `eventstudyinteract()`, `csdid()`, `rdrobust()`.
 
 **Default ground truth:** Stata 17.
-**Current version:** 0.1.5.
+**Current version:** 1.1.0.
 **License:** MIT.
 
 ---
@@ -40,8 +40,10 @@ pip install -e ".[dev]"
 
 ### Run unit and integration tests (fast, no Stata required)
 ```bash
-pytest tests/ -v --ignore=tests/golden/
+pytest tests/ -v --ignore=tests/golden/ --ignore=tests/audit_v1_3
 ```
+
+`tests/audit_v1_3/` contains internal dual-run audits with documented known findings and is excluded from CI gate checks.
 
 ### Run golden dual-run tests (requires Stata 17)
 ```bash
@@ -262,4 +264,4 @@ When completing a task, update `workspace/current-task/REPORT.md` with: modified
 
 ---
 
-*Last updated: 2026-04-28*
+*Last updated: 2026-06-23*

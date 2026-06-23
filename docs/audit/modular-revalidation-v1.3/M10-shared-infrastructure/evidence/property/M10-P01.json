@@ -1,0 +1,9 @@
+{
+  "test_id": "M10-P01",
+  "timestamp": "2026-06-14T07:36:40.332893+00:00",
+  "property": "row order invariance",
+  "data_hash_base": "c80c3e582a01a35c5ebde46ab068018458678e11732854f5352e9fd30850de4a",
+  "data_hash_shuffled": "eee60330e15eacf582962551ffb394e5db39ee5b8c375454454fac122fabda59",
+  "max_abs_diff_beta": 1.8207657603852567e-14,
+  "max_abs_diff_vce": 5.861977570020827e-14
+}

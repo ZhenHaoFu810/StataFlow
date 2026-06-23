@@ -1,7 +1,7 @@
-# Open-Source Stable Status
+# Open-Source Status
 
 **Version:** 1.1.0 (Stable)
-**Last updated:** 2026-06-04
+**Last updated:** 2026-06-23
 
 ---
 
@@ -57,7 +57,7 @@ Specifically:
 - **Two-way clustering** is supported on `regress`, `reghdfe`, `ivreghdfe`, and `ppmlhdfe`. Three-way and higher multi-way clustering is not yet supported.
 - **`aweight` only.** `fweight`, `pweight`, `iweight` are not yet supported.
 - **Post-estimation on wrappers.** The `compat.stata` wrapper layer returns `ResultSchema` objects and does not expose `.predict()` / `.margins()` directly. Use the core estimator layer for post-estimation.
-- **CI/CD pipeline** is configured via GitHub Actions (`.github/workflows/ci.yml`) and runs on Python 3.10, 3.11, and 3.12.
+- **CI/CD pipeline** is configured via GitHub Actions (`.github/workflows/ci.yml`) and runs on Python 3.10, 3.11, and 3.12. It installs `[dev]` dependencies, runs `ruff` syntax/Pyflakes checks, `mypy` baseline type checking, non-golden pytest with coverage, example smoke tests, and verifies a clean wheel install.
 
 ---
 
@@ -68,7 +68,7 @@ Every public command is validated with two lines of evidence:
 1. **Synthetic / controlled cases** — formula, degrees of freedom, sample screening, edge cases.
 2. **Real public datasets** — field-level comparison against Stata 17 on openly available data.
 
-Current non-golden test status: **301 passed, 0 failed** (as of 2026-06-04).
+Current non-golden test status: **392 passed, 0 failed** (as of 2026-06-23). Internal audit directory `tests/audit_v1_3/` is excluded from CI gates because it documents known findings.
 
 Golden dual-run test status: **606+ passed** against Stata 17 (requires local Stata 17; real-data tests skip gracefully when external datasets are unavailable).
 
@@ -87,6 +87,7 @@ Public validation evidence:
 - DID `allhorizons`, `csdid notyet`, and unbalanced-panel NaN fixes.
 - 2-way cluster rank-deficiency detection with documented PSD fallback.
 - `reghdfe` advanced tuple/list `absorb` API and `aweight` array/Series support.
+- Open-source release hygiene: version sync, LF normalization, Chinese doc cleanup, `USER_GUIDE` field alignment, `StataRunner` `shell=True` removal, `scikit-learn` dependency and warning cleanup, public-sync whitelist.
 
 ## Roadmap
 

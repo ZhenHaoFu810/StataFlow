@@ -1,0 +1,97 @@
+{
+  "prefix": "R01",
+  "python": {
+    "data_hash": "1d91fbddb7dfd59d",
+    "nobs": 1108,
+    "xb_mean": 53.64868815883402,
+    "xb_sd": 13.957119034337335,
+    "resid_mean": 5.130272460361734e-16,
+    "resid_sd": 11.555877518427527,
+    "summary": {
+      "vote": {
+        "N": 1108.0,
+        "mean": 53.648685455322266,
+        "sd": 18.120140075683594,
+        "min": 0.0,
+        "max": 100.0
+      },
+      "margin": {
+        "N": 1108.0,
+        "mean": 9.917292594909668,
+        "sd": 34.78733825683594,
+        "min": -100.0,
+        "max": 100.0
+      }
+    }
+  },
+  "stata": {
+    "log_path": "D:\\OneDrive - SAIF\\PhD3\\StataFlow\\stata\\output\\audit_v1_3_m09\\R01.log",
+    "P_XB_MEAN": 53.648688,
+    "P_XB_SD": 13.957119,
+    "P_RESID_MEAN": 1.001e-09,
+    "P_RESID_SD": 11.555878,
+    "SUM_vote_N": 1108.0,
+    "SUM_vote_MEAN": 53.648688,
+    "SUM_vote_SD": 18.12014,
+    "SUM_margin_N": 1108.0,
+    "SUM_margin_MEAN": 9.917294,
+    "SUM_margin_SD": 34.78734
+  },
+  "diffs": {
+    "passed": true,
+    "messages": [
+      "xb.mean: Python=53.6486881588, Stata=53.648688, abs=1.59e-07, rel=2.96e-09 PASS",
+      "xb.sd: Python=13.9571190343, Stata=13.957119, abs=3.43e-08, rel=2.46e-09 PASS",
+      "resid.mean: Python=5.13027246036e-16, Stata=1.001e-09, abs=1.00e-09, rel=1.00e+00 PASS",
+      "resid.sd: Python=11.5558775184, Stata=11.555878, abs=4.82e-07, rel=4.17e-08 PASS",
+      "sum.vote_N: Python=1108, Stata=1108, abs=0.00e+00, rel=0.00e+00 PASS",
+      "sum.vote_mean: Python=53.6486854553, Stata=53.648688, abs=2.54e-06, rel=4.74e-08 PASS",
+      "sum.vote_sd: Python=18.1201400757, Stata=18.12014, abs=7.57e-08, rel=4.18e-09 PASS",
+      "sum.margin_N: Python=1108, Stata=1108, abs=0.00e+00, rel=0.00e+00 PASS",
+      "sum.margin_mean: Python=9.91729259491, Stata=9.917294, abs=1.41e-06, rel=1.42e-07 PASS",
+      "sum.margin_sd: Python=34.7873382568, Stata=34.78734, abs=1.74e-06, rel=5.01e-08 PASS"
+    ],
+    "field_results": {
+      "xb.mean": {
+        "passed": true,
+        "message": "xb.mean: Python=53.6486881588, Stata=53.648688, abs=1.59e-07, rel=2.96e-09 PASS"
+      },
+      "xb.sd": {
+        "passed": true,
+        "message": "xb.sd: Python=13.9571190343, Stata=13.957119, abs=3.43e-08, rel=2.46e-09 PASS"
+      },
+      "resid.mean": {
+        "passed": true,
+        "message": "resid.mean: Python=5.13027246036e-16, Stata=1.001e-09, abs=1.00e-09, rel=1.00e+00 PASS"
+      },
+      "resid.sd": {
+        "passed": true,
+        "message": "resid.sd: Python=11.5558775184, Stata=11.555878, abs=4.82e-07, rel=4.17e-08 PASS"
+      },
+      "sum.vote_N": {
+        "passed": true,
+        "message": "sum.vote_N: Python=1108, Stata=1108, abs=0.00e+00, rel=0.00e+00 PASS"
+      },
+      "sum.vote_mean": {
+        "passed": true,
+        "message": "sum.vote_mean: Python=53.6486854553, Stata=53.648688, abs=2.54e-06, rel=4.74e-08 PASS"
+      },
+      "sum.vote_sd": {
+        "passed": true,
+        "message": "sum.vote_sd: Python=18.1201400757, Stata=18.12014, abs=7.57e-08, rel=4.18e-09 PASS"
+      },
+      "sum.margin_N": {
+        "passed": true,
+        "message": "sum.margin_N: Python=1108, Stata=1108, abs=0.00e+00, rel=0.00e+00 PASS"
+      },
+      "sum.margin_mean": {
+        "passed": true,
+        "message": "sum.margin_mean: Python=9.91729259491, Stata=9.917294, abs=1.41e-06, rel=1.42e-07 PASS"
+      },
+      "sum.margin_sd": {
+        "passed": true,
+        "message": "sum.margin_sd: Python=34.7873382568, Stata=34.78734, abs=1.74e-06, rel=5.01e-08 PASS"
+      }
+    }
+  }
+}

@@ -1,0 +1,95 @@
+{
+  "test_id": "MR03_disconnected_graph",
+  "python": {
+    "nobs": 8,
+    "n_input_rows": 8,
+    "df_model": 1.0,
+    "df_resid": 0.0,
+    "r2": 1.0,
+    "r2_adj": null,
+    "rmse": 0.0,
+    "f_stat": null,
+    "f_pvalue": null,
+    "rss": 2.7078767611078975e-29,
+    "tss": 20.77580859312212,
+    "mss": null,
+    "cluster_count": null,
+    "coefficients": [
+      {
+        "name": "x",
+        "beta": 4.290416834994409,
+        "std_err": 0.0,
+        "t_stat": Infinity,
+        "p_value": NaN,
+        "ci_low": NaN,
+        "ci_high": NaN
+      },
+      {
+        "name": "_cons",
+        "beta": 0.1024756683669299,
+        "std_err": 0.0,
+        "t_stat": Infinity,
+        "p_value": NaN,
+        "ci_low": NaN,
+        "ci_high": NaN
+      }
+    ],
+    "vce": [
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ]
+    ],
+    "vce_row_names": [
+      "x",
+      "_cons"
+    ],
+    "sample_mask": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ],
+    "warnings": [],
+    "df_a": 7.0,
+    "num_singletons": 0,
+    "dropped_vars": []
+  },
+  "stata": {
+    "nobs": 8.0,
+    "df_model": 1.0,
+    "df_resid": 0.0,
+    "r2": 1.0,
+    "rmse": 2.033e-15,
+    "df_a": 7.0,
+    "coefficients": [
+      {
+        "name": "x",
+        "beta": 4.2904162,
+        "std_err": 0.0
+      },
+      {
+        "name": "_cons",
+        "beta": 0.10247587,
+        "std_err": 0.0
+      }
+    ],
+    "_do_file": "D:\\OneDrive - SAIF\\PhD3\\StataFlow\\stata\\cases\\audit_v1_3_m03\\MR03_disconnected_graph.do",
+    "_log_hash": "9ee7c978bd79df4f",
+    "_exit_code": 0
+  },
+  "comparisons": [
+    {
+      "passed": false,
+      "message": "Stata df_r=0.0 r2_adj=None; Python df_r=0.0 r2_adj=None"
+    }
+  ]
+}

@@ -1,0 +1,68 @@
+{
+  "test_id": "M10-S03",
+  "timestamp": "2026-06-14T07:36:33.389142+00:00",
+  "data_hash": "5ab8b89c28d67347b62ab7a2384ed3cd7d654fee37c9f0285b104c81665c3452",
+  "stata_command": "regress y x, cluster(cid)",
+  "python_call": "regress(df, 'y', ['x'], vce='cluster', cluster='cid')",
+  "stata_scalars": {
+    "nobs": 80.0,
+    "df_model": 1.0,
+    "df_resid": 10.0,
+    "r2": 0.1088757,
+    "r2_adj": 0.09745103,
+    "rmse": 8.4299854,
+    "f_stat": 21.140441,
+    "n_clust": 11.0,
+    "mss": 677.23737,
+    "rss": 5543.043
+  },
+  "python_scalars": {
+    "nobs": 80,
+    "n_input_rows": 80,
+    "df_model": 1.0,
+    "df_resid": 10.0,
+    "df_a": null,
+    "r2": 0.10887569777144013,
+    "r2_adj": 0.09745102723004828,
+    "rmse": 8.429985409439466,
+    "f_stat": 21.140440945442474,
+    "f_pvalue": 0.0009833166721281428,
+    "rss": 5543.043012262257,
+    "tss": 6220.280378842761,
+    "mss": 677.2373665805035,
+    "n_clust": 11,
+    "active_coef_names": [
+      "x",
+      "_cons"
+    ]
+  },
+  "scalars_comparison": {
+    "passed": true,
+    "messages": [
+      "nobs: Python=80, Stata=80.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "df_model: Python=1.0, Stata=1.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "df_resid: Python=10.0, Stata=10.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "n_clust: Python=11, Stata=11.0, abs=0.00e+00, rel=0.00e+00 PASS"
+    ]
+  },
+  "coefficients_comparison": {
+    "passed": true,
+    "messages": [
+      "coef_names/order: Python(active)=['x', '_cons'], Stata=['x', '_cons'] PASS",
+      "x.beta: Python=3.1263753284189577, Stata=3.1263753, abs=2.84e-08, rel=9.09e-09 PASS",
+      "x.std_err: Python=0.6799611411442956, Stata=0.67996114, abs=1.14e-09, rel=1.68e-09 PASS",
+      "_cons.beta: Python=-6.763307010630608, Stata=-6.763307, abs=1.06e-08, rel=1.57e-09 PASS",
+      "_cons.std_err: Python=3.1528777451466126, Stata=3.1528777, abs=4.51e-08, rel=1.43e-08 PASS"
+    ]
+  },
+  "vce_comparison": {
+    "passed": true,
+    "messages": [
+      "VCE[x,x]: Python=0.46234715346625277, Stata=0.46234715, abs=3.47e-09, rel=7.50e-09 PASS",
+      "VCE[x,_cons]: Python=-0.9795373881429974, Stata=-0.97953739, abs=1.86e-09, rel=1.90e-09 PASS",
+      "VCE[_cons,x]: Python=-0.9795373881429977, Stata=-0.97953739, abs=1.86e-09, rel=1.90e-09 PASS",
+      "VCE[_cons,_cons]: Python=9.940638075840788, Stata=9.9406381, abs=2.42e-08, rel=2.43e-09 PASS"
+    ]
+  },
+  "sample_mask_equal": null
+}

@@ -1,0 +1,426 @@
+{
+  "prefix": "P3_SCALE_TRANSFORMATION_ORIG",
+  "python": {
+    "model": {
+      "command": "ppmlhdfe",
+      "estimator_family": "ppmlhdfe",
+      "vcetype": "robust",
+      "weight_type": null,
+      "fe_vars": [],
+      "absorb_var": null,
+      "absorb_vars": [
+        "entity_id",
+        "time_id"
+      ],
+      "cluster_var": null,
+      "has_constant": true
+    },
+    "sample": {
+      "nobs": 190,
+      "n_input_rows": 190,
+      "sample_mask": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "dropped_rows_reason": null
+    },
+    "fit": {
+      "df_model": 2.0,
+      "df_resid": 160.0,
+      "df_a": 28.0,
+      "rank": 30,
+      "rss": 0.0,
+      "tss": 0.0,
+      "mss": 0.0,
+      "rmse": 0.0,
+      "r2": 0.0,
+      "r2_adj": 0.0,
+      "f_stat": null,
+      "f_pvalue": null,
+      "ll": -225.47986580442333,
+      "deviance": 199.4654597124086,
+      "pseudo_r2": 0.6050459433086401
+    },
+    "coefficients": [
+      {
+        "name": "x1",
+        "beta": 0.6060509381141014,
+        "std_err": 0.06349869460101978,
+        "t_stat": 9.5443054683579,
+        "p_value": 0.0,
+        "ci_low": 0.48159578363079464,
+        "ci_high": 0.7305060925974082
+      },
+      {
+        "name": "x2",
+        "beta": -0.4759523275649412,
+        "std_err": 0.06673855472390305,
+        "t_stat": -7.131594766083155,
+        "p_value": 9.920952948050399e-13,
+        "ci_low": -0.6067574912040467,
+        "ci_high": -0.3451471639258358
+      },
+      {
+        "name": "_cons",
+        "beta": 1.0401304375331357,
+        "std_err": 0.07266831212491065,
+        "t_stat": 14.31339750598913,
+        "p_value": 0.0,
+        "ci_low": 0.8977031629509955,
+        "ci_high": 1.182557712115276
+      }
+    ],
+    "variance": {
+      "row_names": [
+        "x1",
+        "x2",
+        "_cons"
+      ],
+      "values": [
+        [
+          0.00403208421603358,
+          4.0325094185397916e-05,
+          -0.0028345937445530445
+        ],
+        [
+          4.032509418540018e-05,
+          0.004454034686635403,
+          0.000604799021262916
+        ],
+        [
+          -0.0028345937445530584,
+          0.0006047990212629144,
+          0.005280683587083437
+        ]
+      ]
+    },
+    "diagnostics": {
+      "residual_df_correction": null,
+      "cluster_count": null,
+      "warnings": [
+        "Separation observations dropped: 10"
+      ]
+    },
+    "provenance": {
+      "source": "python",
+      "stata_version_target": "17",
+      "stata_command": "ppmlhdfe y x1 x2, absorb(entity_id time_id)"
+    }
+  },
+  "stata": {
+    "nobs": 190.0,
+    "df_model": 2.0,
+    "df_a": 28.0,
+    "df_resid": NaN,
+    "ll": -225.47987,
+    "deviance": 199.46546,
+    "pseudo_r2": 0.60504594,
+    "chi2": 143.26175,
+    "n_clust": NaN,
+    "coefficients": [
+      {
+        "name": "x1",
+        "beta": 0.60605094,
+        "std_err": 0.0634987,
+        "z_stat": 9.544304686552637,
+        "p_value": 0.0
+      },
+      {
+        "name": "x2",
+        "beta": -0.47595233,
+        "std_err": 0.06673856,
+        "z_stat": -7.131594238772907,
+        "p_value": 9.920952948050399e-13
+      },
+      {
+        "name": "_cons",
+        "beta": 1.0401304,
+        "std_err": 0.07266831,
+        "z_stat": 14.313397408031094,
+        "p_value": 0.0
+      }
+    ],
+    "vce_matrix": [
+      [
+        0.00403208,
+        4.033e-05,
+        -0.00283459
+      ],
+      [
+        4.033e-05,
+        0.00445403,
+        0.0006048
+      ],
+      [
+        -0.00283459,
+        0.0006048,
+        0.00528068
+      ]
+    ],
+    "vce_names": [
+      "x1",
+      "x2",
+      "_cons"
+    ],
+    "predict": {},
+    "_log_path": "D:\\OneDrive - SAIF\\PhD3\\StataFlow\\stata\\output\\audit_v1_3_m06\\P3_SCALE_ORIG.log",
+    "_csv_path": "D:\\OneDrive - SAIF\\PhD3\\StataFlow\\stata\\cases\\audit_v1_3_m06\\P3_SCALE_ORIG.csv",
+    "_command": "ppmlhdfe y x1 x2, absorb(entity_id time_id) vce(robust)",
+    "_exit_code": 0
+  },
+  "diffs": {
+    "passed": true,
+    "messages": [
+      "orig.x1.beta: Python=0.606050938114, Stata=0.60605094, abs=1.89e-09, rel=3.11e-09 PASS",
+      "orig.x1.std_err: Python=0.063498694601, Stata=0.0634987, abs=5.40e-09, rel=8.50e-08 PASS",
+      "orig.x1.t_stat: Python=9.54430546836, Stata=9.54430468655, abs=7.82e-07, rel=8.19e-08 PASS",
+      "orig.x1.p_value: Python=0, Stata=0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "orig.x2.beta: Python=-0.475952327565, Stata=-0.47595233, abs=2.44e-09, rel=5.12e-09 PASS",
+      "orig.x2.std_err: Python=0.0667385547239, Stata=0.06673856, abs=5.28e-09, rel=7.91e-08 PASS",
+      "orig.x2.t_stat: Python=-7.13159476608, Stata=-7.13159423877, abs=5.27e-07, rel=7.39e-08 PASS",
+      "orig.x2.p_value: Python=9.92095294805e-13, Stata=9.92095294805e-13, abs=0.00e+00, rel=0.00e+00 PASS",
+      "orig._cons.beta: Python=1.04013043753, Stata=1.0401304, abs=3.75e-08, rel=3.61e-08 PASS",
+      "orig._cons.std_err: Python=0.0726683121249, Stata=0.07266831, abs=2.12e-09, rel=2.92e-08 PASS",
+      "orig._cons.t_stat: Python=14.313397506, Stata=14.313397408, abs=9.80e-08, rel=6.84e-09 PASS",
+      "orig._cons.p_value: Python=0, Stata=0, abs=0.00e+00, rel=0.00e+00 PASS"
+    ],
+    "field_results": {
+      "orig.x1.beta": {
+        "passed": true,
+        "message": "orig.x1.beta: Python=0.606050938114, Stata=0.60605094, abs=1.89e-09, rel=3.11e-09 PASS"
+      },
+      "orig.x1.std_err": {
+        "passed": true,
+        "message": "orig.x1.std_err: Python=0.063498694601, Stata=0.0634987, abs=5.40e-09, rel=8.50e-08 PASS"
+      },
+      "orig.x1.t_stat": {
+        "passed": true,
+        "message": "orig.x1.t_stat: Python=9.54430546836, Stata=9.54430468655, abs=7.82e-07, rel=8.19e-08 PASS"
+      },
+      "orig.x1.p_value": {
+        "passed": "True",
+        "message": "orig.x1.p_value: Python=0, Stata=0, abs=0.00e+00, rel=0.00e+00 PASS"
+      },
+      "orig.x2.beta": {
+        "passed": true,
+        "message": "orig.x2.beta: Python=-0.475952327565, Stata=-0.47595233, abs=2.44e-09, rel=5.12e-09 PASS"
+      },
+      "orig.x2.std_err": {
+        "passed": true,
+        "message": "orig.x2.std_err: Python=0.0667385547239, Stata=0.06673856, abs=5.28e-09, rel=7.91e-08 PASS"
+      },
+      "orig.x2.t_stat": {
+        "passed": true,
+        "message": "orig.x2.t_stat: Python=-7.13159476608, Stata=-7.13159423877, abs=5.27e-07, rel=7.39e-08 PASS"
+      },
+      "orig.x2.p_value": {
+        "passed": "True",
+        "message": "orig.x2.p_value: Python=9.92095294805e-13, Stata=9.92095294805e-13, abs=0.00e+00, rel=0.00e+00 PASS"
+      },
+      "orig._cons.beta": {
+        "passed": true,
+        "message": "orig._cons.beta: Python=1.04013043753, Stata=1.0401304, abs=3.75e-08, rel=3.61e-08 PASS"
+      },
+      "orig._cons.std_err": {
+        "passed": true,
+        "message": "orig._cons.std_err: Python=0.0726683121249, Stata=0.07266831, abs=2.12e-09, rel=2.92e-08 PASS"
+      },
+      "orig._cons.t_stat": {
+        "passed": true,
+        "message": "orig._cons.t_stat: Python=14.313397506, Stata=14.313397408, abs=9.80e-08, rel=6.84e-09 PASS"
+      },
+      "orig._cons.p_value": {
+        "passed": "True",
+        "message": "orig._cons.p_value: Python=0, Stata=0, abs=0.00e+00, rel=0.00e+00 PASS"
+      }
+    }
+  }
+}

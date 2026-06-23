@@ -1,0 +1,949 @@
+{
+  "prefix": "R2_EZUNEM_CSDID_NOTYET",
+  "python": {
+    "model": {
+      "command": "csdid",
+      "estimator_family": "csdid",
+      "vcetype": "cluster",
+      "weight_type": null,
+      "fe_vars": [],
+      "absorb_var": null,
+      "absorb_vars": [],
+      "cluster_var": "city",
+      "has_constant": true
+    },
+    "sample": {
+      "nobs": 198,
+      "n_input_rows": 198,
+      "sample_mask": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "dropped_rows_reason": null
+    },
+    "fit": {
+      "df_model": 11.0,
+      "df_resid": 21.0,
+      "df_a": null,
+      "rank": 0,
+      "rss": 0.0,
+      "tss": 0.0,
+      "mss": 0.0,
+      "rmse": 0.0,
+      "r2": 0.0,
+      "r2_adj": 0.0,
+      "f_stat": null,
+      "f_pvalue": null,
+      "ll": null,
+      "deviance": null,
+      "pseudo_r2": null
+    },
+    "coefficients": [
+      {
+        "name": "Pre_avg",
+        "beta": 3165.482291666666,
+        "std_err": 5921.608366196121,
+        "t_stat": 0.5345646141911415,
+        "p_value": 0.5929509580986123,
+        "ci_low": -8440.870106077731,
+        "ci_high": 14771.834689411062
+      },
+      {
+        "name": "Post_avg",
+        "beta": -9375.683333333334,
+        "std_err": 18480.525952392825,
+        "t_stat": -0.5073277328516393,
+        "p_value": 0.6119248828369102,
+        "ci_low": -45597.51420002327,
+        "ci_high": 26846.147533356605
+      },
+      {
+        "name": "Tm4",
+        "beta": -1978.2499999999993,
+        "std_err": 15364.832190583524,
+        "t_stat": -0.1287518129363227,
+        "p_value": 0.8975540357688716,
+        "ci_low": -32093.321093543706,
+        "ci_high": 28136.821093543706
+      },
+      {
+        "name": "Tm3",
+        "beta": -7186.079166666671,
+        "std_err": 11816.706725446285,
+        "t_stat": -0.6081287564827224,
+        "p_value": 0.5431020812144858,
+        "ci_low": -30346.824348541388,
+        "ci_high": 15974.666015208048
+      },
+      {
+        "name": "Tm2",
+        "beta": 8935.591666666674,
+        "std_err": 15992.889334057385,
+        "t_stat": 0.5587227848590209,
+        "p_value": 0.5763509267761484,
+        "ci_low": -22410.4714280858,
+        "ci_high": 40281.65476141915
+      },
+      {
+        "name": "Tm1",
+        "beta": 12890.666666666664,
+        "std_err": 13976.43520802581,
+        "t_stat": 0.9223143437365448,
+        "p_value": 0.3563646343022655,
+        "ci_low": -14503.146341063923,
+        "ci_high": 40284.479674397255
+      },
+      {
+        "name": "Tp0",
+        "beta": -13763.699999999995,
+        "std_err": 12127.134488291007,
+        "t_stat": -1.1349507184313925,
+        "p_value": 0.2563959675296097,
+        "ci_low": -37532.88359705037,
+        "ci_high": 10005.48359705038
+      },
+      {
+        "name": "Tp1",
+        "beta": -9638.749999999998,
+        "std_err": 14276.588518583781,
+        "t_stat": -0.6751437843468888,
+        "p_value": 0.4995844182393774,
+        "ci_low": -37620.86349642421,
+        "ci_high": 18343.363496424216
+      },
+      {
+        "name": "Tp2",
+        "beta": -16527.483333333337,
+        "std_err": 17083.373049956404,
+        "t_stat": -0.967460189799901,
+        "p_value": 0.33331403335926546,
+        "ci_low": -50010.89451124789,
+        "ci_high": 16955.927844581216
+      },
+      {
+        "name": "Tp3",
+        "beta": -7509.566666666671,
+        "std_err": 19788.624124558886,
+        "t_stat": -0.3794890751068864,
+        "p_value": 0.7043247154671173,
+        "ci_low": -46295.26995080209,
+        "ci_high": 31276.136617468743
+      },
+      {
+        "name": "Tp4",
+        "beta": 561.0833333333316,
+        "std_err": 31139.14811950092,
+        "t_stat": 0.01801858326952601,
+        "p_value": 0.9856240285121165,
+        "ci_low": -60471.64698088847,
+        "ci_high": 61593.81364755513
+      }
+    ],
+    "variance": {
+      "row_names": [
+        "Pre_avg",
+        "Post_avg",
+        "Tm4",
+        "Tm3",
+        "Tm2",
+        "Tm1",
+        "Tp0",
+        "Tp1",
+        "Tp2",
+        "Tp3",
+        "Tp4"
+      ],
+      "values": [
+        [
+          35065445.642603904,
+          -16478991.593290444,
+          64085264.27795139,
+          22553169.751549244,
+          38612356.576269716,
+          15010991.964645252,
+          -22780683.969154086,
+          -14141655.222745217,
+          -17165346.780763157,
+          -5380881.96527416,
+          -22926390.028515615
+        ],
+        [
+          -16478991.593290444,
+          341529839.4770648,
+          59657336.98076388,
+          -84468342.18906319,
+          -214660152.67624095,
+          173555191.5113784,
+          209616473.54856107,
+          260281894.89820823,
+          311946943.942261,
+          355643241.4278444,
+          570160643.5684489
+        ],
+        [
+          64085264.27795139,
+          59657336.98076388,
+          236078068.24479163,
+          -18076407.10512151,
+          3944366.302777791,
+          34395029.66935763,
+          3857312.3472222197,
+          41979242.801041655,
+          45928073.679513894,
+          74791259.53263886,
+          131730796.54340276
+        ],
+        [
+          22553169.751549244,
+          -84468342.18906319,
+          -18076407.10512151,
+          139634557.8352075,
+          16539440.980962822,
+          -47884912.70485183,
+          -37835930.523414925,
+          -57453442.58344617,
+          -86600964.62248552,
+          -86710420.1605006,
+          -153740953.05546877
+        ],
+        [
+          38612356.576269716,
+          -214660152.67624095,
+          3944366.302777791,
+          16539440.980962822,
+          255772509.25140652,
+          -121806890.23006827,
+          -164017718.0200139,
+          -167182195.00328118,
+          -186009689.47269323,
+          -192236852.92653584,
+          -363854307.95868045
+        ],
+        [
+          15010991.964645252,
+          173555191.5113784,
+          34395029.66935763,
+          -47884912.70485183,
+          -121806890.23006827,
+          195340741.12414342,
+          106873600.31959026,
+          126089773.89470479,
+          158021193.2926122,
+          182632485.69330087,
+          294158904.3566839
+        ],
+        [
+          -22780683.969154086,
+          209616473.54856107,
+          3857312.3472222197,
+          -37835930.523414925,
+          -164017718.0200139,
+          106873600.31959026,
+          147067390.89709723,
+          160779722.14986107,
+          189039786.36393046,
+          206914002.22497222,
+          344281466.1069444
+        ],
+        [
+          -14141655.222745217,
+          260281894.89820823,
+          41979242.801041655,
+          -57453442.58344617,
+          -167182195.00328118,
+          126089773.89470479,
+          160779722.14986107,
+          203820979.72895825,
+          237906751.79798606,
+          266575945.54930544,
+          432326075.2649305
+        ],
+        [
+          -17165346.780763157,
+          311946943.942261,
+          45928073.679513894,
+          -86600964.62248552,
+          -186009689.47269323,
+          158021193.2926122,
+          189039786.36393046,
+          237906751.79798606,
+          291841634.7639768,
+          324767015.2725648,
+          516179531.51284707
+        ],
+        [
+          -5380881.96527416,
+          355643241.4278444,
+          74791259.53263886,
+          -86710420.1605006,
+          -192236852.92653584,
+          182632485.69330087,
+          206914002.22497222,
+          266575945.54930544,
+          324767015.2725648,
+          391589644.74307394,
+          588369599.3493055
+        ],
+        [
+          -22926390.028515615,
+          570160643.5684489,
+          131730796.54340276,
+          -153740953.05546877,
+          -363854307.95868045,
+          294158904.3566839,
+          344281466.1069444,
+          432326075.2649305,
+          516179531.51284707,
+          588369599.3493055,
+          969646545.6082175
+        ]
+      ]
+    },
+    "diagnostics": {
+      "residual_df_correction": null,
+      "cluster_count": 22,
+      "warnings": []
+    },
+    "provenance": {
+      "source": "python",
+      "stata_version_target": null,
+      "stata_command": "csdid y, ivar(id) time(time) gvar(first_treat) method(reg)"
+    }
+  },
+  "stata": {
+    "nobs": 198.0,
+    "n_clust": NaN,
+    "coefficients": [
+      {
+        "name": "t_1980_1981",
+        "beta": 6459.312,
+        "std_err": 15649.77,
+        "z_stat": 0.41274165690613984,
+        "p_value": 0.6797959010452794
+      },
+      {
+        "name": "t_1981_1982",
+        "beta": 15000.87,
+        "std_err": 26579.64,
+        "z_stat": 0.5643744610536486,
+        "p_value": 0.5724993158585368
+      },
+      {
+        "name": "t_1982_1983",
+        "beta": -3662.667,
+        "std_err": 14946.37,
+        "z_stat": -0.24505394955430648,
+        "p_value": 0.8064146588280308
+      },
+      {
+        "name": "t_1983_1984",
+        "beta": -15633.83,
+        "std_err": 19131.65,
+        "z_stat": -0.8171710228861597,
+        "p_value": 0.41383069969933084
+      },
+      {
+        "name": "t_1983_1985",
+        "beta": -5214.25,
+        "std_err": 21853.07,
+        "z_stat": -0.23860491912577958,
+        "p_value": 0.811411950382076
+      },
+      {
+        "name": "t_1983_1986",
+        "beta": -13205.92,
+        "std_err": 25225.9,
+        "z_stat": -0.5235063962039015,
+        "p_value": 0.6006219011121905
+      },
+      {
+        "name": "t_1983_1987",
+        "beta": -2426.667,
+        "std_err": 26767.81,
+        "z_stat": -0.0906561649981825,
+        "p_value": 0.9277658024067585
+      },
+      {
+        "name": "t_1983_1988",
+        "beta": 561.0833,
+        "std_err": 31139.15,
+        "z_stat": 0.018018581110916643,
+        "p_value": 0.9856240302341579
+      },
+      {
+        "name": "t_1980_1981",
+        "beta": -1978.25,
+        "std_err": 15364.83,
+        "z_stat": -0.1287518312926339,
+        "p_value": 0.897554021243548
+      },
+      {
+        "name": "t_1981_1982",
+        "beta": -27654.17,
+        "std_err": 20029.63,
+        "z_stat": -1.3806630476948398,
+        "p_value": 0.167382588102442
+      },
+      {
+        "name": "t_1982_1983",
+        "beta": -162.3333,
+        "std_err": 14065.7,
+        "z_stat": -0.011541075097577796,
+        "p_value": 0.9907917587824822
+      },
+      {
+        "name": "t_1983_1984",
+        "beta": 37720.67,
+        "std_err": 17416.67,
+        "z_stat": 2.1657796811904917,
+        "p_value": 0.030328026734478764
+      },
+      {
+        "name": "t_1984_1985",
+        "beta": -10958.5,
+        "std_err": 10116.71,
+        "z_stat": -1.0832078808229157,
+        "p_value": 0.2787161625013166
+      },
+      {
+        "name": "t_1984_1986",
+        "beta": -16275.5,
+        "std_err": 5305.823,
+        "z_stat": -3.067478881221631,
+        "p_value": 0.0021587271397036645
+      },
+      {
+        "name": "t_1984_1987",
+        "beta": -21509.83,
+        "std_err": 10207.69,
+        "z_stat": -2.107218185505242,
+        "p_value": 0.03509867129165767
+      },
+      {
+        "name": "t_1984_1988",
+        "beta": -15133.92,
+        "std_err": 14778.87,
+        "z_stat": -1.0240241642290648,
+        "p_value": 0.3058238615816429
+      },
+      {
+        "name": "Pre_avg",
+        "beta": 3165.482,
+        "std_err": 5921.608,
+        "z_stat": 0.5345645979943285,
+        "p_value": 0.5929509693011854
+      },
+      {
+        "name": "Post_avg",
+        "beta": -9375.683,
+        "std_err": 18480.53,
+        "z_stat": -0.5073276036996776,
+        "p_value": 0.611924973441754
+      },
+      {
+        "name": "Tm4",
+        "beta": -1978.25,
+        "std_err": 15364.83,
+        "z_stat": -0.1287518312926339,
+        "p_value": 0.897554021243548
+      },
+      {
+        "name": "Tm3",
+        "beta": -7186.079,
+        "std_err": 11816.71,
+        "z_stat": -0.6081285738585444,
+        "p_value": 0.5431022023280654
+      },
+      {
+        "name": "Tm2",
+        "beta": 8935.592,
+        "std_err": 15992.89,
+        "z_stat": 0.5587227824364452,
+        "p_value": 0.5763509284297479
+      },
+      {
+        "name": "Tm1",
+        "beta": 12890.67,
+        "std_err": 13976.44,
+        "z_stat": 0.9223142660076529,
+        "p_value": 0.35636467483475376
+      },
+      {
+        "name": "Tp0",
+        "beta": -13763.7,
+        "std_err": 12127.13,
+        "z_stat": -1.1349511384804156,
+        "p_value": 0.25639579152269754
+      },
+      {
+        "name": "Tp1",
+        "beta": -9638.75,
+        "std_err": 14276.59,
+        "z_stat": -0.6751437142903172,
+        "p_value": 0.49958446274440615
+      },
+      {
+        "name": "Tp2",
+        "beta": -16527.48,
+        "std_err": 17083.37,
+        "z_stat": -0.9674601674025676,
+        "p_value": 0.33331404455083713
+      },
+      {
+        "name": "Tp3",
+        "beta": -7509.567,
+        "std_err": 19788.62,
+        "z_stat": -0.37948917104881497,
+        "p_value": 0.7043246442348612
+      },
+      {
+        "name": "Tp4",
+        "beta": 561.0833,
+        "std_err": 31139.15,
+        "z_stat": 0.018018581110916643,
+        "p_value": 0.9856240302341579
+      }
+    ],
+    "_log_path": "D:\\OneDrive - SAIF\\PhD3\\StataFlow\\stata\\output\\audit_v1_3_m07\\R2_EZUNEM_CSDID_NOTYET.log",
+    "_dta_path": "D:\\OneDrive - SAIF\\PhD3\\StataFlow\\stata\\cases\\audit_v1_3_m07\\R2_EZUNEM_CSDID_NOTYET.dta",
+    "_exit_code": 0
+  },
+  "diffs": {
+    "passed": true,
+    "messages": [
+      "nobs: Python=198, Stata=198, abs=0.00e+00, rel=0.00e+00 PASS",
+      "Pre_avg.beta: Python=3165.48229167, Stata=3165.482, abs=2.92e-04, rel=9.21e-08 PASS",
+      "Pre_avg.std_err: Python=5921.6083662, Stata=5921.608, abs=3.66e-04, rel=6.18e-08 PASS",
+      "Pre_avg.t_stat: Python=0.534564614191, Stata=0.534564597994, abs=1.62e-08, rel=3.03e-08 PASS",
+      "Pre_avg.p_value: Python=0.592950958099, Stata=0.592950969301, abs=1.12e-08, rel=1.89e-08 PASS",
+      "Post_avg.beta: Python=-9375.68333333, Stata=-9375.683, abs=3.33e-04, rel=3.56e-08 PASS",
+      "Post_avg.std_err: Python=18480.5259524, Stata=18480.53, abs=4.05e-03, rel=2.19e-07 PASS",
+      "Post_avg.t_stat: Python=-0.507327732852, Stata=-0.5073276037, abs=1.29e-07, rel=2.55e-07 PASS",
+      "Post_avg.p_value: Python=0.611924882837, Stata=0.611924973442, abs=9.06e-08, rel=1.48e-07 PASS",
+      "Tm4.beta: Python=-1978.25, Stata=-1978.25, abs=6.82e-13, rel=3.45e-16 PASS",
+      "Tm4.std_err: Python=15364.8321906, Stata=15364.83, abs=2.19e-03, rel=1.43e-07 PASS",
+      "Tm4.t_stat: Python=-0.128751812936, Stata=-0.128751831293, abs=1.84e-08, rel=1.43e-07 PASS",
+      "Tm4.p_value: Python=0.897554035769, Stata=0.897554021244, abs=1.45e-08, rel=1.62e-08 PASS",
+      "Tm3.beta: Python=-7186.07916667, Stata=-7186.079, abs=1.67e-04, rel=2.32e-08 PASS",
+      "Tm3.std_err: Python=11816.7067254, Stata=11816.71, abs=3.27e-03, rel=2.77e-07 PASS",
+      "Tm3.t_stat: Python=-0.608128756483, Stata=-0.608128573859, abs=1.83e-07, rel=3.00e-07 PASS",
+      "Tm3.p_value: Python=0.543102081214, Stata=0.543102202328, abs=1.21e-07, rel=2.23e-07 PASS",
+      "Tm2.beta: Python=8935.59166667, Stata=8935.592, abs=3.33e-04, rel=3.73e-08 PASS",
+      "Tm2.std_err: Python=15992.8893341, Stata=15992.89, abs=6.66e-04, rel=4.16e-08 PASS",
+      "Tm2.t_stat: Python=0.558722784859, Stata=0.558722782436, abs=2.42e-09, rel=4.34e-09 PASS",
+      "Tm2.p_value: Python=0.576350926776, Stata=0.57635092843, abs=1.65e-09, rel=2.87e-09 PASS",
+      "Tm1.beta: Python=12890.6666667, Stata=12890.67, abs=3.33e-03, rel=2.59e-07 PASS",
+      "Tm1.std_err: Python=13976.435208, Stata=13976.44, abs=4.79e-03, rel=3.43e-07 PASS",
+      "Tm1.t_stat: Python=0.922314343737, Stata=0.922314266008, abs=7.77e-08, rel=8.43e-08 PASS",
+      "Tm1.p_value: Python=0.356364634302, Stata=0.356364674835, abs=4.05e-08, rel=1.14e-07 PASS",
+      "Tp0.beta: Python=-13763.7, Stata=-13763.7, abs=5.46e-12, rel=3.96e-16 PASS",
+      "Tp0.std_err: Python=12127.1344883, Stata=12127.13, abs=4.49e-03, rel=3.70e-07 PASS",
+      "Tp0.t_stat: Python=-1.13495071843, Stata=-1.13495113848, abs=4.20e-07, rel=3.70e-07 PASS",
+      "Tp0.p_value: Python=0.25639596753, Stata=0.256395791523, abs=1.76e-07, rel=6.86e-07 PASS",
+      "Tp1.beta: Python=-9638.75, Stata=-9638.75, abs=1.82e-12, rel=1.89e-16 PASS",
+      "Tp1.std_err: Python=14276.5885186, Stata=14276.59, abs=1.48e-03, rel=1.04e-07 PASS",
+      "Tp1.t_stat: Python=-0.675143784347, Stata=-0.67514371429, abs=7.01e-08, rel=1.04e-07 PASS",
+      "Tp1.p_value: Python=0.499584418239, Stata=0.499584462744, abs=4.45e-08, rel=8.91e-08 PASS",
+      "Tp2.beta: Python=-16527.4833333, Stata=-16527.48, abs=3.33e-03, rel=2.02e-07 PASS",
+      "Tp2.std_err: Python=17083.37305, Stata=17083.37, abs=3.05e-03, rel=1.79e-07 PASS",
+      "Tp2.t_stat: Python=-0.9674601898, Stata=-0.967460167403, abs=2.24e-08, rel=2.32e-08 PASS",
+      "Tp2.p_value: Python=0.333314033359, Stata=0.333314044551, abs=1.12e-08, rel=3.36e-08 PASS",
+      "Tp3.beta: Python=-7509.56666667, Stata=-7509.567, abs=3.33e-04, rel=4.44e-08 PASS",
+      "Tp3.std_err: Python=19788.6241246, Stata=19788.62, abs=4.12e-03, rel=2.08e-07 PASS",
+      "Tp3.t_stat: Python=-0.379489075107, Stata=-0.379489171049, abs=9.59e-08, rel=2.53e-07 PASS",
+      "Tp3.p_value: Python=0.704324715467, Stata=0.704324644235, abs=7.12e-08, rel=1.01e-07 PASS",
+      "Tp4.beta: Python=561.083333333, Stata=561.0833, abs=3.33e-05, rel=5.94e-08 PASS",
+      "Tp4.std_err: Python=31139.1481195, Stata=31139.15, abs=1.88e-03, rel=6.04e-08 PASS",
+      "Tp4.t_stat: Python=0.0180185832695, Stata=0.0180185811109, abs=2.16e-09, rel=1.20e-07 PASS",
+      "Tp4.p_value: Python=0.985624028512, Stata=0.985624030234, abs=1.72e-09, rel=1.75e-09 PASS",
+      "sample_mask length: Python=198, n_input_rows=198 PASS",
+      "sample_mask sum: Python=198, nobs=198 PASS"
+    ],
+    "field_results": {
+      "nobs": {
+        "passed": true,
+        "message": "nobs: Python=198, Stata=198, abs=0.00e+00, rel=0.00e+00 PASS"
+      },
+      "Pre_avg.beta": {
+        "passed": true,
+        "message": "Pre_avg.beta: Python=3165.48229167, Stata=3165.482, abs=2.92e-04, rel=9.21e-08 PASS"
+      },
+      "Pre_avg.std_err": {
+        "passed": true,
+        "message": "Pre_avg.std_err: Python=5921.6083662, Stata=5921.608, abs=3.66e-04, rel=6.18e-08 PASS"
+      },
+      "Pre_avg.t_stat": {
+        "passed": true,
+        "message": "Pre_avg.t_stat: Python=0.534564614191, Stata=0.534564597994, abs=1.62e-08, rel=3.03e-08 PASS"
+      },
+      "Pre_avg.p_value": {
+        "passed": "True",
+        "message": "Pre_avg.p_value: Python=0.592950958099, Stata=0.592950969301, abs=1.12e-08, rel=1.89e-08 PASS"
+      },
+      "Post_avg.beta": {
+        "passed": true,
+        "message": "Post_avg.beta: Python=-9375.68333333, Stata=-9375.683, abs=3.33e-04, rel=3.56e-08 PASS"
+      },
+      "Post_avg.std_err": {
+        "passed": true,
+        "message": "Post_avg.std_err: Python=18480.5259524, Stata=18480.53, abs=4.05e-03, rel=2.19e-07 PASS"
+      },
+      "Post_avg.t_stat": {
+        "passed": true,
+        "message": "Post_avg.t_stat: Python=-0.507327732852, Stata=-0.5073276037, abs=1.29e-07, rel=2.55e-07 PASS"
+      },
+      "Post_avg.p_value": {
+        "passed": "True",
+        "message": "Post_avg.p_value: Python=0.611924882837, Stata=0.611924973442, abs=9.06e-08, rel=1.48e-07 PASS"
+      },
+      "Tm4.beta": {
+        "passed": true,
+        "message": "Tm4.beta: Python=-1978.25, Stata=-1978.25, abs=6.82e-13, rel=3.45e-16 PASS"
+      },
+      "Tm4.std_err": {
+        "passed": true,
+        "message": "Tm4.std_err: Python=15364.8321906, Stata=15364.83, abs=2.19e-03, rel=1.43e-07 PASS"
+      },
+      "Tm4.t_stat": {
+        "passed": true,
+        "message": "Tm4.t_stat: Python=-0.128751812936, Stata=-0.128751831293, abs=1.84e-08, rel=1.43e-07 PASS"
+      },
+      "Tm4.p_value": {
+        "passed": "True",
+        "message": "Tm4.p_value: Python=0.897554035769, Stata=0.897554021244, abs=1.45e-08, rel=1.62e-08 PASS"
+      },
+      "Tm3.beta": {
+        "passed": true,
+        "message": "Tm3.beta: Python=-7186.07916667, Stata=-7186.079, abs=1.67e-04, rel=2.32e-08 PASS"
+      },
+      "Tm3.std_err": {
+        "passed": true,
+        "message": "Tm3.std_err: Python=11816.7067254, Stata=11816.71, abs=3.27e-03, rel=2.77e-07 PASS"
+      },
+      "Tm3.t_stat": {
+        "passed": true,
+        "message": "Tm3.t_stat: Python=-0.608128756483, Stata=-0.608128573859, abs=1.83e-07, rel=3.00e-07 PASS"
+      },
+      "Tm3.p_value": {
+        "passed": "True",
+        "message": "Tm3.p_value: Python=0.543102081214, Stata=0.543102202328, abs=1.21e-07, rel=2.23e-07 PASS"
+      },
+      "Tm2.beta": {
+        "passed": true,
+        "message": "Tm2.beta: Python=8935.59166667, Stata=8935.592, abs=3.33e-04, rel=3.73e-08 PASS"
+      },
+      "Tm2.std_err": {
+        "passed": true,
+        "message": "Tm2.std_err: Python=15992.8893341, Stata=15992.89, abs=6.66e-04, rel=4.16e-08 PASS"
+      },
+      "Tm2.t_stat": {
+        "passed": true,
+        "message": "Tm2.t_stat: Python=0.558722784859, Stata=0.558722782436, abs=2.42e-09, rel=4.34e-09 PASS"
+      },
+      "Tm2.p_value": {
+        "passed": "True",
+        "message": "Tm2.p_value: Python=0.576350926776, Stata=0.57635092843, abs=1.65e-09, rel=2.87e-09 PASS"
+      },
+      "Tm1.beta": {
+        "passed": true,
+        "message": "Tm1.beta: Python=12890.6666667, Stata=12890.67, abs=3.33e-03, rel=2.59e-07 PASS"
+      },
+      "Tm1.std_err": {
+        "passed": true,
+        "message": "Tm1.std_err: Python=13976.435208, Stata=13976.44, abs=4.79e-03, rel=3.43e-07 PASS"
+      },
+      "Tm1.t_stat": {
+        "passed": true,
+        "message": "Tm1.t_stat: Python=0.922314343737, Stata=0.922314266008, abs=7.77e-08, rel=8.43e-08 PASS"
+      },
+      "Tm1.p_value": {
+        "passed": "True",
+        "message": "Tm1.p_value: Python=0.356364634302, Stata=0.356364674835, abs=4.05e-08, rel=1.14e-07 PASS"
+      },
+      "Tp0.beta": {
+        "passed": true,
+        "message": "Tp0.beta: Python=-13763.7, Stata=-13763.7, abs=5.46e-12, rel=3.96e-16 PASS"
+      },
+      "Tp0.std_err": {
+        "passed": true,
+        "message": "Tp0.std_err: Python=12127.1344883, Stata=12127.13, abs=4.49e-03, rel=3.70e-07 PASS"
+      },
+      "Tp0.t_stat": {
+        "passed": true,
+        "message": "Tp0.t_stat: Python=-1.13495071843, Stata=-1.13495113848, abs=4.20e-07, rel=3.70e-07 PASS"
+      },
+      "Tp0.p_value": {
+        "passed": "True",
+        "message": "Tp0.p_value: Python=0.25639596753, Stata=0.256395791523, abs=1.76e-07, rel=6.86e-07 PASS"
+      },
+      "Tp1.beta": {
+        "passed": true,
+        "message": "Tp1.beta: Python=-9638.75, Stata=-9638.75, abs=1.82e-12, rel=1.89e-16 PASS"
+      },
+      "Tp1.std_err": {
+        "passed": true,
+        "message": "Tp1.std_err: Python=14276.5885186, Stata=14276.59, abs=1.48e-03, rel=1.04e-07 PASS"
+      },
+      "Tp1.t_stat": {
+        "passed": true,
+        "message": "Tp1.t_stat: Python=-0.675143784347, Stata=-0.67514371429, abs=7.01e-08, rel=1.04e-07 PASS"
+      },
+      "Tp1.p_value": {
+        "passed": "True",
+        "message": "Tp1.p_value: Python=0.499584418239, Stata=0.499584462744, abs=4.45e-08, rel=8.91e-08 PASS"
+      },
+      "Tp2.beta": {
+        "passed": true,
+        "message": "Tp2.beta: Python=-16527.4833333, Stata=-16527.48, abs=3.33e-03, rel=2.02e-07 PASS"
+      },
+      "Tp2.std_err": {
+        "passed": true,
+        "message": "Tp2.std_err: Python=17083.37305, Stata=17083.37, abs=3.05e-03, rel=1.79e-07 PASS"
+      },
+      "Tp2.t_stat": {
+        "passed": true,
+        "message": "Tp2.t_stat: Python=-0.9674601898, Stata=-0.967460167403, abs=2.24e-08, rel=2.32e-08 PASS"
+      },
+      "Tp2.p_value": {
+        "passed": "True",
+        "message": "Tp2.p_value: Python=0.333314033359, Stata=0.333314044551, abs=1.12e-08, rel=3.36e-08 PASS"
+      },
+      "Tp3.beta": {
+        "passed": true,
+        "message": "Tp3.beta: Python=-7509.56666667, Stata=-7509.567, abs=3.33e-04, rel=4.44e-08 PASS"
+      },
+      "Tp3.std_err": {
+        "passed": true,
+        "message": "Tp3.std_err: Python=19788.6241246, Stata=19788.62, abs=4.12e-03, rel=2.08e-07 PASS"
+      },
+      "Tp3.t_stat": {
+        "passed": true,
+        "message": "Tp3.t_stat: Python=-0.379489075107, Stata=-0.379489171049, abs=9.59e-08, rel=2.53e-07 PASS"
+      },
+      "Tp3.p_value": {
+        "passed": "True",
+        "message": "Tp3.p_value: Python=0.704324715467, Stata=0.704324644235, abs=7.12e-08, rel=1.01e-07 PASS"
+      },
+      "Tp4.beta": {
+        "passed": true,
+        "message": "Tp4.beta: Python=561.083333333, Stata=561.0833, abs=3.33e-05, rel=5.94e-08 PASS"
+      },
+      "Tp4.std_err": {
+        "passed": true,
+        "message": "Tp4.std_err: Python=31139.1481195, Stata=31139.15, abs=1.88e-03, rel=6.04e-08 PASS"
+      },
+      "Tp4.t_stat": {
+        "passed": true,
+        "message": "Tp4.t_stat: Python=0.0180185832695, Stata=0.0180185811109, abs=2.16e-09, rel=1.20e-07 PASS"
+      },
+      "Tp4.p_value": {
+        "passed": "True",
+        "message": "Tp4.p_value: Python=0.985624028512, Stata=0.985624030234, abs=1.72e-09, rel=1.75e-09 PASS"
+      },
+      "sample_mask_length": {
+        "passed": true,
+        "message": "sample_mask length: Python=198, n_input_rows=198 PASS"
+      },
+      "sample_mask_sum": {
+        "passed": true,
+        "message": "sample_mask sum: Python=198, nobs=198 PASS"
+      }
+    }
+  }
+}

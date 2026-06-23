@@ -1,0 +1,48 @@
+{
+  "python_nobs": 50,
+  "stata_nobs": 198.0,
+  "coefficients": [
+    {
+      "name": "Pre_avg",
+      "python_beta": 13381.194444444445,
+      "python_se": 11125.181334840747,
+      "stata_beta": 3165.482,
+      "stata_se": 5921.608
+    },
+    {
+      "name": "Post_avg",
+      "python_beta": -43924.33333333333,
+      "python_se": 18013.73360324571,
+      "stata_beta": -9375.683,
+      "stata_se": 18480.53
+    },
+    {
+      "name": "Tm3",
+      "python_beta": 7942.9999999999945,
+      "python_se": 19036.877939607115,
+      "stata_beta": -7186.079,
+      "stata_se": 11816.71
+    },
+    {
+      "name": "Tm2",
+      "python_beta": 35741.5,
+      "python_se": 26432.489835349097,
+      "stata_beta": 8935.592,
+      "stata_se": 15992.89
+    },
+    {
+      "name": "Tm1",
+      "python_beta": -3540.9166666666656,
+      "python_se": 17012.80930204653,
+      "stata_beta": 12890.67,
+      "stata_se": 13976.44
+    },
+    {
+      "name": "Tp0",
+      "python_beta": -43924.33333333333,
+      "python_se": 18013.73360324571,
+      "stata_beta": -13763.7,
+      "stata_se": 12127.13
+    }
+  ]
+}

@@ -1,0 +1,2 @@
+webuse lowbwt, clear
+describe

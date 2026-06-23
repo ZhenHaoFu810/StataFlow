@@ -1,0 +1,8 @@
+{
+  "test_id": "M10-P02",
+  "timestamp": "2026-06-14T07:36:40.358641+00:00",
+  "property": "irrelevant column invariance",
+  "data_hash_base": "6bced2ef25147828b7281e8aed11d1bd49bf250241f9f8ca6d24bfd42149b3ca",
+  "data_hash_with_noise": "e126191262d39805fbd1f4f111ef05bfca6c4d1cc33e47bda86838d1b68daa3a",
+  "max_abs_diff_beta": 0.0
+}

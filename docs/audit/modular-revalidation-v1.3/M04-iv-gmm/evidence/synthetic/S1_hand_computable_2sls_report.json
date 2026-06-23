@@ -1,0 +1,166 @@
+{
+  "test_id": "S1_hand_computable_2sls",
+  "python": {
+    "nobs": 20,
+    "n_input_rows": 20,
+    "df_model": 1.0,
+    "df_resid": null,
+    "r2": 0.8405724974317945,
+    "r2_adj": 0.8317154139557831,
+    "rmse": 0.6143445353997525,
+    "f_stat": null,
+    "f_pvalue": null,
+    "rss": 7.5483841635107565,
+    "tss": 47.34681307750804,
+    "mss": 39.798428913997284,
+    "cluster_count": null,
+    "coefficients": [
+      {
+        "name": "x",
+        "beta": 1.500606135836913,
+        "std_err": 0.24666453991341464,
+        "t_stat": 6.083590841081831,
+        "p_value": 1.1752028239442325e-09,
+        "ci_low": 1.0171525213434776,
+        "ci_high": 1.9840597503303483
+      },
+      {
+        "name": "_cons",
+        "beta": 1.079749588996524,
+        "std_err": 0.12899955244646227,
+        "t_stat": 8.370180892252666,
+        "p_value": 0.0,
+        "ci_low": 0.8269151121796722,
+        "ci_high": 1.3325840658133759
+      }
+    ],
+    "vce": [
+      [
+        0.06084339525069653,
+        0.0026173017697929957
+      ],
+      [
+        0.002617301769792999,
+        0.016640884531387568
+      ]
+    ],
+    "vce_row_names": [
+      "x",
+      "_cons"
+    ],
+    "sample_mask": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ],
+    "warnings": [],
+    "dropped_vars": []
+  },
+  "stata": {
+    "nobs": 20.0,
+    "df_model": 1.0,
+    "r2": 0.8405725,
+    "r2_adj": 0.83171541,
+    "rmse": 0.61434453,
+    "rss": 7.5483841,
+    "mss": 39.798429,
+    "tss": 47.3468131,
+    "coefficients": [
+      {
+        "name": "x",
+        "beta": 1.5006061,
+        "std_err": 0.24666454
+      },
+      {
+        "name": "_cons",
+        "beta": 1.0797496,
+        "std_err": 0.12899955
+      }
+    ],
+    "vce": [
+      [
+        0.06084339,
+        0.0026173
+      ],
+      [
+        0.0026173,
+        0.01664088
+      ]
+    ],
+    "vce_rows": 2,
+    "_do_file": "D:\\OneDrive - SAIF\\PhD3\\StataFlow\\stata\\cases\\audit_v1_3_m04\\S1_hand_computable_2sls.do",
+    "_log_hash": "df3a098a3fa61a6b",
+    "_exit_code": 0
+  },
+  "comparisons": [
+    {
+      "passed": true,
+      "message": "beta[x]: Python=1.50060613583691, Stata=1.5006061, abs_diff=3.58e-08, rel_diff=2.39e-08 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "std_err[x]: Python=0.246664539913415, Stata=0.24666454, abs_diff=8.66e-11, rel_diff=3.51e-10 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "beta[_cons]: Python=1.07974958899652, Stata=1.0797496, abs_diff=1.10e-08, rel_diff=1.02e-08 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "std_err[_cons]: Python=0.128999552446462, Stata=0.12899955, abs_diff=2.45e-09, rel_diff=1.90e-08 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "nobs: Python=20, Stata=20, abs_diff=0.00e+00, rel_diff=0.00e+00 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "df_model: Python=1, Stata=1, abs_diff=0.00e+00, rel_diff=0.00e+00 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "df_resid: both None -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "r2: Python=0.840572497431795, Stata=0.8405725, abs_diff=2.57e-09, rel_diff=3.06e-09 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "r2_adj: Python=0.831715413955783, Stata=0.83171541, abs_diff=3.96e-09, rel_diff=4.76e-09 -> PASS"
+    },
+    {
+      "passed": "True",
+      "message": "rmse: Python=0.614344535399753, Stata=0.61434453, abs_diff=5.40e-09, rel_diff=8.79e-09 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "f_stat: both None -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "f_pvalue: both None -> PASS"
+    },
+    {
+      "passed": "True",
+      "message": "VCE(non-omitted) max_abs_diff=5.25e-09, max_rel_diff=6.76e-07 -> PASS"
+    }
+  ]
+}

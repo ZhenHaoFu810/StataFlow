@@ -1,0 +1,12 @@
+{
+  "finding": "B_SeparationSampleDifference",
+  "stata_default_nobs": 44.0,
+  "python_separation_fe_nobs": 44,
+  "python_separation_none": {
+    "nobs": 60,
+    "ll": -4000000000058.1265,
+    "converged": true,
+    "x1_beta": 0.4583276316772053
+  },
+  "note": "Stata default drops more observations than Python separation='fe'. Python separation=None does not handle separation and can diverge."
+}

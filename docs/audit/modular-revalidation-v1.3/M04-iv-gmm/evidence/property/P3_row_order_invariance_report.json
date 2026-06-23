@@ -1,0 +1,22 @@
+{
+  "test_id": "P3_row_order_invariance",
+  "python": {
+    "base": {
+      "x": 1.534181335800388,
+      "w": 0.796432239077573,
+      "_cons": 1.0517132353403804
+    },
+    "shuffled": {
+      "x": 1.5341813358003864,
+      "w": 0.7964322390775742,
+      "_cons": 1.0517132353403802
+    }
+  },
+  "stata": {},
+  "comparisons": [
+    {
+      "passed": true,
+      "message": "row order invariant"
+    }
+  ]
+}

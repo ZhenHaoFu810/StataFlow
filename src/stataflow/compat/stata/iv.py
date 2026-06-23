@@ -5,7 +5,12 @@ from __future__ import annotations
 from typing import Optional
 
 from stataflow.estimators import IV2SLS, IVAbsorbingOLS
-from stataflow.compat.stata.factor_variables import expand_factor_terms, get_underlying_vars, parse_absorb
+from stataflow.compat.stata.factor_variables import (
+    expand_factor_terms,
+    get_underlying_vars,
+    parse_absorb,
+    restore_factor_omitted_rows,
+)
 
 
 def ivregress_2sls(
@@ -61,7 +66,9 @@ def ivregress_2sls(
     screen_vars = list(dict.fromkeys(screen_vars))
     data_exog, x_exog_exp = expand_factor_terms(data, x_exog, screen_vars=screen_vars)
     data_endog, x_endog_exp = expand_factor_terms(data_exog, x_endog, screen_vars=screen_vars)
+    coefficient_layout = list(data_endog.attrs.get("stataflow_factor_result_layout", []))
     data_inst, instruments_exp = expand_factor_terms(data_endog, instruments, screen_vars=screen_vars)
+    data_inst.attrs["stataflow_factor_result_layout"] = coefficient_layout
 
     model = IV2SLS(
         data=data_inst,
@@ -72,7 +79,9 @@ def ivregress_2sls(
         add_constant=not noconstant,
         missing=missing,
     )
-    return model.fit(vce=vce, cluster=cluster, first=first)
+    return restore_factor_omitted_rows(
+        model.fit(vce=vce, cluster=cluster, first=first), data_inst
+    )
 
 
 def ivreghdfe(
@@ -165,7 +174,9 @@ def ivreghdfe(
     screen_vars = list(dict.fromkeys(screen_vars))
     data_exog, x_exog_exp = expand_factor_terms(data, x_exog, screen_vars=screen_vars)
     data_endog, x_endog_exp = expand_factor_terms(data_exog, x_endog, screen_vars=screen_vars)
+    coefficient_layout = list(data_endog.attrs.get("stataflow_factor_result_layout", []))
     data_inst, instruments_exp = expand_factor_terms(data_endog, instruments, screen_vars=screen_vars)
+    data_inst.attrs["stataflow_factor_result_layout"] = coefficient_layout
 
     model = IVAbsorbingOLS(
         data=data_inst,
@@ -178,11 +189,14 @@ def ivreghdfe(
         missing=missing,
         drop_singletons=not keepsingletons,
     )
-    return model.fit(
-        vce=vce,
-        cluster=cluster,
-        first=first,
-        estimator=estimator,
-        fuller=fuller,
-        kclass=kclass,
+    return restore_factor_omitted_rows(
+        model.fit(
+            vce=vce,
+            cluster=cluster,
+            first=first,
+            estimator=estimator,
+            fuller=fuller,
+            kclass=kclass,
+        ),
+        data_inst,
     )

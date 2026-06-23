@@ -1,0 +1,8 @@
+{
+  "finding": "D_DfResidSemantic",
+  "stata_e_df_r": NaN,
+  "stata_n_clust": 20.0,
+  "python_df_resid": 19.0,
+  "python_cluster_count": 20,
+  "note": "Stata GLM/ppmlhdfe does not define e(df_r); Python uses G-1."
+}

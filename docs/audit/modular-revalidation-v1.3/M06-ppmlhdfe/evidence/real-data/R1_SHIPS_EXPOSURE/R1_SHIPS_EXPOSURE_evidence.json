@@ -1,0 +1,543 @@
+{
+  "prefix": "R1_SHIPS_EXPOSURE",
+  "python": {
+    "model": {
+      "command": "ppmlhdfe",
+      "estimator_family": "ppmlhdfe",
+      "vcetype": "robust",
+      "weight_type": null,
+      "fe_vars": [],
+      "absorb_var": null,
+      "absorb_vars": [
+        "ship"
+      ],
+      "cluster_var": null,
+      "has_constant": true
+    },
+    "sample": {
+      "nobs": 34,
+      "n_input_rows": 40,
+      "sample_mask": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true
+      ],
+      "dropped_rows_reason": null
+    },
+    "fit": {
+      "df_model": 4.0,
+      "df_resid": 25.0,
+      "df_a": 5.0,
+      "rank": 9,
+      "rss": 0.0,
+      "tss": 0.0,
+      "mss": 0.0,
+      "rmse": 0.0,
+      "r2": 0.0,
+      "r2_adj": 0.0,
+      "f_stat": null,
+      "f_pvalue": null,
+      "ll": -68.28077142958986,
+      "deviance": 38.69505153555479,
+      "pseudo_r2": 0.8083093385843537
+    },
+    "coefficients": [
+      {
+        "name": "co_65_69",
+        "beta": 0.6971404267005271,
+        "std_err": 0.109684890179623,
+        "t_stat": 6.355847424005902,
+        "p_value": 2.0728063709896105e-10,
+        "ci_low": 0.48216199230023493,
+        "ci_high": 0.9121188611008193
+      },
+      {
+        "name": "co_70_74",
+        "beta": 0.8184265772017739,
+        "std_err": 0.14365244397269797,
+        "t_stat": 5.697268731169801,
+        "p_value": 1.2174195651581954e-08,
+        "ci_low": 0.5368729607241279,
+        "ci_high": 1.09998019367942
+      },
+      {
+        "name": "co_75_79",
+        "beta": 0.45342663880052436,
+        "std_err": 0.1980854562911224,
+        "t_stat": 2.28904558310496,
+        "p_value": 0.02207670404570239,
+        "ci_low": 0.06518627860874138,
+        "ci_high": 0.8416669989923073
+      },
+      {
+        "name": "op_75_79",
+        "beta": 0.38446695821207594,
+        "std_err": 0.10105714604211016,
+        "t_stat": 3.8044509791704377,
+        "p_value": 0.00014211905209071674,
+        "ci_low": 0.18639859158913555,
+        "ci_high": 0.5825353248350164
+      },
+      {
+        "name": "_cons",
+        "beta": -6.78957495864495,
+        "std_err": 0.0942625316852525,
+        "t_stat": -72.02835354895511,
+        "p_value": 0.0,
+        "ci_low": -6.97432612583961,
+        "ci_high": -6.60482379145029
+      }
+    ],
+    "variance": {
+      "row_names": [
+        "co_65_69",
+        "co_70_74",
+        "co_75_79",
+        "op_75_79",
+        "_cons"
+      ],
+      "values": [
+        [
+          0.012030775133715959,
+          0.0090046375108513,
+          0.009803440666961042,
+          -0.0027921096212011635,
+          -0.00722879996146013
+        ],
+        [
+          0.009004637510851322,
+          0.020636024659329132,
+          0.014687684192160558,
+          -0.007915502058068466,
+          -0.007510411170881628
+        ],
+        [
+          0.00980344066696107,
+          0.014687684192160565,
+          0.039237847994062165,
+          -0.010041163882552042,
+          -0.007258108756383713
+        ],
+        [
+          -0.0027921096212011817,
+          -0.007915502058068472,
+          -0.010041163882552055,
+          0.01021254676617638,
+          -0.0013369061169141564
+        ],
+        [
+          -0.007228799961460159,
+          -0.007510411170881659,
+          -0.00725810875638373,
+          -0.00133690611691416,
+          0.008885424879713232
+        ]
+      ]
+    },
+    "diagnostics": {
+      "residual_df_correction": null,
+      "cluster_count": null,
+      "warnings": []
+    },
+    "provenance": {
+      "source": "python",
+      "stata_version_target": "17",
+      "stata_command": "ppmlhdfe accident co_65_69 co_70_74 co_75_79 op_75_79, absorb(ship)"
+    }
+  },
+  "stata": {
+    "nobs": 34.0,
+    "df_model": 4.0,
+    "df_a": 5.0,
+    "df_resid": NaN,
+    "ll": -68.280771,
+    "deviance": 38.695052,
+    "pseudo_r2": 0.80830934,
+    "chi2": 111.05706,
+    "n_clust": NaN,
+    "coefficients": [
+      {
+        "name": "co_65_69",
+        "beta": 0.69714043,
+        "std_err": 0.10968489,
+        "z_stat": 6.355847464495794,
+        "p_value": 2.0728063709896105e-10
+      },
+      {
+        "name": "co_70_74",
+        "beta": 0.81842658,
+        "std_err": 0.14365244,
+        "z_stat": 5.697268908206502,
+        "p_value": 1.2174182995039473e-08
+      },
+      {
+        "name": "co_75_79",
+        "beta": 0.45342664,
+        "std_err": 0.19808545,
+        "z_stat": 2.289045661859566,
+        "p_value": 0.022076699470364947
+      },
+      {
+        "name": "op_75_79",
+        "beta": 0.38446696,
+        "std_err": 0.10105715,
+        "z_stat": 3.804450847861829,
+        "p_value": 0.00014211912747441602
+      },
+      {
+        "name": "_cons",
+        "beta": -6.789575,
+        "std_err": 0.09426253,
+        "z_stat": -72.02835527542068,
+        "p_value": 0.0
+      }
+    ],
+    "vce_matrix": [
+      [
+        0.01203077,
+        0.00900464,
+        0.00980344,
+        -0.00279211,
+        -0.0072288
+      ],
+      [
+        0.00900464,
+        0.02063602,
+        0.01468768,
+        -0.0079155,
+        -0.00751041
+      ],
+      [
+        0.00980344,
+        0.01468768,
+        0.03923785,
+        -0.01004116,
+        -0.00725811
+      ],
+      [
+        -0.00279211,
+        -0.0079155,
+        -0.01004116,
+        0.01021255,
+        -0.00133691
+      ],
+      [
+        -0.0072288,
+        -0.00751041,
+        -0.00725811,
+        -0.00133691,
+        0.00888542
+      ]
+    ],
+    "vce_names": [
+      "co_65_69",
+      "co_70_74",
+      "co_75_79",
+      "op_75_79",
+      "_cons"
+    ],
+    "predict": {},
+    "_log_path": "D:\\OneDrive - SAIF\\PhD3\\StataFlow\\stata\\output\\audit_v1_3_m06\\R1_SHIPS_EXPOSURE.log",
+    "_command": "ppmlhdfe accident co_65_69 co_70_74 co_75_79 op_75_79, absorb(ship) exposure(service) vce(robust)",
+    "_exit_code": 0
+  },
+  "diffs": {
+    "passed": true,
+    "messages": [
+      "nobs: Python=34, Stata=34, abs=0.00e+00, rel=0.00e+00 PASS",
+      "df_model: Python=4, Stata=4, abs=0.00e+00, rel=0.00e+00 PASS",
+      "df_a: Python=5, Stata=5, abs=0.00e+00, rel=0.00e+00 PASS",
+      "ll: Python=-68.2807714296, Stata=-68.280771, abs=4.30e-07, rel=6.29e-09 PASS",
+      "deviance: Python=38.6950515356, Stata=38.695052, abs=4.64e-07, rel=1.20e-08 PASS",
+      "pseudo_r2: Python=0.808309338584, Stata=0.80830934, abs=1.42e-09, rel=1.75e-09 PASS",
+      "co_65_69.beta: Python=0.697140426701, Stata=0.69714043, abs=3.30e-09, rel=4.73e-09 PASS",
+      "co_65_69.std_err: Python=0.10968489018, Stata=0.10968489, abs=1.80e-10, rel=1.64e-09 PASS",
+      "co_65_69.t_stat: Python=6.35584742401, Stata=6.3558474645, abs=4.05e-08, rel=6.37e-09 PASS",
+      "co_65_69.p_value: Python=2.07280637099e-10, Stata=2.07280637099e-10, abs=0.00e+00, rel=0.00e+00 PASS",
+      "co_70_74.beta: Python=0.818426577202, Stata=0.81842658, abs=2.80e-09, rel=3.42e-09 PASS",
+      "co_70_74.std_err: Python=0.143652443973, Stata=0.14365244, abs=3.97e-09, rel=2.77e-08 PASS",
+      "co_70_74.t_stat: Python=5.69726873117, Stata=5.69726890821, abs=1.77e-07, rel=3.11e-08 PASS",
+      "co_70_74.p_value: Python=1.21741956516e-08, Stata=1.2174182995e-08, abs=1.27e-14, rel=1.04e-06 PASS",
+      "co_75_79.beta: Python=0.453426638801, Stata=0.45342664, abs=1.20e-09, rel=2.65e-09 PASS",
+      "co_75_79.std_err: Python=0.198085456291, Stata=0.19808545, abs=6.29e-09, rel=3.18e-08 PASS",
+      "co_75_79.t_stat: Python=2.2890455831, Stata=2.28904566186, abs=7.88e-08, rel=3.44e-08 PASS",
+      "co_75_79.p_value: Python=0.0220767040457, Stata=0.0220766994704, abs=4.58e-09, rel=2.07e-07 PASS",
+      "op_75_79.beta: Python=0.384466958212, Stata=0.38446696, abs=1.79e-09, rel=4.65e-09 PASS",
+      "op_75_79.std_err: Python=0.101057146042, Stata=0.10105715, abs=3.96e-09, rel=3.92e-08 PASS",
+      "op_75_79.t_stat: Python=3.80445097917, Stata=3.80445084786, abs=1.31e-07, rel=3.45e-08 PASS",
+      "op_75_79.p_value: Python=0.000142119052091, Stata=0.000142119127474, abs=7.54e-11, rel=5.30e-07 PASS",
+      "_cons.beta: Python=-6.78957495864, Stata=-6.789575, abs=4.14e-08, rel=6.09e-09 PASS",
+      "_cons.std_err: Python=0.0942625316853, Stata=0.09426253, abs=1.69e-09, rel=1.79e-08 PASS",
+      "_cons.t_stat: Python=-72.028353549, Stata=-72.0283552754, abs=1.73e-06, rel=2.40e-08 PASS",
+      "_cons.p_value: Python=0, Stata=0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "VCE[co_65_69,co_65_69]: Python=0.0120307751337, Stata=0.01203077, abs=5.13e-09, rel=4.27e-07 PASS",
+      "VCE[co_65_69,co_70_74]: Python=0.00900463751085, Stata=0.00900464, abs=2.49e-09, rel=2.76e-07 PASS",
+      "VCE[co_65_69,co_75_79]: Python=0.00980344066696, Stata=0.00980344, abs=6.67e-10, rel=6.80e-08 PASS",
+      "VCE[co_65_69,op_75_79]: Python=-0.0027921096212, Stata=-0.00279211, abs=3.79e-10, rel=1.36e-07 PASS",
+      "VCE[co_65_69,_cons]: Python=-0.00722879996146, Stata=-0.0072288, abs=3.85e-11, rel=5.33e-09 PASS",
+      "VCE[co_70_74,co_65_69]: Python=0.00900463751085, Stata=0.00900464, abs=2.49e-09, rel=2.76e-07 PASS",
+      "VCE[co_70_74,co_70_74]: Python=0.0206360246593, Stata=0.02063602, abs=4.66e-09, rel=2.26e-07 PASS",
+      "VCE[co_70_74,co_75_79]: Python=0.0146876841922, Stata=0.01468768, abs=4.19e-09, rel=2.85e-07 PASS",
+      "VCE[co_70_74,op_75_79]: Python=-0.00791550205807, Stata=-0.0079155, abs=2.06e-09, rel=2.60e-07 PASS",
+      "VCE[co_70_74,_cons]: Python=-0.00751041117088, Stata=-0.00751041, abs=1.17e-09, rel=1.56e-07 PASS",
+      "VCE[co_75_79,co_65_69]: Python=0.00980344066696, Stata=0.00980344, abs=6.67e-10, rel=6.80e-08 PASS",
+      "VCE[co_75_79,co_70_74]: Python=0.0146876841922, Stata=0.01468768, abs=4.19e-09, rel=2.85e-07 PASS",
+      "VCE[co_75_79,co_75_79]: Python=0.0392378479941, Stata=0.03923785, abs=2.01e-09, rel=5.11e-08 PASS",
+      "VCE[co_75_79,op_75_79]: Python=-0.0100411638826, Stata=-0.01004116, abs=3.88e-09, rel=3.87e-07 PASS",
+      "VCE[co_75_79,_cons]: Python=-0.00725810875638, Stata=-0.00725811, abs=1.24e-09, rel=1.71e-07 PASS",
+      "VCE[op_75_79,co_65_69]: Python=-0.0027921096212, Stata=-0.00279211, abs=3.79e-10, rel=1.36e-07 PASS",
+      "VCE[op_75_79,co_70_74]: Python=-0.00791550205807, Stata=-0.0079155, abs=2.06e-09, rel=2.60e-07 PASS",
+      "VCE[op_75_79,co_75_79]: Python=-0.0100411638826, Stata=-0.01004116, abs=3.88e-09, rel=3.87e-07 PASS",
+      "VCE[op_75_79,op_75_79]: Python=0.0102125467662, Stata=0.01021255, abs=3.23e-09, rel=3.17e-07 PASS",
+      "VCE[op_75_79,_cons]: Python=-0.00133690611691, Stata=-0.00133691, abs=3.88e-09, rel=2.90e-06 PASS",
+      "VCE[_cons,co_65_69]: Python=-0.00722879996146, Stata=-0.0072288, abs=3.85e-11, rel=5.33e-09 PASS",
+      "VCE[_cons,co_70_74]: Python=-0.00751041117088, Stata=-0.00751041, abs=1.17e-09, rel=1.56e-07 PASS",
+      "VCE[_cons,co_75_79]: Python=-0.00725810875638, Stata=-0.00725811, abs=1.24e-09, rel=1.71e-07 PASS",
+      "VCE[_cons,op_75_79]: Python=-0.00133690611691, Stata=-0.00133691, abs=3.88e-09, rel=2.90e-06 PASS",
+      "VCE[_cons,_cons]: Python=0.00888542487971, Stata=0.00888542, abs=4.88e-09, rel=5.49e-07 PASS"
+    ],
+    "field_results": {
+      "nobs": {
+        "passed": true,
+        "message": "nobs: Python=34, Stata=34, abs=0.00e+00, rel=0.00e+00 PASS"
+      },
+      "df_model": {
+        "passed": true,
+        "message": "df_model: Python=4, Stata=4, abs=0.00e+00, rel=0.00e+00 PASS"
+      },
+      "df_a": {
+        "passed": true,
+        "message": "df_a: Python=5, Stata=5, abs=0.00e+00, rel=0.00e+00 PASS"
+      },
+      "ll": {
+        "passed": true,
+        "message": "ll: Python=-68.2807714296, Stata=-68.280771, abs=4.30e-07, rel=6.29e-09 PASS"
+      },
+      "deviance": {
+        "passed": true,
+        "message": "deviance: Python=38.6950515356, Stata=38.695052, abs=4.64e-07, rel=1.20e-08 PASS"
+      },
+      "pseudo_r2": {
+        "passed": true,
+        "message": "pseudo_r2: Python=0.808309338584, Stata=0.80830934, abs=1.42e-09, rel=1.75e-09 PASS"
+      },
+      "co_65_69.beta": {
+        "passed": true,
+        "message": "co_65_69.beta: Python=0.697140426701, Stata=0.69714043, abs=3.30e-09, rel=4.73e-09 PASS"
+      },
+      "co_65_69.std_err": {
+        "passed": true,
+        "message": "co_65_69.std_err: Python=0.10968489018, Stata=0.10968489, abs=1.80e-10, rel=1.64e-09 PASS"
+      },
+      "co_65_69.t_stat": {
+        "passed": true,
+        "message": "co_65_69.t_stat: Python=6.35584742401, Stata=6.3558474645, abs=4.05e-08, rel=6.37e-09 PASS"
+      },
+      "co_65_69.p_value": {
+        "passed": "True",
+        "message": "co_65_69.p_value: Python=2.07280637099e-10, Stata=2.07280637099e-10, abs=0.00e+00, rel=0.00e+00 PASS"
+      },
+      "co_70_74.beta": {
+        "passed": true,
+        "message": "co_70_74.beta: Python=0.818426577202, Stata=0.81842658, abs=2.80e-09, rel=3.42e-09 PASS"
+      },
+      "co_70_74.std_err": {
+        "passed": true,
+        "message": "co_70_74.std_err: Python=0.143652443973, Stata=0.14365244, abs=3.97e-09, rel=2.77e-08 PASS"
+      },
+      "co_70_74.t_stat": {
+        "passed": true,
+        "message": "co_70_74.t_stat: Python=5.69726873117, Stata=5.69726890821, abs=1.77e-07, rel=3.11e-08 PASS"
+      },
+      "co_70_74.p_value": {
+        "passed": "True",
+        "message": "co_70_74.p_value: Python=1.21741956516e-08, Stata=1.2174182995e-08, abs=1.27e-14, rel=1.04e-06 PASS"
+      },
+      "co_75_79.beta": {
+        "passed": true,
+        "message": "co_75_79.beta: Python=0.453426638801, Stata=0.45342664, abs=1.20e-09, rel=2.65e-09 PASS"
+      },
+      "co_75_79.std_err": {
+        "passed": true,
+        "message": "co_75_79.std_err: Python=0.198085456291, Stata=0.19808545, abs=6.29e-09, rel=3.18e-08 PASS"
+      },
+      "co_75_79.t_stat": {
+        "passed": true,
+        "message": "co_75_79.t_stat: Python=2.2890455831, Stata=2.28904566186, abs=7.88e-08, rel=3.44e-08 PASS"
+      },
+      "co_75_79.p_value": {
+        "passed": "True",
+        "message": "co_75_79.p_value: Python=0.0220767040457, Stata=0.0220766994704, abs=4.58e-09, rel=2.07e-07 PASS"
+      },
+      "op_75_79.beta": {
+        "passed": true,
+        "message": "op_75_79.beta: Python=0.384466958212, Stata=0.38446696, abs=1.79e-09, rel=4.65e-09 PASS"
+      },
+      "op_75_79.std_err": {
+        "passed": true,
+        "message": "op_75_79.std_err: Python=0.101057146042, Stata=0.10105715, abs=3.96e-09, rel=3.92e-08 PASS"
+      },
+      "op_75_79.t_stat": {
+        "passed": true,
+        "message": "op_75_79.t_stat: Python=3.80445097917, Stata=3.80445084786, abs=1.31e-07, rel=3.45e-08 PASS"
+      },
+      "op_75_79.p_value": {
+        "passed": "True",
+        "message": "op_75_79.p_value: Python=0.000142119052091, Stata=0.000142119127474, abs=7.54e-11, rel=5.30e-07 PASS"
+      },
+      "_cons.beta": {
+        "passed": true,
+        "message": "_cons.beta: Python=-6.78957495864, Stata=-6.789575, abs=4.14e-08, rel=6.09e-09 PASS"
+      },
+      "_cons.std_err": {
+        "passed": true,
+        "message": "_cons.std_err: Python=0.0942625316853, Stata=0.09426253, abs=1.69e-09, rel=1.79e-08 PASS"
+      },
+      "_cons.t_stat": {
+        "passed": true,
+        "message": "_cons.t_stat: Python=-72.028353549, Stata=-72.0283552754, abs=1.73e-06, rel=2.40e-08 PASS"
+      },
+      "_cons.p_value": {
+        "passed": "True",
+        "message": "_cons.p_value: Python=0, Stata=0, abs=0.00e+00, rel=0.00e+00 PASS"
+      },
+      "vce.co_65_69.co_65_69": {
+        "passed": "True",
+        "message": "VCE[co_65_69,co_65_69]: Python=0.0120307751337, Stata=0.01203077, abs=5.13e-09, rel=4.27e-07 PASS"
+      },
+      "vce.co_65_69.co_70_74": {
+        "passed": "True",
+        "message": "VCE[co_65_69,co_70_74]: Python=0.00900463751085, Stata=0.00900464, abs=2.49e-09, rel=2.76e-07 PASS"
+      },
+      "vce.co_65_69.co_75_79": {
+        "passed": "True",
+        "message": "VCE[co_65_69,co_75_79]: Python=0.00980344066696, Stata=0.00980344, abs=6.67e-10, rel=6.80e-08 PASS"
+      },
+      "vce.co_65_69.op_75_79": {
+        "passed": "True",
+        "message": "VCE[co_65_69,op_75_79]: Python=-0.0027921096212, Stata=-0.00279211, abs=3.79e-10, rel=1.36e-07 PASS"
+      },
+      "vce.co_65_69._cons": {
+        "passed": "True",
+        "message": "VCE[co_65_69,_cons]: Python=-0.00722879996146, Stata=-0.0072288, abs=3.85e-11, rel=5.33e-09 PASS"
+      },
+      "vce.co_70_74.co_65_69": {
+        "passed": "True",
+        "message": "VCE[co_70_74,co_65_69]: Python=0.00900463751085, Stata=0.00900464, abs=2.49e-09, rel=2.76e-07 PASS"
+      },
+      "vce.co_70_74.co_70_74": {
+        "passed": "True",
+        "message": "VCE[co_70_74,co_70_74]: Python=0.0206360246593, Stata=0.02063602, abs=4.66e-09, rel=2.26e-07 PASS"
+      },
+      "vce.co_70_74.co_75_79": {
+        "passed": "True",
+        "message": "VCE[co_70_74,co_75_79]: Python=0.0146876841922, Stata=0.01468768, abs=4.19e-09, rel=2.85e-07 PASS"
+      },
+      "vce.co_70_74.op_75_79": {
+        "passed": "True",
+        "message": "VCE[co_70_74,op_75_79]: Python=-0.00791550205807, Stata=-0.0079155, abs=2.06e-09, rel=2.60e-07 PASS"
+      },
+      "vce.co_70_74._cons": {
+        "passed": "True",
+        "message": "VCE[co_70_74,_cons]: Python=-0.00751041117088, Stata=-0.00751041, abs=1.17e-09, rel=1.56e-07 PASS"
+      },
+      "vce.co_75_79.co_65_69": {
+        "passed": "True",
+        "message": "VCE[co_75_79,co_65_69]: Python=0.00980344066696, Stata=0.00980344, abs=6.67e-10, rel=6.80e-08 PASS"
+      },
+      "vce.co_75_79.co_70_74": {
+        "passed": "True",
+        "message": "VCE[co_75_79,co_70_74]: Python=0.0146876841922, Stata=0.01468768, abs=4.19e-09, rel=2.85e-07 PASS"
+      },
+      "vce.co_75_79.co_75_79": {
+        "passed": "True",
+        "message": "VCE[co_75_79,co_75_79]: Python=0.0392378479941, Stata=0.03923785, abs=2.01e-09, rel=5.11e-08 PASS"
+      },
+      "vce.co_75_79.op_75_79": {
+        "passed": "True",
+        "message": "VCE[co_75_79,op_75_79]: Python=-0.0100411638826, Stata=-0.01004116, abs=3.88e-09, rel=3.87e-07 PASS"
+      },
+      "vce.co_75_79._cons": {
+        "passed": "True",
+        "message": "VCE[co_75_79,_cons]: Python=-0.00725810875638, Stata=-0.00725811, abs=1.24e-09, rel=1.71e-07 PASS"
+      },
+      "vce.op_75_79.co_65_69": {
+        "passed": "True",
+        "message": "VCE[op_75_79,co_65_69]: Python=-0.0027921096212, Stata=-0.00279211, abs=3.79e-10, rel=1.36e-07 PASS"
+      },
+      "vce.op_75_79.co_70_74": {
+        "passed": "True",
+        "message": "VCE[op_75_79,co_70_74]: Python=-0.00791550205807, Stata=-0.0079155, abs=2.06e-09, rel=2.60e-07 PASS"
+      },
+      "vce.op_75_79.co_75_79": {
+        "passed": "True",
+        "message": "VCE[op_75_79,co_75_79]: Python=-0.0100411638826, Stata=-0.01004116, abs=3.88e-09, rel=3.87e-07 PASS"
+      },
+      "vce.op_75_79.op_75_79": {
+        "passed": "True",
+        "message": "VCE[op_75_79,op_75_79]: Python=0.0102125467662, Stata=0.01021255, abs=3.23e-09, rel=3.17e-07 PASS"
+      },
+      "vce.op_75_79._cons": {
+        "passed": "True",
+        "message": "VCE[op_75_79,_cons]: Python=-0.00133690611691, Stata=-0.00133691, abs=3.88e-09, rel=2.90e-06 PASS"
+      },
+      "vce._cons.co_65_69": {
+        "passed": "True",
+        "message": "VCE[_cons,co_65_69]: Python=-0.00722879996146, Stata=-0.0072288, abs=3.85e-11, rel=5.33e-09 PASS"
+      },
+      "vce._cons.co_70_74": {
+        "passed": "True",
+        "message": "VCE[_cons,co_70_74]: Python=-0.00751041117088, Stata=-0.00751041, abs=1.17e-09, rel=1.56e-07 PASS"
+      },
+      "vce._cons.co_75_79": {
+        "passed": "True",
+        "message": "VCE[_cons,co_75_79]: Python=-0.00725810875638, Stata=-0.00725811, abs=1.24e-09, rel=1.71e-07 PASS"
+      },
+      "vce._cons.op_75_79": {
+        "passed": "True",
+        "message": "VCE[_cons,op_75_79]: Python=-0.00133690611691, Stata=-0.00133691, abs=3.88e-09, rel=2.90e-06 PASS"
+      },
+      "vce._cons._cons": {
+        "passed": "True",
+        "message": "VCE[_cons,_cons]: Python=0.00888542487971, Stata=0.00888542, abs=4.88e-09, rel=5.49e-07 PASS"
+      }
+    }
+  }
+}

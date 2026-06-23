@@ -1,0 +1,60 @@
+{
+  "prefix": "S06",
+  "python": {
+    "seed": 202606,
+    "data_hash": "3e8c7d6edc0fb8ee",
+    "nobs": 120,
+    "xb_mean": -0.1322101533814492,
+    "xb_sd": 1.7542560101389248,
+    "residuals_mean": 1.1694349192718315e-15,
+    "residuals_sd": 0.3583506655456878,
+    "stdp_mean": 0.039695347247432324,
+    "stdp_sd": 0.032295057935970435
+  },
+  "stata": {
+    "log_path": "D:\\OneDrive - SAIF\\PhD3\\StataFlow\\stata\\output\\audit_v1_3_m09\\S06.log",
+    "xb_mean": -0.13221015,
+    "xb_sd": 1.754256,
+    "residuals_mean": -5.401e-17,
+    "residuals_sd": 0.35835067,
+    "stdp_mean": 0.03969535,
+    "stdp_sd": 0.03229506
+  },
+  "diffs": {
+    "passed": true,
+    "messages": [
+      "xb.mean: Python=-0.132210153381, Stata=-0.13221015, abs=3.38e-09, rel=2.56e-08 PASS",
+      "xb.sd: Python=1.75425601014, Stata=1.754256, abs=1.01e-08, rel=5.78e-09 PASS",
+      "residuals.mean: Python=1.16943491927e-15, Stata=-5.401e-17, abs=1.22e-15, rel=1.22e+00 PASS",
+      "residuals.sd: Python=0.358350665546, Stata=0.35835067, abs=4.45e-09, rel=1.24e-08 PASS",
+      "stdp.mean: Python=0.0396953472474, Stata=0.03969535, abs=2.75e-09, rel=6.93e-08 PASS",
+      "stdp.sd: Python=0.032295057936, Stata=0.03229506, abs=2.06e-09, rel=6.39e-08 PASS"
+    ],
+    "field_results": {
+      "xb.mean": {
+        "passed": true,
+        "message": "xb.mean: Python=-0.132210153381, Stata=-0.13221015, abs=3.38e-09, rel=2.56e-08 PASS"
+      },
+      "xb.sd": {
+        "passed": true,
+        "message": "xb.sd: Python=1.75425601014, Stata=1.754256, abs=1.01e-08, rel=5.78e-09 PASS"
+      },
+      "residuals.mean": {
+        "passed": true,
+        "message": "residuals.mean: Python=1.16943491927e-15, Stata=-5.401e-17, abs=1.22e-15, rel=1.22e+00 PASS"
+      },
+      "residuals.sd": {
+        "passed": true,
+        "message": "residuals.sd: Python=0.358350665546, Stata=0.35835067, abs=4.45e-09, rel=1.24e-08 PASS"
+      },
+      "stdp.mean": {
+        "passed": true,
+        "message": "stdp.mean: Python=0.0396953472474, Stata=0.03969535, abs=2.75e-09, rel=6.93e-08 PASS"
+      },
+      "stdp.sd": {
+        "passed": true,
+        "message": "stdp.sd: Python=0.032295057936, Stata=0.03229506, abs=2.06e-09, rel=6.39e-08 PASS"
+      }
+    }
+  }
+}

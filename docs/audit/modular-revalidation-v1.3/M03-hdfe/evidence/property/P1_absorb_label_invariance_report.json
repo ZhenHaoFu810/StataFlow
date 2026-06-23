@@ -1,0 +1,20 @@
+{
+  "test_id": "P1_absorb_label_invariance",
+  "python": {
+    "base": {
+      "x": 1.5203420973190362,
+      "_cons": 1.1804164358555405
+    },
+    "renamed": {
+      "x": 1.5203420973190362,
+      "_cons": 1.1804164358555405
+    }
+  },
+  "stata": {},
+  "comparisons": [
+    {
+      "passed": true,
+      "message": "absorb labels invariant"
+    }
+  ]
+}

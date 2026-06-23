@@ -1,0 +1,315 @@
+{
+  "test_id": "S7_weighted_poisson",
+  "python": {
+    "nobs": 150,
+    "n_input_rows": 150,
+    "df_model": 2.0,
+    "df_resid": 147.0,
+    "ll": -279.53796885344957,
+    "pseudo_r2": 0.1536821304833772,
+    "chi2": 101.52211633893728,
+    "chi2_pvalue": 0.0,
+    "deviance": 193.3235970825017,
+    "cluster_count": null,
+    "coefficients": [
+      {
+        "name": "x1",
+        "beta": 0.41202236782666807,
+        "std_err": 0.04889115003727039,
+        "t_stat": 8.427340480078252,
+        "p_value": 0.0,
+        "ci_low": 0.316197474590874,
+        "ci_high": 0.5078472610624621
+      },
+      {
+        "name": "x2",
+        "beta": -0.2723891127358842,
+        "std_err": 0.05018581823146132,
+        "t_stat": -5.42761127216462,
+        "p_value": 5.711326078738921e-08,
+        "ci_low": -0.370751509004222,
+        "ci_high": -0.17402671646754636
+      },
+      {
+        "name": "_cons",
+        "beta": 0.856376278106155,
+        "std_err": 0.05509916233177854,
+        "t_stat": 15.542455490511848,
+        "p_value": 0.0,
+        "ci_low": 0.7483839043575431,
+        "ci_high": 0.964368651854767
+      }
+    ],
+    "vce": [
+      [
+        0.0023903445519668845,
+        -0.0001575321157816933,
+        -0.0008956169644818103
+      ],
+      [
+        -0.00015753211578169328,
+        0.0025186163515612757,
+        0.0005336134802646752
+      ],
+      [
+        -0.0008956169644818102,
+        0.0005336134802646752,
+        0.0030359176896636838
+      ]
+    ],
+    "vce_row_names": [
+      "x1",
+      "x2",
+      "_cons"
+    ],
+    "sample_mask": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ],
+    "warnings": [],
+    "dropped_vars": []
+  },
+  "stata": {
+    "nobs": 150.0,
+    "df_model": 2.0,
+    "k": 3.0,
+    "ll": -274.70551,
+    "pseudo_r2": 0.14293224,
+    "chi2": 91.624668,
+    "chi2_pvalue": 1.27e-20,
+    "deviance": 193.3236,
+    "df_resid": 147.0,
+    "coefficients": [
+      {
+        "name": "x1",
+        "beta": 0.41202238,
+        "std_err": 0.04889115
+      },
+      {
+        "name": "x2",
+        "beta": -0.27238912,
+        "std_err": 0.05018582
+      },
+      {
+        "name": "_cons",
+        "beta": 0.85637628,
+        "std_err": 0.05509916
+      }
+    ],
+    "vce": [
+      [
+        0.00239034,
+        -0.00015753,
+        -0.00089562
+      ],
+      [
+        -0.00015753,
+        0.00251862,
+        0.00053361
+      ],
+      [
+        -0.00089562,
+        0.00053361,
+        0.00303592
+      ]
+    ],
+    "vce_rows": 3,
+    "_do_file": "D:\\OneDrive - SAIF\\PhD3\\StataFlow\\stata\\cases\\audit_v1_3_m05\\S7_weighted_poisson.do",
+    "_log_hash": "5ed23f2e2691a3cf",
+    "_exit_code": 0
+  },
+  "comparisons": [
+    {
+      "passed": true,
+      "message": "beta[x1]: Python=0.412022367826668, Stata=0.41202238, abs_diff=1.22e-08, rel_diff=2.95e-08 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "std_err[x1]: Python=0.0488911500372704, Stata=0.04889115, abs_diff=3.73e-11, rel_diff=7.62e-10 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "beta[x2]: Python=-0.272389112735884, Stata=-0.27238912, abs_diff=7.26e-09, rel_diff=2.67e-08 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "std_err[x2]: Python=0.0501858182314613, Stata=0.05018582, abs_diff=1.77e-09, rel_diff=3.52e-08 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "beta[_cons]: Python=0.856376278106155, Stata=0.85637628, abs_diff=1.89e-09, rel_diff=2.21e-09 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "std_err[_cons]: Python=0.0550991623317785, Stata=0.05509916, abs_diff=2.33e-09, rel_diff=4.23e-08 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "nobs: Python=150, Stata=150, abs_diff=0.00e+00, rel_diff=0.00e+00 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "df_model: Python=2, Stata=2, abs_diff=0.00e+00, rel_diff=0.00e+00 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "df_resid: Python=147, Stata=147, abs_diff=0.00e+00, rel_diff=0.00e+00 -> PASS"
+    },
+    {
+      "passed": true,
+      "message": "deviance: Python=193.323597082502, Stata=193.3236, abs_diff=2.92e-06, rel_diff=1.51e-08 -> PASS"
+    },
+    {
+      "passed": "True",
+      "message": "VCE(non-omitted) max_abs_diff=4.55e-09, max_rel_diff=1.34e-05 -> PASS"
+    }
+  ]
+}

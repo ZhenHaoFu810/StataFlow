@@ -1,0 +1,61 @@
+{
+  "test_id": "M10-S07",
+  "timestamp": "2026-06-14T07:36:40.314738+00:00",
+  "data_hash": "4ee41f3abac403896a365fddb8ece18410fae323dbbd61391d5729de77b30b13",
+  "stata_command": "regress y",
+  "python_call": "regress(df, 'y', [])",
+  "stata_scalars": {
+    "nobs": 30.0,
+    "df_model": 0.0,
+    "df_resid": 29.0,
+    "r2": 0.0,
+    "r2_adj": 0.0,
+    "rmse": 2.3302864,
+    "f_stat": 0.0,
+    "mss": 0.0,
+    "rss": 157.47681
+  },
+  "python_scalars": {
+    "nobs": 30,
+    "n_input_rows": 30,
+    "df_model": 0.0,
+    "df_resid": 29.0,
+    "df_a": null,
+    "r2": 0.0,
+    "r2_adj": 0.0,
+    "rmse": 2.3302864368768814,
+    "f_stat": null,
+    "f_pvalue": null,
+    "rss": 157.4768114588782,
+    "tss": 157.4768114588782,
+    "mss": 0.0,
+    "n_clust": null,
+    "active_coef_names": [
+      "_cons"
+    ]
+  },
+  "scalars_comparison": {
+    "passed": true,
+    "messages": [
+      "nobs: Python=30, Stata=30.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "df_model: Python=0.0, Stata=0.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "df_resid: Python=29.0, Stata=29.0, abs=0.00e+00, rel=0.00e+00 PASS",
+      "r2: Python=0.0, Stata=0.0, abs=0.00e+00, rel=0.00e+00 PASS"
+    ]
+  },
+  "coefficients_comparison": {
+    "passed": true,
+    "messages": [
+      "coef_names/order: Python(active)=['_cons'], Stata=['_cons'] PASS",
+      "_cons.beta: Python=5.186177231469846, Stata=5.1861772, abs=3.15e-08, rel=6.07e-09 PASS",
+      "_cons.std_err: Python=0.4254501489752687, Stata=0.42545015, abs=1.02e-09, rel=2.41e-09 PASS"
+    ]
+  },
+  "vce_comparison": {
+    "passed": true,
+    "messages": [
+      "VCE[_cons,_cons]: Python=0.18100782926307837, Stata=0.18100783, abs=7.37e-10, rel=4.07e-09 PASS"
+    ]
+  },
+  "sample_mask_equal": null
+}

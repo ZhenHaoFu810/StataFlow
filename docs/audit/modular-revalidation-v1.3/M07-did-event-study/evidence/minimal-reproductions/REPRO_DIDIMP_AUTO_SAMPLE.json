@@ -1,0 +1,10 @@
+{
+  "python_nobs": 600,
+  "python_n_input_rows": 600,
+  "python_sum_mask": 600,
+  "stata_nobs": 280.0,
+  "python_tau_beta": 1.946854546989404,
+  "python_tau_se": 0.07948213735176668,
+  "stata_tau_beta": 2.064802,
+  "stata_tau_se": 0.140369
+}

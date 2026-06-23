@@ -1,0 +1,14 @@
+{
+  "test_id": "P3_scale_invariance",
+  "python": {
+    "base_slope": 1.5111081749880104,
+    "scaled_slope": 1.5111081749880129
+  },
+  "stata": {},
+  "comparisons": [
+    {
+      "passed": "True",
+      "message": "slope invariant to scale: base=1.5111081749880104 scaled=1.5111081749880129"
+    }
+  ]
+}
