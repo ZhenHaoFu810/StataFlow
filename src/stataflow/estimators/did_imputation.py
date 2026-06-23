@@ -940,7 +940,7 @@ class DIDImputation:
                 continue
 
             effective_mask = tr["effective_mask"]
-            tau_h = tr["beta"]
+            tr["beta"]
 
             # Compute imputation weights
             norm_col = tr.get("norm_col")

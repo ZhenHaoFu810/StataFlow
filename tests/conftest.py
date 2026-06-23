@@ -2,7 +2,6 @@
 Pytest configuration and common fixtures for StataFlow tests.
 """
 
-import os
 import pytest
 from pathlib import Path
 

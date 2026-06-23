@@ -231,7 +231,7 @@ def _rdrobust_bw(Y, X, c, o, nu, o_B, h_V, h_B, scale,
         s = np.array([1.0])
         dZ = 0
 
-    d = len(s) - 1
+    len(s) - 1
 
     # Residuals
     predicts_V = R_V @ beta_V

@@ -8,7 +8,7 @@ and testing harness.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from typing import Any, Optional
 
 import numpy as np
@@ -168,7 +168,7 @@ class ResultSchema:
                 n_v = len(v_values)
                 if any(len(row) != n_v for row in v_values):
                     raise ValueError(
-                        f"Variance matrix rows have non-uniform lengths."
+                        "Variance matrix rows have non-uniform lengths."
                     )
                 if n_v != len(v_names):
                     raise ValueError(

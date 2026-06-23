@@ -835,7 +835,7 @@ def test_did_imputation_pretrends_basic():
     })
 
     # Without pretrends
-    res_no_pre = did_imputation(
+    did_imputation(
         df, y="y", id="id", time="time", first_treat="first_treat",
         allhorizons=True, autosample=True,
     )
@@ -1044,7 +1044,7 @@ def test_did_imputation_saveestimates():
     })
 
     model = DIDImputation(df, y="y", id="id", time="time", first_treat="first_treat")
-    res = model.fit(autosample=True, saveestimates="effect")
+    model.fit(autosample=True, saveestimates="effect")
 
     # saveestimates_ should exist and align with original data
     assert hasattr(model, "saveestimates_")

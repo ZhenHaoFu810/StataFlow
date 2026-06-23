@@ -16,7 +16,6 @@ from stataflow.compat.stata.factor_variables import (
     expand_factor_terms,
     get_underlying_vars,
     parse_absorb,
-    _expand_single_term,
 )
 from stataflow.compat.stata import regress, reghdfe, logit, ivreghdfe, ppmlhdfe
 
@@ -25,7 +24,6 @@ from stataflow.compat.stata import regress, reghdfe, logit, ivreghdfe, ppmlhdfe
 # Parser unit tests
 # ---------------------------------------------------------------------------
 
-from stataflow.estimators._absorb_spec import AbsorbSpec
 
 
 def _active_coefficients(result):

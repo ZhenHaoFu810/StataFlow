@@ -211,12 +211,11 @@ class EventStudyInteract:
             X_cov_resid = np.column_stack([_twfe_residualize(X_cov[:, i], w) for i in range(n_cov)])
             X_reg = np.column_stack([X_resid, X_cov_resid])
             # Track which columns are interaction vs covariate
-            interaction_idx = list(range(len(interaction_cols)))
-            covariate_idx = list(range(len(interaction_cols), len(interaction_cols) + n_cov))
+            list(range(len(interaction_cols)))
+            list(range(len(interaction_cols), len(interaction_cols) + n_cov))
         else:
             X_reg = X_resid
-            interaction_idx = list(range(len(interaction_cols)))
-            covariate_idx = []
+            list(range(len(interaction_cols)))
 
         # Detect collinearity in residualized design matrix (same columns as reghdfe LSDV)
         R_qr = np.linalg.qr(X_reg, mode="r")

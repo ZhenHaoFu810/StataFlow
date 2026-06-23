@@ -129,7 +129,7 @@ def test_reghdfe_predict_types_consistency():
     """Mathematical consistency of predict sub-options."""
     df = _make_reghdfe_data(n=100, seed=55)
     model = AbsorbingOLS(df, y="y", x=["x1", "x2"], absorb=["firm_id", "year_id"])
-    result = model.fit(vce="ols")
+    model.fit(vce="ols")
 
     y = model._dep_var
     xb = model.predict(type="xb")
@@ -341,7 +341,7 @@ def test_ivreghdfe_predict_types_consistency():
         df, y="y", x_exog=["x1"], x_endog=["x2"], instruments=["z1"],
         absorb=["firm_id", "year_id"]
     )
-    result = model.fit(vce="ols")
+    model.fit(vce="ols")
 
     y = model._dep_var
     xb = model.predict(type="xb")
@@ -451,7 +451,7 @@ def test_ppmlhdfe_predict_residuals():
     """predict(type='residuals') should return y - mu."""
     df = _make_ppml_data(n=100, seed=88)
     model = PPMLHDFE(df, y="y", x=["x1", "x2"], absorb=["firm_id"])
-    result = model.fit(vce="robust")
+    model.fit(vce="robust")
 
     mu = model.predict(type="mu")
     residuals = model.predict(type="residuals")

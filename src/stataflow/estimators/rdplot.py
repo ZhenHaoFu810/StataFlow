@@ -109,7 +109,7 @@ def _compute_bins_esmv(x, y, c, side, n_total):
     drk = np.zeros((n_side, k), dtype=float)
     for j in range(1, k + 1):
         drk[:, j - 1] = j * x ** (j - 1)
-    mu1_hat = drk @ gamma[1:]
+    drk @ gamma[1:]
 
     # Spacings-based variance estimator (stable sort to match R/Stata)
     sort_idx = np.argsort(x, kind="stable")
@@ -159,7 +159,7 @@ def _compute_bins_qsmv(x, y, c, side, n_total):
         drk_i[:, j - 1] = j * x_bar ** (j - 1)
     mu1_i_hat = drk_i @ gamma[1:]
 
-    B = (n_side ** 2 / (24.0 * n_total)) * np.sum(
+    (n_side ** 2 / (24.0 * n_total)) * np.sum(
         dxi[valid] ** 2 * mu1_i_hat[valid] ** 2
     )
     # Stata's qs spacings variance sums dyi^2 over all adjacent pairs,

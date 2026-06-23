@@ -657,7 +657,6 @@ class PPMLHDFE:
 
         # Build X matrix for reported coefficients (x variables + constant)
         X_full = self._abs_ols._design_matrix
-        T = self._T
         # We need X in the reported-parameter space: x variables as observed
         k_x = len([name for name in self._abs_ols._coef_names if name != "_cons"])
         has_cons = "_cons" in self._abs_ols._coef_names

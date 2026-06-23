@@ -1370,7 +1370,7 @@ class AbsorbingOLS:
                     counts = info['counts']
                     levels = info['levels']
                     col_types = info.get('column_types', [])
-                    n_slopes = len(info.get('slopes', []))
+                    len(info.get('slopes', []))
                     first_fe_no_const = (not self.add_constant) and (fe_idx == 0)
                     n_intercept_cols = len(levels) if first_fe_no_const else len(levels) - 1
 

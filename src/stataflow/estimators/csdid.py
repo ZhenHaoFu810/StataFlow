@@ -1,6 +1,7 @@
 """Callaway-Sant'Anna CSDID estimator (method='reg')."""
 
 import warnings
+from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -183,7 +184,7 @@ class CSDID:
         min_year = min(years)
 
         units = df[uid].unique()
-        n_units = len(units)
+        len(units)
 
         # Check for duplicate (unit, time) observations before pivot
         dup_mask = df.duplicated(subset=[uid, time], keep=False)
@@ -464,7 +465,7 @@ class CSDID:
         min_year = min(years)
 
         units = df[uid].unique()
-        n_units = len(units)
+        len(units)
 
         # Check for duplicate (unit, time) observations before pivot
         dup_mask = df.duplicated(subset=[uid, time], keep=False)

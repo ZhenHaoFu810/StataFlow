@@ -662,7 +662,6 @@ class Probit(GLMBase):
         return mu * (1.0 - mu)
 
     def _loglik(self, y: np.ndarray, mu: np.ndarray) -> float:
-        from scipy.stats import norm
         mu = np.clip(mu, 1e-15, 1 - 1e-15)
         return float(np.sum(y * np.log(mu) + (1.0 - y) * np.log(1.0 - mu)))
 

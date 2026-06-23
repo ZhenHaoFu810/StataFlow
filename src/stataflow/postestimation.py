@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from scipy.stats import norm as norm_dist
 from types import SimpleNamespace
-from typing import Any, Optional
+from typing import Any
 
 
 def _build_design_matrix(df: pd.DataFrame, x_vars: list[str], add_constant: bool) -> np.ndarray:

@@ -274,7 +274,7 @@ class IV2SLS:
 
         # Stata ivregress 2sls uses asymptotic z-stats for all VCE types
         df_resid = None
-        df_stat = float('inf')  # normal distribution
+        float('inf')  # normal distribution
 
         # R-squared (Stata uses structural residuals for ivregress)
         r2 = 1.0 - rss / tss if tss > 0 else 0.0
@@ -362,7 +362,7 @@ class IV2SLS:
             endog_kept = [name for name in self.x_endog if name in self._coef_names]
             k_exog = len(exog_kept)
             # Endogenous variable indices in X (after constant if present)
-            endog_start = k_exog + (1 if self.add_constant else 0)
+            k_exog + (1 if self.add_constant else 0)
             for j, endog_name in enumerate(endog_kept):
                 endog_idx = self._coef_names.index(endog_name)
                 x_j = X[:, endog_idx]
@@ -1071,7 +1071,7 @@ class IVAbsorbingOLS:
 
             if vce == "ols":
                 RSS_full = float(np.sum(resid_fs ** 2))
-                TSS = float(np.sum((x_j - np.mean(x_j)) ** 2))
+                float(np.sum((x_j - np.mean(x_j)) ** 2))
                 # Restricted model: x_j on W_z (included instruments only)
                 W_z = Z_full[:, :w_cols_count_in_z]
                 if W_z.shape[1] > 0:

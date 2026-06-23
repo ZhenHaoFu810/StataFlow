@@ -129,7 +129,7 @@ class FixedEffectsOLS:
 
         # Extract arrays
         y = df[self.y].values.astype(np.float64)
-        fe_vals = df[self.fe].values
+        df[self.fe].values
 
         # Extract cluster variable if provided
         cluster_arr = None
