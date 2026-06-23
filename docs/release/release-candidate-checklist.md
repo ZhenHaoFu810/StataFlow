@@ -57,7 +57,7 @@ python scripts/release/export_open_source.py --force
 
 - [x] No closed files leaked (audit: `docs/audit/`, `docs/tasks/`, `workspace/`, `tests/golden/`, `tests/audit_v1_3/`, `.claude/`, `session_restore/`, secrets)
 - [x] No `__pycache__/`, `.pytest_cache/`, or build artifacts present
-- [x] `scripts/release/export_open_source.py` is present in the exported repo
+- [x] `scripts/release/PRE_PUBLIC_SYNC_CHECKLIST.md` is present in the exported repo; export executables remain internal only
 - [x] File count is within expected range (current baseline: 168 non-git files)
 
 ### 3.2 Verification in Clean Environment
@@ -72,7 +72,7 @@ python scripts/release/export_open_source.py --force
 ### 3.3 Git Hygiene (if tagging)
 
 - [x] `.gitignore` covers standard Python artifacts, internal agent/session state, and internal audit/tests
-- [x] `scripts/release/open_source_manifest.yml` blacklist excludes `tests/audit_v1_3/`, `.claude/`, `session_restore/`, `docs/audit/`
+- [x] `scripts/release/open_source_manifest.yml` exports only the public pre-sync checklist under `scripts/release/`
 - [x] No large binary files accidentally committed
 - [ ] Commit message references the checklist version
 
