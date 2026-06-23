@@ -35,7 +35,7 @@ result.display()
 pip install StataFlow
 ```
 
-需要 Python 3.10+。依赖：NumPy、pandas、SciPy。
+需要 Python 3.10+。依赖：NumPy、pandas、SciPy、scikit-learn、PyYAML。
 
 ## 快速开始
 
@@ -109,8 +109,8 @@ print(f"R² = {result.fit.r2:.4f}, N = {result.sample.nobs}")
 
 ## 文档
 
-- [用户手册](docs/USER_GUIDE.md) — 完整教程与概念指南（英文: [User Guide](docs/USER_GUIDE.zh-CN.md)）
-- [Cookbook](docs/cookbook.md) — 可复制的配方示例（英文: [Cookbook](docs/cookbook.zh-CN.md)）
+- [用户手册](docs/USER_GUIDE.zh-CN.md) — 完整教程与概念指南（英文: [User Guide](docs/USER_GUIDE.md)）
+- [Cookbook](docs/cookbook.zh-CN.md) — 可复制的配方示例（英文: [Cookbook](docs/cookbook.md)）
 - [示例](examples/) — 可运行的 demo 脚本
 - [更新日志](CHANGELOG.md) — 最新热修复的更新内容
 
@@ -118,7 +118,7 @@ print(f"R² = {result.fit.r2:.4f}, N = {result.sample.nobs}")
 
 ```bash
 # 单元与集成测试
-pytest tests/ -v --ignore=tests/golden/
+pytest tests/ -v --ignore=tests/golden/ --ignore=tests/audit_v1_3
 
 # Golden 双跑测试（需要本地 Stata 17）
 pytest tests/golden/ -v

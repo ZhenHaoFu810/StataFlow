@@ -60,7 +60,7 @@
 ## Known Limitations (documented, not treated as open bugs)
 
 1. **2-way cluster `_cons` SE in HDFE/PPML/IV-HDFE**  
-   Under 2-way clustering, the constant-term standard error may deviate from Stata `reghdfe` by up to ~3% on synthetic data and ~16% on real data. Slope SEs remain aligned to `< 1e-6`. This is a structural difference between StataFlow's LSDV framework and Stata's iterative-demeaning framework. Governed by ADR-0003.
+   Under 2-way clustering, the constant-term standard error may deviate from Stata `reghdfe` by up to ~3% on synthetic data and ~16% on real data. Slope SEs remain aligned to `< 1e-6`. This is a structural difference between StataFlow's LSDV framework and Stata's iterative-demeaning framework. Governed by [ADR-0003](../adr/ADR-0003-lsdv-cons-se-under-multiway-cluster.md).
 
 2. **Factor variable `#` in coefficient names**  
    Interaction terms such as `c.x1#c.x2` retain `#` in coefficient names. This matches Stata standard syntax.
@@ -87,7 +87,7 @@ The following are scheduled for future releases and are **not** regressions:
 
 ## Verification Status
 
-- Non-golden tests: **392 passed, 0 failed** (synthetic / controlled cases; excludes internal `tests/audit_v1_3/`)
+- Non-golden tests: **301 passed, 0 failed** (synthetic / controlled cases)
 - Golden dual-run tests: **~606 passed** against Stata 17 (requires local Stata 17; real-data tests may skip when external datasets are unavailable)
 
 No breaking API changes were introduced relative to v1.0.0.

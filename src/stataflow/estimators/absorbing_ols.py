@@ -128,6 +128,10 @@ class AbsorbingOLS:
             return True
         if self.technique == "lsdv":
             return False
+        # Weighted HDFE requires weighted partial-out; MAP currently ignores
+        # weights, so fall back to LSDV when weights are present (VCE-005).
+        if self._weights_input is not None:
+            return False
         # auto: use MAP if total FE levels would exceed LSDV comfort threshold
         total_fe_levels = sum(info["num_levels"] for info in fe_info)
         return total_fe_levels > 5000
@@ -426,183 +430,6 @@ class AbsorbingOLS:
         X_star = variables[:, 1:] if k > 0 else np.zeros((n, 0))
         return y_star, X_star, fe_cum
 
-    def _compute_map_cons_variance(
-        self,
-        X_raw: np.ndarray,
-        residuals: np.ndarray,
-        cov_slopes: np.ndarray,
-        fe_info: list[dict],
-        vce: str,
-        n: int,
-        k_full: int,
-        sigma2: float = 0.0,
-    ) -> float:
-        """Compute LSDV-compatible constant variance for MAP path.
-
-        Uses the influence-vector (h) approach:
-        h = p - X_partial @ v,  where  v = solve(Xp'Xp, X'p).
-        Var(_cons) is the appropriate quadratic form in h.
-        """
-        num_fe = len(fe_info)
-        k_x = X_raw.shape[1]
-
-        # ---------- 1-way FE: closed-form p ----------
-        if num_fe == 1:
-            info = fe_info[0]
-            G = info["num_levels"]
-            group_counts = info["counts"]
-            levels = info["levels_int"]
-
-            p = 1.0 / (G * group_counts[levels])
-
-            X_partial = X_raw.copy()
-            for j in range(k_x):
-                gm = np.bincount(levels, weights=X_raw[:, j], minlength=G)
-                gm /= group_counts
-                X_partial[:, j] -= gm[levels]
-
-        # ---------- Multi-way FE: exact p-vector when small ----------
-        else:
-            total_fe_params = sum(info["num_levels"] - 1 for info in fe_info) + 1
-            if total_fe_params > 1000:
-                # Grand-mean approximation for very large FE systems
-                import warnings
-                warnings.warn(
-                    f"MAP _cons variance uses grand-mean approximation for "
-                    f"{total_fe_params} FE params (>1000).  "
-                    f"SE may differ from LSDV/Stata for the constant term.",
-                    RuntimeWarning,
-                    stacklevel=2,
-                )
-                retained_x_names = [name for name in self._coef_names if name != "_cons"]
-                x_means = np.array([self._df[name].mean() for name in retained_x_names])
-                var_cons = float(x_means @ cov_slopes @ x_means)
-                if vce == "ols":
-                    var_cons += sigma2 / n
-                return max(var_cons, 0.0)
-
-            # Build A (FE normal equations with reference levels)
-            A = np.zeros((total_fe_params, total_fe_params))
-            A[0, 0] = n
-
-            offsets = [1]
-            for info in fe_info[:-1]:
-                offsets.append(offsets[-1] + info["num_levels"] - 1)
-
-            for g_idx, info_g in enumerate(fe_info):
-                G_g = info_g["num_levels"]
-                levels_g = info_g["levels_int"]
-                off_g = offsets[g_idx]
-
-                for lvl in range(1, G_g):
-                    mask = levels_g == lvl
-                    count = np.sum(mask)
-                    A[0, off_g + lvl - 1] = count
-                    A[off_g + lvl - 1, 0] = count
-                    A[off_g + lvl - 1, off_g + lvl - 1] = count
-
-                for h_idx in range(g_idx + 1, num_fe):
-                    info_h = fe_info[h_idx]
-                    G_h = info_h["num_levels"]
-                    levels_h = info_h["levels_int"]
-                    off_h = offsets[h_idx]
-
-                    for lvl_g in range(1, G_g):
-                        mask_g = levels_g == lvl_g
-                        for lvl_h in range(1, G_h):
-                            N_gh = np.sum(mask_g & (levels_h == lvl_h))
-                            A[off_g + lvl_g - 1, off_h + lvl_h - 1] = N_gh
-                            A[off_h + lvl_h - 1, off_g + lvl_g - 1] = N_gh
-
-            T_z = np.zeros(total_fe_params)
-            T_z[0] = 1.0
-            for g_idx, info_g in enumerate(fe_info):
-                G_g = info_g["num_levels"]
-                off_g = offsets[g_idx]
-                T_z[off_g : off_g + G_g - 1] = 1.0 / G_g
-
-            try:
-                u = np.linalg.solve(A, T_z)
-            except np.linalg.LinAlgError:
-                u = np.linalg.lstsq(A, T_z, rcond=None)[0]
-
-            p = np.full(n, u[0])
-            for g_idx, info_g in enumerate(fe_info):
-                G_g = info_g["num_levels"]
-                levels_g = info_g["levels_int"]
-                off_g = offsets[g_idx]
-                for lvl in range(1, G_g):
-                    mask = levels_g == lvl
-                    p[mask] += u[off_g + lvl - 1]
-
-            # X_partial = X - Z_ref @ solve(A, Z_ref.T @ X)
-            Z_list = [np.ones(n)]
-            for info_g in fe_info:
-                G_g = info_g["num_levels"]
-                levels_g = info_g["levels_int"]
-                for lvl in range(1, G_g):
-                    Z_list.append((levels_g == lvl).astype(np.float64))
-            Z_ref = np.column_stack(Z_list)
-
-            ZX = Z_ref.T @ X_raw
-            X_partial = X_raw - Z_ref @ np.linalg.solve(A, ZX)
-
-        # ---------- Common: h = p - X_partial @ v, v = solve(Xp'Xp, X'p) ----------
-        XtX_p = X_partial.T @ X_partial
-        Xtp = X_raw.T @ p
-        try:
-            v = np.linalg.solve(XtX_p, Xtp)
-        except np.linalg.LinAlgError:
-            v = np.linalg.lstsq(XtX_p, Xtp, rcond=None)[0]
-        h = p - X_partial @ v
-
-        if vce == "ols":
-            var_cons = sigma2 * np.sum(h ** 2)
-        elif vce == "robust":
-            var_cons = np.sum((h * residuals) ** 2)
-            if n > k_full:
-                var_cons *= n / (n - k_full)
-        elif vce == "cluster":
-            if len(self._cluster_arrs) == 1:
-                clusters = self._cluster_arrs[0]
-                unique_clusters = np.unique(clusters)
-                meat = 0.0
-                for g in unique_clusters:
-                    mask_g = clusters == g
-                    meat += np.sum(h[mask_g] * residuals[mask_g]) ** 2
-                cluster_count = len(unique_clusters)
-                nested_params = sum(
-                    info["num_levels"] - 1 for info in fe_info
-                    if info["var"] == self._cluster_vars[0]
-                )
-                k_eff = k_full - nested_params
-                n_adj = (n - 1) / (n - k_eff) if n > k_eff else 1.0
-                g_adj = cluster_count / (cluster_count - 1) if cluster_count > 1 else 1.0
-                var_cons = n_adj * g_adj * meat
-            else:
-                from stataflow.estimators._vce_utils import compute_multiway_cluster_vce
-                h_mat = h.reshape(-1, 1)
-                hth = float(h_mat.T @ h_mat)
-                if hth > 0:
-                    cov_h, _ = compute_multiway_cluster_vce(
-                        h_mat, h * residuals, np.array([[1.0 / hth]]), self._cluster_arrs, 1, n,
-                    )
-                    var_cons = float(cov_h[0, 0])
-                else:
-                    var_cons = 0.0
-        elif vce == "dkraay":
-            # Delta-method approximation for constant variance under DK
-            retained_x_names = [name for name in self._coef_names if name != "_cons"]
-            if retained_x_names and self._df is not None:
-                x_means = np.array([self._df[name].mean() for name in retained_x_names])
-                var_cons = float(x_means @ cov_slopes @ x_means)
-            else:
-                var_cons = 0.0
-        else:
-            var_cons = 0.0
-
-        return max(var_cons, 0.0)
-
     def _compute_dkraay_vce(
         self,
         X: np.ndarray,
@@ -681,6 +508,37 @@ class AbsorbingOLS:
     # _compute_cluster_meat, _fix_psd, _fix_psd_reghdfe, _compute_multiway_cluster_vce
     # are imported from _vce_utils (ADR-0004).
 
+    def _cluster_k_eff(self, k_x: int) -> int:
+        """Effective rank for cluster small-sample adjustment.
+
+        Aligns with Stata reghdfe/areg: ``k_eff = k_x + df_a + nested_adj``,
+        where ``nested_adj`` is 1 if any absorbed FE is nested in a cluster
+        variable. This replaces the previous ``k_full - nested_params`` rule,
+        which produced incorrect (sometimes negative) k_eff for nested FEs.
+        """
+        nested_adj = 0
+        fe_info = getattr(self, '_dummy_info', []) or getattr(self, '_fe_info', [])
+        for info in fe_info:
+            if self._fe_is_nested_in_cluster(info):
+                nested_adj = 1
+                break
+        return k_x + int(round(self._df_a)) + nested_adj
+
+    def _fe_is_nested_in_cluster(self, info: dict) -> bool:
+        """Return whether each FE level belongs to one cluster level."""
+        if not self._cluster_vars:
+            return False
+        fe_var = info["var"]
+        if fe_var in self._cluster_vars:
+            return True
+        for cluster_var in self._cluster_vars:
+            nesting = self._df.groupby(fe_var, sort=False)[cluster_var].nunique(
+                dropna=False
+            )
+            if bool((nesting <= 1).all()):
+                return True
+        return False
+
     def _reghdfe_coefficient_scales(self, y: np.ndarray) -> np.ndarray:
         """Return reghdfe's coefficient rescaling factors."""
         x_names = [name for name in self._coef_names if name != "_cons"]
@@ -704,15 +562,15 @@ class AbsorbingOLS:
     ) -> tuple[np.ndarray, int]:
         """Compute 2-way cluster-robust VCE via inclusion-exclusion.
 
-        Thin wrapper that computes k_eff excluding FE parameters nested in cluster vars.
+        Thin wrapper that computes k_eff with the Stata-aligned nested
+        adjustment.
         """
         from stataflow.estimators._vce_utils import compute_multiway_cluster_vce
 
-        nested_params = 0
-        for info in self._dummy_info:
-            if info['var'] in self._cluster_vars:
-                nested_params += info['num_levels'] - 1
-        k_eff = k_full - nested_params
+        k_x = X_full.shape[1] - (1 if self.add_constant else 0) - sum(
+            info['num_levels'] - 1 for info in self._dummy_info
+        )
+        k_eff = self._cluster_k_eff(k_x)
         return compute_multiway_cluster_vce(
             X_full, residuals, XtX_inv, self._cluster_arrs, k_eff, n,
         )
@@ -755,6 +613,9 @@ class AbsorbingOLS:
                 )
             df["_stataflow_weights"] = weight_arr
 
+        # Add a unique row identifier to track observations through drops
+        df["_stataflow_row_id"] = np.arange(len(df))
+
         # Drop missing values
         if self.missing == "drop":
             mask = df.notna().all(axis=1)
@@ -782,8 +643,15 @@ class AbsorbingOLS:
         # Save filtered dataframe for postestimation
         self._df = df.copy()
 
-        # Build sample mask that reflects both missing drop and singleton drop
-        sample_mask = [idx in df.index for idx in self.data.index]
+        # Build sample mask using unique row ids (immune to duplicate index labels)
+        kept_ids = set(df["_stataflow_row_id"].values)
+        sample_mask = [i in kept_ids for i in range(self._n_input_rows)]
+
+        # Drop helper columns from internal dataframe
+        df = df.drop(columns=["_stataflow_row_id"])
+        if "_stataflow_weights" in df.columns:
+            df = df.drop(columns=["_stataflow_weights"])
+        self._df = df.copy()
 
         y = df[self.y].values.astype(np.float64)
         n = len(y)
@@ -883,6 +751,7 @@ class AbsorbingOLS:
                     'var': var,
                     'levels': unique_levels.tolist(),
                     'num_levels': G,
+                    'counts': counts,
                     'D': D,
                     'dummy_names': dummy_names,
                     'column_types': column_types,
@@ -981,15 +850,18 @@ class AbsorbingOLS:
     def _compute_df_a(self, fe_info_or_dummy_info: list[dict]) -> None:
         """Compute absorbed degrees of freedom."""
         effective_levels = []
-        for i, var in enumerate(self.absorb_vars):
-            if self._cluster_vars and var in self._cluster_vars:
-                continue  # Nested in cluster: contributes 0
+        for i, _var in enumerate(self.absorb_vars):
             if i < len(fe_info_or_dummy_info):
                 info = fe_info_or_dummy_info[i]
                 n_levels = info['num_levels']
                 n_slopes = len(info.get('slopes', []))
                 has_intercept = info.get('has_intercept', True)
-                params_per_level = (1 if has_intercept else 0) + n_slopes
+                intercept_df = (
+                    1
+                    if has_intercept and not self._fe_is_nested_in_cluster(info)
+                    else 0
+                )
+                params_per_level = intercept_df + n_slopes
                 effective_levels.append(n_levels * params_per_level)
 
         self._df_a = float(sum(effective_levels))
@@ -1038,18 +910,25 @@ class AbsorbingOLS:
         else:
             df_resid = float(n - k_full)
 
-        if self._reghdfe_mode and vce_core == "cluster":
+        # RMSE denominator: align with Stata's used_df_r.
+        if self._reghdfe_mode:
+            # reghdfe subtracts levels of FEs nested in cluster variables
+            # (Stata's e(df_a_nested) is excluded from df_a but still counts
+            # against residual df for rmse/r2_a).
+            fe_info = getattr(self, "_fe_info", [])
             nested_levels = sum(
-                info["num_levels"] for info in self._fe_info
-                if info["var"] in self._cluster_vars
+                info["num_levels"] for info in fe_info
+                if self._fe_is_nested_in_cluster(info)
             )
             rmse_df = float(n - df_model - df_a - nested_levels)
         else:
-            rmse_df = float(n - k_full)
+            # areg: constant is estimated separately; nested FEs are redundant.
+            cons_penalty = 1.0 if self.add_constant else 0.0
+            rmse_df = float(n - df_model - df_a - cons_penalty)
         rmse = np.sqrt(rss / rmse_df) if rmse_df > 0 else 0.0
 
         if self._reghdfe_mode:
-            r2_adj = 1.0 - (rss / rmse_df) / (tss / (n - 1)) if rmse_df > 0 and tss > 0 else 0.0
+            r2_adj = 1.0 - (rss / rmse_df) / (tss / (n - 1)) if rmse_df > 0 and tss > 0 else None
         else:
             r2_adj = 1.0 - (1.0 - r2) * (n - 1) / rmse_df if rmse_df > 0 else 0.0
 
@@ -1069,71 +948,88 @@ class AbsorbingOLS:
             )
         else:
             XtX_inv = np.linalg.inv(XtX)
+            k_eff = self._cluster_k_eff(k_x)
             if len(self._cluster_arrs) == 1:
                 from stataflow.estimators._vce_utils import compute_cluster_meat
                 meat, cluster_count = compute_cluster_meat(
                     X_partial, residuals, self._cluster_arrs[0]
                 )
-                nested_params = sum(
-                    info["num_levels"] - 1 for info in self._fe_info
-                    if info["var"] == self._cluster_vars[0]
-                )
-                k_eff = k_full - nested_params
                 n_adj = (n - 1) / (n - k_eff) if n > k_eff else 1.0
                 g_adj = cluster_count / (cluster_count - 1) if cluster_count > 1 else 1.0
                 cov_slopes = n_adj * g_adj * XtX_inv @ meat @ XtX_inv
             else:
                 from stataflow.estimators._vce_utils import compute_multiway_cluster_vce
-                nested_params = sum(
-                    info["num_levels"] - 1 for info in self._fe_info
-                    if info["var"] in self._cluster_vars
-                )
-                k_eff = k_full - nested_params
                 cov_slopes, cluster_count = compute_multiway_cluster_vce(
                     X_partial, residuals, XtX_inv, self._cluster_arrs, k_eff, n,
                 )
 
+        report_dim = k_x + (1 if self.add_constant else 0)
+
         if self.add_constant:
-            _cons = 0.0
-            num_fe = len(self._fe_info)
-            for g in range(num_fe):
-                cum_r_g = fe_cum[0][g][:, 0].copy()
-                for j in range(k_x):
-                    cum_r_g -= beta_x[j] * fe_cum[j + 1][g][:, 0]
-                _cons += float(np.mean(cum_r_g))
+            # Stata's areg/reghdfe report the regression-through-means intercept:
+            # _cons = mean(y) - mean(x)' beta_x.
+            retained_x_names = [
+                name for name in self._coef_names if name != "_cons"
+            ]
+            xbar = np.array([
+                self._df[name].mean() for name in retained_x_names
+            ])
+            _cons = float(np.mean(y) - xbar @ beta_x)
             beta_reported = np.concatenate([beta_x, [_cons]])
+
+            # Influence matrix for [beta_x, _cons] in the partialling-out framework.
+            # The i-th row gives the influence of observation i on each estimator.
+            XtX_inv = np.linalg.inv(XtX)
+            h = 1.0 / n - X_partial @ (XtX_inv @ xbar)
+            X_infl = np.column_stack([X_partial @ XtX_inv, h.reshape(-1, 1)])
+
+            if vce_core == "ols":
+                sigma2_cons = rss / df_resid if df_resid > 0 else 0.0
+                cov_reported = sigma2_cons * (X_infl.T @ X_infl)
+            elif vce_core == "robust":
+                meat = X_infl.T @ (X_infl * (residuals ** 2)[:, np.newaxis])
+                if n > k_full:
+                    meat *= n / (n - k_full)
+                cov_reported = meat
+            elif vce_core == "dkraay":
+                # DK VCE already computed for slopes; recover _cons row via delta method.
+                cov_reported = np.zeros((report_dim, report_dim))
+                cov_reported[:k_x, :k_x] = cov_slopes
+                cons_var = float(xbar @ cov_slopes @ xbar)
+                cov_reported[k_x, k_x] = max(cons_var, 0.0)
+            else:
+                k_eff = self._cluster_k_eff(k_x)
+                if len(self._cluster_arrs) == 1:
+                    clusters = self._cluster_arrs[0]
+                    unique_clusters = np.unique(clusters)
+                    meat = np.zeros((report_dim, report_dim))
+                    for g in unique_clusters:
+                        mask_g = clusters == g
+                        score_g = X_infl[mask_g].T @ residuals[mask_g]
+                        meat += np.outer(score_g, score_g)
+                    n_adj = (n - 1) / (n - k_eff) if n > k_eff else 1.0
+                    g_adj = (
+                        len(unique_clusters) / (len(unique_clusters) - 1)
+                        if len(unique_clusters) > 1 else 1.0
+                    )
+                    cov_reported = n_adj * g_adj * meat
+                else:
+                    from stataflow.estimators._vce_utils import compute_multiway_cluster_vce
+                    cov_reported, _ = compute_multiway_cluster_vce(
+                        X_infl, residuals, np.eye(report_dim),
+                        self._cluster_arrs, k_eff, n,
+                    )
+
+            if vce_core == "cluster" and len(self._cluster_arrs) > 1:
+                from stataflow.estimators._vce_utils import fix_psd_reghdfe
+                cov_reported = fix_psd_reghdfe(
+                    cov_reported,
+                    constant_index=k_x,
+                    coefficient_scales=self._reghdfe_coefficient_scales(y),
+                )
         else:
             beta_reported = beta_x
-
-        report_dim = k_x + (1 if self.add_constant else 0)
-        cov_reported = np.zeros((report_dim, report_dim))
-        cov_reported[:k_x, :k_x] = cov_slopes
-
-        k_full_total = k_x + (1 if self.add_constant else 0) + sum(
-            info["num_levels"] - 1 for info in self._fe_info
-        )
-        if self.add_constant:
-            sigma2_cons = rss / df_resid if df_resid > 0 else 0.0
-            cons_var = self._compute_map_cons_variance(
-                X_raw, residuals, cov_slopes, self._fe_info, vce_core, n, k_full_total, sigma2_cons
-            )
-            cov_reported[k_x, k_x] = max(cons_var, 0.0)
-
-        if vce_core == "cluster" and len(self._cluster_arrs) > 1:
-            from stataflow.estimators._vce_utils import fix_psd_reghdfe
-            constant_index = k_x if self.add_constant else None
-            cov_reported = fix_psd_reghdfe(
-                cov_reported,
-                constant_index=constant_index,
-                coefficient_scales=self._reghdfe_coefficient_scales(y),
-            )
-            if self.add_constant:
-                sigma2_psd = rss / df_resid if df_resid > 0 else 0.0
-                cons_var = self._compute_map_cons_variance(
-                    X_raw, residuals, cov_reported[:k_x, :k_x], self._fe_info,
-                    vce_core, n, k_full_total, sigma2_psd
-                )
-                cov_reported[k_x, k_x] = max(cons_var, 0.0)
+            cov_reported = cov_slopes
 
         if self.add_constant:
             X_ols = np.column_stack([np.ones(n), X_partial])
@@ -1379,21 +1275,24 @@ class AbsorbingOLS:
             else:
                 df_resid = float(n - k_full)
 
-            # RMSE denominator
-            if self._reghdfe_mode and vce_core == "cluster":
-                # reghdfe: adjust for FEs nested in cluster variables
+            # RMSE denominator: align with Stata's used_df_r.
+            if self._reghdfe_mode:
+                # reghdfe subtracts levels of FEs nested in cluster variables.
+                dummy_info = getattr(self, "_dummy_info", [])
                 nested_levels = sum(
-                    info["num_levels"] for info in self._dummy_info
-                    if info["var"] in self._cluster_vars
+                    info["num_levels"] for info in dummy_info
+                    if self._fe_is_nested_in_cluster(info)
                 )
                 rmse_df = float(n - df_model - df_a - nested_levels)
             else:
-                rmse_df = float(n - k_full)
+                # areg: constant is estimated separately; nested FEs redundant.
+                cons_penalty = 1.0 if self.add_constant else 0.0
+                rmse_df = float(n - df_model - df_a - cons_penalty)
             rmse = np.sqrt(rss / rmse_df) if rmse_df > 0 else 0.0
 
             # Adjusted R-squared
             if self._reghdfe_mode:
-                r2_adj = 1.0 - (rss / rmse_df) / (tss / (n - 1)) if rmse_df > 0 and tss > 0 else 0.0
+                r2_adj = 1.0 - (rss / rmse_df) / (tss / (n - 1)) if rmse_df > 0 and tss > 0 else None
             else:
                 r2_adj = 1.0 - (1.0 - r2) * (n - 1) / rmse_df if rmse_df > 0 else 0.0
 
@@ -1402,10 +1301,12 @@ class AbsorbingOLS:
                 sigma2 = rss / df_resid if df_resid > 0 else 0.0
                 cov_full = sigma2 * np.linalg.inv(XtX)
             elif vce_core == "robust":
-                # HC1 robust sandwich on full LSDV coefficients
+                # HC1 robust sandwich on full LSDV coefficients.
+                # For aweighted regression the score contribution is w_i * x_i * e_i,
+                # so the meat is X' W^2 diag(e^2) X (VCE-005).
                 XtX_inv = np.linalg.inv(XtX)
                 if w is not None:
-                    meat = (X_full * w[:, None] * (residuals ** 2)[:, np.newaxis]).T @ X_full
+                    meat = (X_full * ((w ** 2) * (residuals ** 2))[:, np.newaxis]).T @ X_full
                 else:
                     meat = X_full.T @ (X_full * (residuals ** 2)[:, np.newaxis])
                 cov_full = XtX_inv @ meat @ XtX_inv
@@ -1432,12 +1333,9 @@ class AbsorbingOLS:
                             X_full, residuals, self._cluster_arrs[0]
                         )
 
-                    # Small-sample adjustment: exclude parameters from FEs nested in cluster
-                    nested_params = 0
-                    for info in self._dummy_info:
-                        if info['var'] == self._cluster_vars[0]:
-                            nested_params += info['num_levels'] - 1
-                    k_eff = k_full - nested_params
+                    # Small-sample adjustment: Stata uses k_eff = k_x + df_a + nested_adj
+                    k_x_cluster = len(self._x_indices_in_full)
+                    k_eff = self._cluster_k_eff(k_x_cluster)
                     n_adj = (n - 1) / (n - k_eff) if n > k_eff else 1.0
                     g_adj = cluster_count / (cluster_count - 1) if cluster_count > 1 else 1.0
                     cov_full = n_adj * g_adj * XtX_inv @ meat @ XtX_inv
@@ -1457,15 +1355,25 @@ class AbsorbingOLS:
             for i, full_idx in enumerate(self._x_indices_in_full):
                 T[i, full_idx] = 1.0
 
-            # Map _cons as linear combination
+            # Map _cons as linear combination.
+            # Stata's areg/reghdfe report _cons as the regression-through-means
+            # intercept: _cons = mean(y) - sum_j mean(x_j) * beta_j.  In the
+            # LSDV parametrisation this equals b0 + sum_g sum_l (n_{g,l}/n) *
+            # alpha_{g,l}, where alpha includes intercept and slope interactions.
+            # We therefore weight each FE dummy by its share of observations.
             if "_cons" in self._coef_names:
                 cons_row = report_dim - 1
+                n = len(self._df)
                 if self._constant_idx_reduced is not None:
                     T[cons_row, self._constant_idx_reduced] = 1.0
                 for fe_idx, info in enumerate(self._dummy_info):
-                    G_total = info['num_levels']
+                    counts = info['counts']
+                    levels = info['levels']
                     col_types = info.get('column_types', [])
-                    # Use original indices to look up column_types correctly
+                    n_slopes = len(info.get('slopes', []))
+                    first_fe_no_const = (not self.add_constant) and (fe_idx == 0)
+                    n_intercept_cols = len(levels) if first_fe_no_const else len(levels) - 1
+
                     for orig_idx, red_idx in zip(
                         self._fe_dummy_indices[fe_idx],
                         self._fe_dummy_indices_reduced[fe_idx]
@@ -1475,46 +1383,57 @@ class AbsorbingOLS:
                             col_type = col_types[col_pos]
                         else:
                             col_type = ("intercept",)
+
                         if col_type[0] == "intercept":
-                            T[cons_row, red_idx] += 1.0 / G_total
+                            if first_fe_no_const:
+                                level_idx = col_pos
+                            else:
+                                level_idx = col_pos + 1
+                            lvl = levels[level_idx]
+                            weight = counts[level_idx] / n
+                            T[cons_row, red_idx] += weight
                         elif col_type[0] == "slope":
                             slope_var = col_type[1]
-                            if self._df is not None and slope_var in self._df.columns:
-                                slope_mean = self._df[slope_var].mean()
+                            # Slope interaction columns follow intercept dummies
+                            # in blocks of (G or G-1) per slope variable.
+                            slope_block_pos = col_pos - n_intercept_cols
+                            n_cols_per_slope = len(levels) if first_fe_no_const else len(levels) - 1
+                            if n_cols_per_slope > 0:
+                                slope_col_in_block = slope_block_pos % n_cols_per_slope
+                                if first_fe_no_const:
+                                    level_idx = slope_col_in_block
+                                else:
+                                    level_idx = slope_col_in_block + 1
                             else:
-                                slope_mean = 0.0
-                            T[cons_row, red_idx] += slope_mean / G_total
+                                level_idx = 0
+                            lvl = levels[level_idx]
+                            weight = counts[level_idx] / n
+                            if self._df is not None and slope_var in self._df.columns:
+                                group_mask = self._df[info['var']] == lvl
+                                slope_mean_g = (
+                                    self._df.loc[group_mask, slope_var].mean()
+                                    if group_mask.any() else 0.0
+                                )
+                            else:
+                                slope_mean_g = 0.0
+                            T[cons_row, red_idx] += weight * slope_mean_g
 
             beta_reported = T @ beta_full
             cov_reported = T @ cov_full @ T.T
 
-            # PANEL-14: Warn about known _cons SE bias in 2-way cluster VCE
-            if (len(self._cluster_vars) >= 2 and "_cons" in self._coef_names
-                    and vce_core == "cluster"):
-                import warnings
-                warnings.warn(
-                    "2-way cluster-robust SE for the constant term may deviate "
-                    "from Stata reghdfe by up to ~3%% due to PSD-fix side effects. "
-                    "Slope coefficients are unaffected.",
-                    RuntimeWarning,
-                    stacklevel=2,
-                )
-
-            # For slope absorption, the T-matrix _cons can diverge from reghdfe's
-            # demeaning-based constant recovery when slope variables have unequal
-            # within-group means or when multiple slopes are present.
-            # Override both the point estimate and the OLS variance.
+            # Reghdfe recovers the reported constant from the sample means after
+            # estimating the slopes.  This also gives a stable normalization for
+            # disconnected FE graphs, where dummy coefficients are not unique.
             has_slopes = any(len(info.get('slopes', [])) > 0 for info in self._dummy_info)
-            if has_slopes and "_cons" in self._coef_names and self._df is not None:
+            if "_cons" in self._coef_names and self._df is not None:
                 retained_x_names = [name for name in self._coef_names if name != "_cons"]
                 k_slopes = len(retained_x_names)
                 x_means = np.array([self._df[name].mean() for name in retained_x_names])
-                # Overwrite _cons with mean(y) - x_bar' * beta_x
                 beta_reported[k_slopes] = float(
                     np.mean(y) - x_means @ beta_reported[:k_slopes]
                 )
-                # OLS variance: Var(_cons) = x_bar' Cov(beta_x) x_bar + sigma^2 / n
-                if vce_core == "ols":
+                # Slope absorption also changes the constant's delta-method VCE.
+                if has_slopes and vce_core == "ols":
                     cov_slopes = cov_full[np.ix_(self._x_indices_in_full, self._x_indices_in_full)]
                     sigma2 = rss / df_resid if df_resid > 0 else 0.0
                     cons_var = float(x_means @ cov_slopes @ x_means + sigma2 / n)
@@ -1537,25 +1456,18 @@ class AbsorbingOLS:
                     coefficient_scales=self._reghdfe_coefficient_scales(y),
                 )
 
-                # For reghdfe with multi-way clustering, the LSDV-based _cons
-                # variance can diverge from reghdfe's demeaning-based computation.
-                # Use the delta-method VCV for the _cons row/col, which aligns
-                # with reghdfe's internal constant recovery formula.
-                if self._reghdfe_mode and "_cons" in self._coef_names and self._df is not None:
-                    retained_x_names = [name for name in self._coef_names if name != "_cons"]
-                    k_slopes = len(retained_x_names)
-                    cov_slopes = cov_reported[:k_slopes, :k_slopes]
-                    x_means = np.array([self._df[name].mean() for name in retained_x_names])
-                    cons_var = float(x_means @ cov_slopes @ x_means)
-                    cov_reported[k_slopes, k_slopes] = max(cons_var, 0.0)
-
             # Standard errors
             diag_cov = np.diag(cov_reported)
             diag_cov = np.maximum(diag_cov, 0)
             se = np.sqrt(diag_cov)
 
             # t-statistics and p-values
-            t_stats = beta_reported / se
+            t_stats = np.divide(
+                beta_reported,
+                se,
+                out=np.full_like(beta_reported, np.nan, dtype=float),
+                where=se > 0,
+            )
             p_values = 2 * (1 - t_dist.cdf(np.abs(t_stats), df=df_resid))
 
             # Confidence intervals
@@ -1679,6 +1591,7 @@ class AbsorbingOLS:
         if savefe:
             result.fixed_effects = self.save_fixed_effects()
 
+        result.validate()
         return result
 
     def predict(self, type: str = "xb", newdata: Optional[pd.DataFrame] = None) -> np.ndarray:

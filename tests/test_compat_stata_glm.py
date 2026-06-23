@@ -1,5 +1,7 @@
 """Tests for compat.stata GLM wrappers."""
 
+import warnings
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -49,6 +51,20 @@ def test_logit_unsupported_kwargs():
     df = _make_binary_data()
     with pytest.raises(ValueError, match="Unsupported arguments"):
         logit(df, y="y", x=["x1"], foo=True)
+
+
+@pytest.mark.parametrize("wrapper,data_factory", [
+    (logit, _make_binary_data),
+    (probit, _make_binary_data),
+    (poisson, _make_count_data),
+])
+def test_stata_glm_wrappers_reject_aweights(wrapper, data_factory):
+    """Official Stata GLM commands reject analytic weights with r(101)."""
+    df = data_factory()
+    df["w"] = 1.0
+
+    with pytest.raises(ValueError, match="aweights not allowed"):
+        wrapper(df, y="y", x=["x1"], aweight="w")
 
 
 def test_logit_wrapper_has_no_postestimation_methods():
@@ -105,6 +121,38 @@ def test_logit_cluster_vce_uses_mle_cluster_adjustment():
     g_adj = len(np.unique(groups)) / (len(np.unique(groups)) - 1)
 
     assert np.allclose(np.asarray(res.variance.values), g_adj * bread @ meat @ bread, rtol=1e-12, atol=1e-12)
+
+
+def test_logit_cluster_keeps_residual_df_and_reports_wald_chi2():
+    """Clustered Stata logit stores N-k df and a slope Wald chi-squared."""
+    rng = np.random.default_rng(2025061203)
+    n = 90
+    x1 = rng.normal(size=n)
+    x2 = rng.normal(size=n)
+    lp = -0.5 + 0.6 * x1 - 0.3 * x2
+    p = 1.0 / (1.0 + np.exp(-lp))
+    y = (rng.random(n) < p).astype(float)
+    df = pd.DataFrame({"y": y, "x1": x1, "x2": x2})
+
+    result = Logit(df, y="y", x=["x1", "x2"]).fit(vce="robust")
+
+    assert result.fit.df_resid == 87
+    assert result.fit.f_stat == pytest.approx(5.6847833, rel=1e-6)
+
+
+def test_logit_complete_separation_fails_without_numeric_warnings():
+    """Complete prediction is diagnosed before unstable IRLS iterations."""
+    df = pd.DataFrame({
+        "y": [0.0, 0.0, 0.0, 1.0, 1.0, 1.0],
+        "x": [-2.0, -1.0, -0.1, 0.1, 1.0, 2.0],
+    })
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        with pytest.raises(RuntimeError, match="predicts data perfectly"):
+            Logit(df, y="y", x=["x"]).fit()
+
+    assert caught == []
 
 
 def test_probit_delegation():
@@ -256,3 +304,32 @@ def test_poisson_cluster_vce_uses_mle_cluster_adjustment():
     g_adj = len(np.unique(groups)) / (len(np.unique(groups)) - 1)
 
     assert np.allclose(np.asarray(res.variance.values), g_adj * bread @ meat @ bread, rtol=1e-12, atol=1e-12)
+
+
+def test_logit_empty_x_no_constant_raises():
+    """Logit with empty x and no constant should raise ValueError."""
+    df = pd.DataFrame({"y": [0.0, 1.0], "x": [1.0, 2.0]})
+    with pytest.raises(ValueError, match="0 columns"):
+        Logit(df, "y", [], add_constant=False).fit()
+
+
+def test_logit_single_cluster_rejected():
+    """VCE-001: single cluster must be rejected for logit."""
+    df = pd.DataFrame({
+        "y": [0, 1, 0, 1, 0, 1],
+        "x": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+        "clust": [1, 1, 1, 1, 1, 1],
+    })
+    with pytest.raises(ValueError, match="at least 2 clusters"):
+        logit(df, y="y", x=["x"], vce="cluster", cluster="clust")
+
+
+def test_poisson_single_cluster_rejected():
+    """VCE-001: single cluster must be rejected for poisson."""
+    df = pd.DataFrame({
+        "y": [1, 2, 0, 3, 1, 2],
+        "x": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+        "clust": [1, 1, 1, 1, 1, 1],
+    })
+    with pytest.raises(ValueError, match="at least 2 clusters"):
+        poisson(df, y="y", x=["x"], vce="cluster", cluster="clust")

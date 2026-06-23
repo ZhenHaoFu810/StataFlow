@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+from scipy.optimize import linprog
 from scipy.stats import norm as norm_dist, chi2 as chi2_dist
 from typing import Optional
 from types import SimpleNamespace
@@ -164,7 +165,13 @@ class GLMBase:
             X_cols.append(np.ones(len(df)))
             self._coef_names.append("_cons")
 
-        X = np.column_stack(X_cols)
+        X = np.column_stack(X_cols) if X_cols else np.zeros((len(df), 0))
+
+        if X.shape[0] == 0:
+            raise ValueError("No observations remain after sample screening (all rows have missing values).")
+        if X.shape[1] == 0:
+            raise ValueError("Design matrix has 0 columns after sample screening. No regressors available.")
+
         X, dropped = self._detect_collinearity(X, self._coef_names)
         self._collinear_dropped = dropped
 
@@ -250,6 +257,22 @@ class GLMBase:
         mu = self._link_inv(eta)
         return beta, mu, eta, converged
 
+    @staticmethod
+    def _raise_if_completely_separated(X: np.ndarray, y: np.ndarray) -> None:
+        """Detect a linear rule that classifies every binary outcome exactly."""
+        signed_design = (2.0 * y - 1.0)[:, np.newaxis] * X
+        feasibility = linprog(
+            np.zeros(X.shape[1]),
+            A_ub=-signed_design,
+            b_ub=-np.ones(len(y)),
+            bounds=[(None, None)] * X.shape[1],
+            method="highs",
+        )
+        if feasibility.success:
+            raise RuntimeError(
+                "outcome predicts data perfectly (complete separation; Stata r(2000))"
+            )
+
     def _compute_vce(
         self,
         X: np.ndarray,
@@ -282,35 +305,35 @@ class GLMBase:
         if vce == "ols":
             cov_beta = XtX_inv
         elif vce == "robust":
-            # Sandwich: meat = X' diag((y-mu)^2) X
+            # Sandwich: score = p * (y-mu) / (V(mu)*g'(mu)) * x
             residuals = y - mu
+            # score_factor = 1 / (V(mu) * g'(mu)); for canonical links this equals 1
+            score_factor = 1.0 / (var * gprime)
             if p is not None:
-                sqrt_p = np.sqrt(p)
-                meat = (X * sqrt_p[:, np.newaxis] * residuals[:, np.newaxis]).T @ (
-                    X * sqrt_p[:, np.newaxis] * residuals[:, np.newaxis]
-                )
-            else:
-                meat = (X * residuals[:, np.newaxis]).T @ (X * residuals[:, np.newaxis])
+                score_factor = p * score_factor
+            score = X * (score_factor * residuals)[:, np.newaxis]
+            meat = score.T @ score
             n_adj = n / (n - 1) if n > 1 else 1.0
             cov_beta = n_adj * XtX_inv @ meat @ XtX_inv
         elif vce == "cluster":
             residuals = y - mu
+            score_factor = 1.0 / (var * gprime)
             if p is not None:
-                # Weighted cluster meat
-                sqrt_p = np.sqrt(p)
-                unique_clusters = np.unique(cluster_arr)
-                meat = np.zeros((k, k))
-                for g_val in unique_clusters:
-                    mask = cluster_arr == g_val
-                    score_g = X[mask].T @ (sqrt_p[mask] * residuals[mask])
-                    meat += np.outer(score_g, score_g)
-                cluster_count = len(unique_clusters)
-            else:
-                from stataflow.estimators._vce_utils import compute_cluster_meat
-                meat, cluster_count = compute_cluster_meat(X, residuals, cluster_arr)
+                score_factor = p * score_factor
+            unique_clusters = np.unique(cluster_arr)
+            if len(unique_clusters) <= 1:
+                raise ValueError(
+                    f"cluster-robust VCE requires at least 2 clusters, found {len(unique_clusters)}"
+                )
+            meat = np.zeros((k, k))
+            for g_val in unique_clusters:
+                mask = cluster_arr == g_val
+                score_g = X[mask].T @ (score_factor[mask] * residuals[mask])
+                meat += np.outer(score_g, score_g)
+            cluster_count = len(unique_clusters)
             # MLE cluster VCE uses only G/(G-1) adjustment (Stata convention).
             # Unlike linear models, MLE does not multiply by (N-1)/(N-k).
-            g_adj = cluster_count / (cluster_count - 1) if cluster_count > 1 else 1.0
+            g_adj = cluster_count / (cluster_count - 1)
             cov_beta = g_adj * XtX_inv @ meat @ XtX_inv
         else:
             raise ValueError(f"vce='{vce}' not supported")
@@ -345,7 +368,21 @@ class GLMBase:
         n = len(y)
         k = X.shape[1]
 
+        # Validate outcome domain before fitting
+        if self.__class__.__name__ in ("Logit", "Probit"):
+            if not np.all(np.isin(y, [0, 1])):
+                raise ValueError(
+                    f"{self.__class__.__name__} requires dependent variable to be binary (0 or 1)"
+                )
+            self._raise_if_completely_separated(X, y)
+        elif self.__class__.__name__ == "Poisson":
+            if np.any(y < 0):
+                raise ValueError("Poisson requires dependent variable to be non-negative")
+
         beta, mu, eta, converged = self._irls_fit(X, y)
+
+        if not converged:
+            raise RuntimeError("IRLS did not converge")
 
         ll_model = self._loglik(y, mu)
         ll_null = self._null_loglik(y)
@@ -354,12 +391,7 @@ class GLMBase:
         df_model = float(k - 1) if self.add_constant else float(k)
         df_resid = float(n - k)
 
-        if vce == "cluster" and cluster_arr is not None:
-            unique_clusters = np.unique(cluster_arr)
-            cluster_count = len(unique_clusters)
-            df_resid = float(cluster_count - 1)
-        else:
-            cluster_count = None
+        cluster_count = None
 
         cov_beta, cluster_count_vce = self._compute_vce(X, y, mu, eta, beta, vce, cluster_arr)
         if cluster_count is None:
@@ -388,8 +420,20 @@ class GLMBase:
             ci_low_display = ci_low
             ci_high_display = ci_high
 
-        # LR chi2
-        chi2 = 2.0 * (ll_model - ll_null)
+        if vce == "ols":
+            chi2 = 2.0 * (ll_model - ll_null)
+        else:
+            slope_indices = [
+                i for i, name in enumerate(self._coef_names) if name != "_cons"
+            ]
+            beta_slopes = beta[slope_indices]
+            cov_slopes = cov_beta[np.ix_(slope_indices, slope_indices)]
+            try:
+                chi2 = float(
+                    beta_slopes @ np.linalg.solve(cov_slopes, beta_slopes)
+                )
+            except np.linalg.LinAlgError:
+                chi2 = float(beta_slopes @ np.linalg.pinv(cov_slopes) @ beta_slopes)
         chi2_pvalue = 1.0 - chi2_dist.cdf(chi2, df=df_model) if df_model > 0 else None
 
         # Deviance
@@ -462,6 +506,7 @@ class GLMBase:
         self._result = result
         result._model = self
 
+        result.validate()
         return result
 
     def predict(self, type: str = "xb", newdata: Optional[pd.DataFrame] = None) -> np.ndarray:
@@ -676,6 +721,10 @@ class Probit(GLMBase):
         elif vce == "cluster":
             unique_clusters = np.unique(cluster_arr)
             cluster_count = len(unique_clusters)
+            if cluster_count <= 1:
+                raise ValueError(
+                    f"cluster-robust VCE requires at least 2 clusters, found {cluster_count}"
+                )
             meat = np.zeros((k, k))
             for g in unique_clusters:
                 mask_g = cluster_arr == g
@@ -686,7 +735,7 @@ class Probit(GLMBase):
                 score_g = X_g.T @ (phi_g * (y_g - mu_g) / (mu_g * (1 - mu_g)))
                 meat += np.outer(score_g, score_g)
             # MLE cluster VCE uses only G/(G-1) adjustment (Stata convention).
-            g_adj = cluster_count / (cluster_count - 1) if cluster_count > 1 else 1.0
+            g_adj = cluster_count / (cluster_count - 1)
             cov_beta = g_adj * cov_bread @ meat @ cov_bread
         else:
             raise ValueError(f"vce='{vce}' not supported")

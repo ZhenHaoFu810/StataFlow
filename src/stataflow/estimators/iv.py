@@ -182,6 +182,10 @@ class IV2SLS:
         self._collinear_dropped = dropped_x + dropped_z
         self._inst_names = [z_names[i] for i in kept_z]
 
+        # Filter Z to remove collinear columns before returning
+        if kept_z:
+            Z = Z[:, kept_z]
+
         self._design_matrix = X
         self._dep_var = y
         self._sample_mask = sample_mask
@@ -229,6 +233,10 @@ class IV2SLS:
             raise ValueError("cluster only used when vce='cluster'.")
 
         X, Z, y, sample_mask, cluster_arr = self._prepare_data(cluster_var=cluster)
+        if len(y) == 0:
+            raise ValueError("No observations remain after sample screening (all rows have missing values).")
+        if X.shape[1] == 0:
+            raise ValueError("Design matrix has 0 columns after sample screening. No regressors available.")
         n = len(y)
         k_x = X.shape[1]
         k_z = Z.shape[1]
@@ -236,7 +244,7 @@ class IV2SLS:
         if k_z < k_x:
             raise ValueError(f"Underidentified: need at least {k_x} instruments, have {k_z}")
 
-        # First stage: project X onto Z
+        #        # First stage: project X onto Z
         ZtZ = Z.T @ Z
         ZtX = Z.T @ X
         Pi = np.linalg.solve(ZtZ, ZtX)
@@ -295,6 +303,10 @@ class IV2SLS:
         else:  # cluster
             unique_clusters = np.unique(cluster_arr)
             cluster_count = len(unique_clusters)
+            if cluster_count <= 1:
+                raise ValueError(
+                    f"cluster-robust VCE requires at least 2 clusters, found {cluster_count}"
+                )
 
             meat = np.zeros((k_x, k_x))
             for g in unique_clusters:
@@ -345,12 +357,16 @@ class IV2SLS:
             from scipy.stats import f as f_dist
             # Number of excluded instruments
             k_excl = len(self.instruments)
-            k_exog = len(self.x_exog)
+            # Use coef_names to locate variables after collinearity drops
+            exog_kept = [name for name in self.x_exog if name in self._coef_names]
+            endog_kept = [name for name in self.x_endog if name in self._coef_names]
+            k_exog = len(exog_kept)
             # Endogenous variable indices in X (after constant if present)
             endog_start = k_exog + (1 if self.add_constant else 0)
-            for j, endog_name in enumerate(self.x_endog):
-                x_j = X[:, endog_start + j]
-                x_hat_j = X_proj[:, endog_start + j]
+            for j, endog_name in enumerate(endog_kept):
+                endog_idx = self._coef_names.index(endog_name)
+                x_j = X[:, endog_idx]
+                x_hat_j = X_proj[:, endog_idx]
                 # First-stage regression of x_j on Z
                 beta_fs = np.linalg.solve(ZtZ, Z.T @ x_j)
                 resid_fs = x_j - Z @ beta_fs
@@ -362,7 +378,7 @@ class IV2SLS:
                     W_cols = []
                     if self.add_constant:
                         W_cols.append(np.ones(n))
-                    for exog_name in self.x_exog:
+                    for exog_name in exog_kept:
                         idx = self._coef_names.index(exog_name)
                         W_cols.append(X[:, idx])
                     W = np.column_stack(W_cols)
@@ -374,7 +390,7 @@ class IV2SLS:
                 R2_r = 1.0 - RSS_r / TSS if TSS > 0 else 0.0
                 partial_R2 = (R2 - R2_r) / (1.0 - R2_r) if R2_r < 1.0 else 0.0
                 # Shea partial R2
-                if len(self.x_endog) == 1:
+                if len(endog_kept) == 1:
                     shea_R2 = partial_R2
                 else:
                     var_x_hat = np.var(x_hat_j, ddof=0)
@@ -494,6 +510,7 @@ class IV2SLS:
         for key, value in extra_stats.items():
             setattr(result, key, value)
 
+        result.validate()
         return result
 
 
@@ -631,6 +648,9 @@ class IVAbsorbingOLS:
         df = self.data[all_vars].copy()
         self._n_input_rows = len(df)
 
+        # Add a unique row identifier to track observations through drops
+        df["_stataflow_row_id"] = np.arange(len(df))
+
         # Drop missing values
         if self.missing == "drop":
             mask = df.notna().all(axis=1)
@@ -645,8 +665,12 @@ class IVAbsorbingOLS:
             num_singletons = 0
         self._num_singletons = num_singletons
 
-        # Build sample mask
-        sample_mask = [idx in df.index for idx in self.data.index]
+        # Build sample mask using unique row ids (immune to duplicate index labels)
+        kept_ids = set(df["_stataflow_row_id"].values)
+        sample_mask = [i in kept_ids for i in range(self._n_input_rows)]
+
+        # Drop helper column from further processing
+        df = df.drop(columns=["_stataflow_row_id"])
 
         y = df[self.y].values.astype(np.float64)
         n = len(y)
@@ -777,8 +801,15 @@ class IVAbsorbingOLS:
                 kept_x_endog_names.append(var)
 
         constant_kept = self._constant_idx_reduced is not None
-        # ivreghdfe never reports _cons; it is always partialled out
-        self._coef_names = kept_x_endog_names + kept_x_exog_names
+        self._has_effective_fe = any(
+            df[var].nunique(dropna=False) > 1 for var in self.absorb_vars
+        )
+        report_constant = constant_kept and not self._has_effective_fe
+        self._coef_names = (
+            kept_x_endog_names
+            + kept_x_exog_names
+            + (["_cons"] if report_constant else [])
+        )
 
         # Track FE dummy indices and compute df_a
         self._fe_dummy_indices_reduced = []
@@ -1101,12 +1132,19 @@ class IVAbsorbingOLS:
                         )
                         widstat = wald / n * (n - iv1_ct - dofminus) / q
                     else:  # cluster
-                        iv1_ct = (
-                            (1 if self._constant_idx_reduced is not None else 0)
-                            + len(self._x_exog_indices_in_full)
-                            + k_excl
-                        )
-                        widstat = wald / (n - 1) * (n - iv1_ct) / q
+                        if self._has_effective_fe:
+                            # ivreghdfe calls ivreg2 on residualized, no-constant
+                            # data and passes the non-nested absorbed df separately.
+                            iv1_ct = len(self._x_exog_indices_in_full) + k_excl
+                            dofminus = self._df_a
+                        else:
+                            iv1_ct = (
+                                (1 if self._constant_idx_reduced is not None else 0)
+                                + len(self._x_exog_indices_in_full)
+                                + k_excl
+                            )
+                            dofminus = 0.0
+                        widstat = wald / (n - 1) * (n - iv1_ct - dofminus) / q
                 except np.linalg.LinAlgError:
                     widstat = np.nan
         else:
@@ -1235,15 +1273,17 @@ class IVAbsorbingOLS:
             e_sq = residuals ** 2
             XtOmegaX = (X_proj * e_sq[:, np.newaxis]).T @ X_proj
             cov_full = M_inv @ XtOmegaX @ M_inv
-            if n > k_x_full:
-                cov_full *= n / (n - k_x_full)
         else:
             if len(self._cluster_arrs) == 1:
                 from stataflow.estimators._vce_utils import compute_cluster_meat
                 meat, cluster_count = compute_cluster_meat(
                     X_proj, residuals, self._cluster_arrs[0]
                 )
-                g_adj = cluster_count / (cluster_count - 1) if cluster_count > 1 else 1.0
+                if cluster_count <= 1:
+                    raise ValueError(
+                        f"cluster-robust VCE requires at least 2 clusters, found {cluster_count}"
+                    )
+                g_adj = cluster_count / (cluster_count - 1)
                 n_adj = (n - 1) / (n - k_eff) if n > k_eff else 1.0
                 cov_full = n_adj * g_adj * M_inv @ meat @ M_inv
             else:
@@ -1576,8 +1616,7 @@ class IVAbsorbingOLS:
         # VCE
         if vce == "ols":
             rss = float(np.sum(residuals ** 2))
-            df_resid = n - k_x_full
-            sigma2 = rss / df_resid if df_resid > 0 else 0.0
+            sigma2 = rss / n if n > 0 else 0.0
             V = sigma2 * np.linalg.inv(Qh) / N
         else:
             # Compute omega using LIML residuals
@@ -1650,6 +1689,10 @@ class IVAbsorbingOLS:
 
         cluster_vars = [cluster] if isinstance(cluster, str) else cluster
         X_full, Z_full, y, sample_mask, n_input_rows = self._prepare_data(cluster_vars=cluster_vars)
+        if len(y) == 0:
+            raise ValueError("No observations remain after sample screening (all rows have missing values).")
+        if X_full.shape[1] == 0:
+            raise ValueError("Design matrix has 0 columns after sample screening. No regressors available.")
         n = len(y)
         k_x_full = X_full.shape[1]
         k_z_full = Z_full.shape[1]
@@ -1657,7 +1700,7 @@ class IVAbsorbingOLS:
         if k_z_full < k_x_full:
             raise ValueError(f"Underidentified: need at least {k_x_full} instruments, have {k_z_full}")
 
-        # First stage: project X_full onto Z_full (needed for all estimators)
+        #        # First stage: project X_full onto Z_full (needed for all estimators)
         ZtZ = Z_full.T @ Z_full
         ZtX = Z_full.T @ X_full
         Pi = np.linalg.solve(ZtZ, ZtX)
@@ -1749,14 +1792,26 @@ class IVAbsorbingOLS:
         # RMSE denominator: n - k_x_reported - df_a (matches Stata ivreghdfe)
         # When cluster VCE and all FEs are nested (df_a=0), Stata still subtracts
         # the partialled-out constant from the RMSE denominator.
-        if vce == "cluster" and df_a == 0 and self.add_constant:
+        if not self._has_effective_fe:
+            rmse_df = float(n)
+        elif vce == "cluster" and df_a == 0 and self.add_constant:
             rmse_df = float(n - k_x_reported - 1)
         else:
             rmse_df = float(n - k_x_reported - df_a)
         rmse = np.sqrt(rss_struct / rmse_df) if rmse_df > 0 else 0.0
 
-        # Adjusted R-squared: ivreghdfe uses TSS_resid / n in denominator
-        r2_adj = 1.0 - (rss_struct / rmse_df) / (tss_resid / n) if rmse_df > 0 and tss_resid > 0 else 0.0
+        if not self._has_effective_fe:
+            # ivreg2 reports root MSE using RSS/N, but adjusted R2 retains
+            # the conventional (N-k, N-1) correction.
+            adj_df = n - k_x_full
+            r2_adj = (
+                1.0 - (rss_struct / adj_df) / (tss_resid / (n - 1))
+                if adj_df > 0 and n > 1 and tss_resid > 0
+                else 0.0
+            )
+        else:
+            # ivreghdfe uses the absorbed-model residual denominator.
+            r2_adj = 1.0 - (rss_struct / rmse_df) / (tss_resid / n) if rmse_df > 0 and tss_resid > 0 else 0.0
 
         # T matrix: map full LSDV -> reported coefficients
         report_dim = k_x_reported + (1 if "_cons" in self._coef_names else 0)
@@ -1927,10 +1982,21 @@ class IVAbsorbingOLS:
         # F-statistic
         if self.add_constant and df_model > 0 and rmse_df > 0 and rss_struct > 0:
             if vce == "ols":
-                # ivreghdfe hybrid F-stat: numerator uses residualized 2SLS, denominator uses structural RSS
-                mss_incremental = tss_resid - rss_2s_resid
-                f_stat = (mss_incremental / df_model) / (rss_struct / (n - k_x_full))
-                f_pvalue = 1 - f_dist.cdf(f_stat, dfn=df_model, dfd=rmse_df)
+                if estimator == "liml":
+                    # ivreg2 posts the LIML covariance, forms the Wald chi2,
+                    # then rescales it by df_r/N for the reported F statistic.
+                    beta_slopes = beta_reported[:k_x_reported]
+                    cov_slopes = cov_reported[:k_x_reported, :k_x_reported]
+                    wald_stat = float(
+                        beta_slopes @ np.linalg.solve(cov_slopes, beta_slopes)
+                    )
+                    f_stat = wald_stat / df_model * df_resid / n
+                else:
+                    # ivreghdfe hybrid F-stat: numerator uses residualized
+                    # 2SLS, denominator uses structural RSS.
+                    mss_incremental = tss_resid - rss_2s_resid
+                    f_stat = (mss_incremental / df_model) / (rss_struct / (n - k_x_full))
+                f_pvalue = 1 - f_dist.cdf(f_stat, dfn=df_model, dfd=df_resid)
             else:
                 slope_idx = list(range(k_x_reported))
                 beta_slopes = beta_reported[slope_idx]
@@ -1950,6 +2016,10 @@ class IVAbsorbingOLS:
                         wald_df = df_model
                     wald_stat = float(beta_slopes @ cov_inv @ beta_slopes)
                     f_stat = wald_stat / wald_df
+                    if vce == "robust" and not self._has_effective_fe:
+                        # ivreg2 posts HC0 coefficient VCE but reports the
+                        # model Wald F with its small-sample df_r/N scaling.
+                        f_stat *= df_resid / n
                     f_pvalue = 1 - f_dist.cdf(f_stat, dfn=df_model, dfd=df_resid)
                 except (np.linalg.LinAlgError, ValueError):
                     f_stat = None
@@ -2021,6 +2091,13 @@ class IVAbsorbingOLS:
         result.diagnostics = DiagnosticsInfo(
             residual_df_correction=None,
             cluster_count=cluster_count,
+            widstat=None if np.isnan(widstat) else float(widstat),
+            idstat=None if np.isnan(extra_stats.get("idstat", np.nan)) else float(extra_stats["idstat"]),
+            iddf=None if np.isnan(extra_stats.get("iddf", np.nan)) else float(extra_stats["iddf"]),
+            idp=None if np.isnan(extra_stats.get("idp", np.nan)) else float(extra_stats["idp"]),
+            hansen_j=None if np.isnan(extra_stats.get("hansen_j", np.nan)) else float(extra_stats["hansen_j"]),
+            hansen_j_df=None if np.isnan(extra_stats.get("hansen_j_df", np.nan)) else float(extra_stats["hansen_j_df"]),
+            hansen_j_pvalue=None if np.isnan(extra_stats.get("hansen_j_p", np.nan)) else float(extra_stats["hansen_j_p"]),
             warnings=warnings,
         )
         cmd_name = "ivreghdfe"
@@ -2050,6 +2127,7 @@ class IVAbsorbingOLS:
             setattr(result, key, value)
         result._model = self
 
+        result.validate()
         return result
 
     def predict(self, type: str = "xb") -> np.ndarray:

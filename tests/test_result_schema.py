@@ -1,6 +1,9 @@
 """Tests for ResultSchema serialization and deserialization."""
 
 import json
+
+import pytest
+
 from stataflow.results.result import (
     ResultSchema,
     ModelInfo,
@@ -64,7 +67,7 @@ def test_result_schema_round_trip():
     original.sample = SampleInfo(
         nobs=50,
         n_input_rows=60,
-        sample_mask=[True] * 50,
+        sample_mask=[True] * 50 + [False] * 10,
     )
     original.fit = FitInfo(
         df_model=3.0,
@@ -119,17 +122,26 @@ def test_result_schema_json_round_trip():
     """Test JSON round-trip: ResultSchema -> JSON -> ResultSchema."""
     original = ResultSchema()
     original.model = ModelInfo(command="regress", estimator_family="ols")
-    original.sample = SampleInfo(nobs=100)
+    original.sample = SampleInfo(
+        nobs=100,
+        n_input_rows=100,
+        sample_mask=[True] * 100,
+    )
     original.coefficients = [
         CoefficientRow(name="x1", beta=2.0),
     ]
-    
+    original.variance = VarianceInfo(
+        row_names=["x1"],
+        values=[[0.01]],
+    )
+
     json_str = original.to_json()
     restored = ResultSchema.from_json(json_str)
-    
+
     assert restored.model.command == "regress"
     assert restored.sample.nobs == 100
     assert restored.coefficients[0].beta == 2.0
+    assert restored.variance.row_names == ["x1"]
 
 
 def test_result_schema_json_is_valid():
@@ -138,3 +150,95 @@ def test_result_schema_json_is_valid():
     json_str = result.to_json()
     parsed = json.loads(json_str)  # Should not raise
     assert isinstance(parsed, dict)
+
+
+def _valid_result_dict() -> dict:
+    """Return a minimal valid ResultSchema dictionary."""
+    return {
+        "model": {"command": "regress", "estimator_family": "ols"},
+        "sample": {
+            "nobs": 3,
+            "n_input_rows": 5,
+            "sample_mask": [True, True, True, False, False],
+        },
+        "fit": {"df_model": 2.0, "df_resid": 2.0},
+        "coefficients": [
+            {"name": "a", "beta": 1.0, "std_err": 0.1, "t_stat": 10.0, "p_value": 0.0},
+            {"name": "b", "beta": 2.0, "std_err": 0.2, "t_stat": 10.0, "p_value": 0.0},
+        ],
+        "variance": {
+            "row_names": ["a", "b"],
+            "values": [[0.01, 0.0], [0.0, 0.04]],
+        },
+    }
+
+
+def test_result_schema_validate():
+    """Test that validate() enforces coefficient, VCE, and sample invariants."""
+    base = _valid_result_dict()
+
+    # Positive case: valid input passes validation.
+    valid = ResultSchema.from_dict(base)
+    valid.validate()
+    assert len(valid.coefficients) == 2
+    assert valid.variance.row_names == ["a", "b"]
+    assert valid.sample.nobs == 3
+
+    # Negative cases: each should raise ValueError.
+    cases = [
+        (
+            "coefficients_row_names_length_mismatch",
+            lambda d: {
+                **d,
+                "variance": {"row_names": ["a"], "values": [[0.01]]},
+            },
+        ),
+        (
+            "one_by_one_vce_with_two_coefficients",
+            lambda d: {
+                **d,
+                "variance": {"row_names": ["a", "b"], "values": [[0.01]]},
+            },
+        ),
+        (
+            "ragged_vce",
+            lambda d: {
+                **d,
+                "variance": {"row_names": ["a", "b"], "values": [[1.0, 0.0], [0.0]]},
+            },
+        ),
+        (
+            "coefficient_names_out_of_order",
+            lambda d: {
+                **d,
+                "variance": {"row_names": ["b", "a"], "values": [[0.04, 0.0], [0.0, 0.01]]},
+            },
+        ),
+        (
+            "sample_mask_length_mismatch",
+            lambda d: {
+                **d,
+                "sample": {
+                    "nobs": 3,
+                    "n_input_rows": 5,
+                    "sample_mask": [True, True, True, False],
+                },
+            },
+        ),
+        (
+            "sample_mask_sum_not_nobs",
+            lambda d: {
+                **d,
+                "sample": {
+                    "nobs": 3,
+                    "n_input_rows": 5,
+                    "sample_mask": [True, True, True, True, True],
+                },
+            },
+        ),
+    ]
+
+    for label, mutate in cases:
+        invalid = mutate(base)
+        with pytest.raises(ValueError):
+            ResultSchema.from_dict(invalid)

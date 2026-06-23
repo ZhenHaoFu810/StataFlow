@@ -32,6 +32,38 @@ def test_detect_collinear_columns_keeps_late_independent_column_when_wide():
     assert np.linalg.matrix_rank(X_indep) == np.linalg.matrix_rank(X)
 
 
+def test_detect_collinear_columns_uses_scale_aware_pivoting():
+    """Near-collinear small-scale columns should yield to stable large pivots."""
+    rng = np.random.default_rng(20260613)
+    x1 = rng.normal(size=50)
+    x2 = (x1 + rng.normal(scale=1e-7, size=50)) * 1e6
+    X = np.column_stack([x1, x2, np.ones(50)])
+
+    X_indep, dropped, kept = detect_collinear_columns(
+        X, ["x1", "x2", "_cons"]
+    )
+
+    assert kept == [1, 2]
+    assert dropped == ["x1"]
+    assert X_indep.shape == (50, 2)
+
+
+def test_detect_collinear_columns_preserves_constant_across_extreme_scales():
+    """The scale-aware path must not discard Stata's intercept."""
+    rng = np.random.default_rng(2026061204)
+    x1 = rng.normal(size=250)
+    x2 = (x1 + rng.normal(scale=1e-7, size=250)) * 1e6
+    X = np.column_stack([x1, x2, np.ones(250)])
+
+    X_indep, dropped, kept = detect_collinear_columns(
+        X, ["x1", "x2", "_cons"]
+    )
+
+    assert kept == [1, 2]
+    assert dropped == ["x1"]
+    assert X_indep.shape == (250, 2)
+
+
 def test_fix_psd_reghdfe_without_constant_does_not_treat_last_slope_as_constant():
     """No-constant reported VCE should apply a generic PSD fix to all slopes."""
     mat = np.array([

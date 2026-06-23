@@ -165,6 +165,76 @@ def test_ivreghdfe_multi_endog_weakiv():
     assert result.iddf == 1  # k_excl(2) - k_endog(2) + 1 = 1
 
 
+def test_ivreghdfe_exposes_weak_iv_statistics_in_diagnostics():
+    """Estimator-specific IV statistics belong to the unified diagnostics schema."""
+    df = _make_iv_data(n=200, seed=303)
+
+    result = IVAbsorbingOLS(
+        df,
+        y="y",
+        x_exog=["x1"],
+        x_endog=["x2"],
+        instruments=["z1"],
+        absorb="g1",
+    ).fit(vce="robust")
+
+    assert result.diagnostics.widstat == pytest.approx(result.widstat)
+    assert result.diagnostics.idstat == pytest.approx(result.idstat)
+
+
+def test_iv_constant_only_absorb_reports_constant():
+    """A one-level absorb is equivalent to an ordinary IV intercept."""
+    rng = np.random.default_rng(707)
+    n = 100
+    z = rng.normal(size=n)
+    u = rng.normal(size=n)
+    x = 0.5 * z + u + rng.normal(scale=0.5, size=n)
+    y = 1.0 + x + u + rng.normal(scale=0.5, size=n)
+    df = pd.DataFrame({"y": y, "x": x, "z": z, "one": 1})
+
+    result = IVAbsorbingOLS(
+        df,
+        y="y",
+        x_exog=[],
+        x_endog=["x"],
+        instruments=["z"],
+        absorb="one",
+        add_constant=True,
+        drop_singletons=False,
+    ).fit(vce="robust")
+
+    assert [row.name for row in result.coefficients] == ["x", "_cons"]
+
+
+def test_iv_liml_homoskedastic_scale_matches_ivreg2():
+    """LIML uses ivreg2's RSS/N covariance and Root MSE conventions."""
+    rng = np.random.default_rng(606)
+    n = 120
+    z1 = rng.normal(size=n)
+    z2 = rng.normal(size=n)
+    u = rng.normal(size=n)
+    x = 0.3 * z1 + 0.3 * z2 + u + rng.normal(scale=0.5, size=n)
+    y = 1.0 + x + u + rng.normal(scale=0.5, size=n)
+    df = pd.DataFrame({"y": y, "x": x, "z1": z1, "z2": z2, "one": 1})
+
+    result = IVAbsorbingOLS(
+        df,
+        y="y",
+        x_exog=[],
+        x_endog=["x"],
+        instruments=["z1", "z2"],
+        absorb="one",
+        add_constant=True,
+        drop_singletons=False,
+    ).fit(vce="ols", estimator="liml")
+    slope = next(row for row in result.coefficients if row.name == "x")
+
+    assert slope.beta == pytest.approx(1.3903121, rel=1e-6)
+    assert slope.std_err == pytest.approx(0.13441947, rel=1e-6)
+    assert result.fit.rmse == pytest.approx(0.81355777, rel=1e-6)
+    assert result.fit.f_stat == pytest.approx(105.19643, rel=1e-6)
+
+
 def test_ivreghdfe_two_way_cluster_fallback_updates_df_resid():
     """Two-way fallback should use the returned richer cluster count for df_resid."""
     rng = np.random.default_rng(0)
@@ -263,3 +333,101 @@ def test_ivreghdfe_card_cluster_f_stat_matches_stata_small_cluster_path():
     assert np.isclose(one_way.fit.f_stat, 0.36, atol=0.01)
     assert np.isclose(two_way.fit.f_stat, 0.36, atol=0.01)
     assert np.isclose(one_way.fit.f_stat, two_way.fit.f_stat, rtol=1e-10)
+
+
+def test_iv2sls_empty_x_no_constant_raises():
+    """IV2SLS with empty x and no constant should raise ValueError."""
+    df = pd.DataFrame({
+        "y": [1.0, 2.0, 3.0],
+        "z": [1.0, 2.0, 3.0],
+    })
+    with pytest.raises(ValueError, match="0 columns"):
+        IV2SLS(df, "y", [], [], ["z"], add_constant=False).fit()
+
+
+def test_iv2sls_single_cluster_rejected():
+    """VCE-001: single cluster should raise ValueError, not produce pseudo-exact SEs."""
+    df = _make_iv_data(n=50, seed=99)
+    df["cl"] = 1  # all observations in one cluster
+    with pytest.raises(ValueError, match="at least 2 clusters"):
+        IV2SLS(df, "y", x_exog=["x1"], x_endog=["x2"], instruments=["z1"]).fit(
+            vce="cluster", cluster="cl"
+        )
+
+
+def test_ivreg2_robust_vce_uses_hc0_and_classic_adjusted_r2():
+    """Constant-only absorption should reproduce ivreg2's robust contract."""
+    rng = np.random.default_rng(3003)
+    n = 200
+    z = rng.normal(size=n)
+    u = rng.normal(size=n)
+    x = 0.05 * z + u + rng.normal(scale=0.5, size=n)
+    y = 1.0 + x + u + rng.normal(scale=0.5, size=n)
+    df = pd.DataFrame({"y": y, "x": x, "z": z, "one": 1})
+
+    result = IVAbsorbingOLS(
+        df,
+        y="y",
+        x_exog=[],
+        x_endog=["x"],
+        instruments=["z"],
+        absorb="one",
+        drop_singletons=False,
+    ).fit(vce="robust")
+
+    assert result.coefficients[0].std_err == pytest.approx(4.7574208, rel=1e-6)
+    assert result.fit.rmse == pytest.approx(1.2975828, rel=1e-6)
+    assert result.fit.r2_adj == pytest.approx(0.53816111, rel=1e-6)
+    assert result.fit.f_stat == pytest.approx(0.01985355, rel=1e-6)
+
+
+def test_ivreghdfe_cluster_weakiv_f_accounts_for_absorbed_df():
+    """Cluster weak-IV F should use the residual df passed by ivreghdfe."""
+    rng = np.random.default_rng(5005)
+    n_firms, n_years = 30, 5
+    n = n_firms * n_years
+    firm = np.repeat(np.arange(n_firms), n_years)
+    year = np.tile(np.arange(n_years), n_firms)
+    firm_fe = rng.normal(size=n_firms)[firm]
+    year_fe = rng.normal(scale=0.5, size=n_years)[year]
+    z = rng.normal(size=n)
+    u = rng.normal(scale=0.5, size=n)
+    x = 0.5 * z + u + rng.normal(scale=0.3, size=n)
+    y = 1.0 + 1.5 * x + firm_fe + year_fe + u + rng.normal(scale=0.3, size=n)
+    df = pd.DataFrame({"y": y, "x": x, "z": z, "firm": firm, "year": year})
+
+    result = IVAbsorbingOLS(
+        df,
+        y="y",
+        x_exog=[],
+        x_endog=["x"],
+        instruments=["z"],
+        absorb=["firm", "year"],
+    ).fit(vce="cluster", cluster="firm")
+
+    assert result.widstat == pytest.approx(160.28607, rel=1e-6)
+
+
+def test_ivreg2_liml_adjusted_r2_is_independent_of_rmse_denominator():
+    """ivreg2 LIML reports root MSE on N but adjusted R2 on N-k and N-1."""
+    rng = np.random.default_rng(6006)
+    n = 120
+    z1 = rng.normal(size=n)
+    z2 = rng.normal(size=n)
+    u = rng.normal(size=n)
+    x = 0.3 * z1 + 0.3 * z2 + u + rng.normal(scale=0.5, size=n)
+    y = 1.0 + x + u + rng.normal(scale=0.5, size=n)
+    df = pd.DataFrame({"y": y, "x": x, "z1": z1, "z2": z2, "one": 1})
+
+    result = IVAbsorbingOLS(
+        df,
+        y="y",
+        x_exog=[],
+        x_endog=["x"],
+        instruments=["z1", "z2"],
+        absorb="one",
+        drop_singletons=False,
+    ).fit(estimator="liml")
+
+    assert result.fit.rmse == pytest.approx(1.0348506, rel=1e-6)
+    assert result.fit.r2_adj == pytest.approx(0.75834074, rel=1e-6)

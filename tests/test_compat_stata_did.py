@@ -12,6 +12,31 @@ def _make_did_data(n_units=50, n_periods=5, seed=42):
     rng = np.random.default_rng(seed)
     units = np.repeat(np.arange(n_units), n_periods)
     times = np.tile(np.arange(n_periods), n_units)
+    # Use -1 for never-treated. Stata's did_imputation treats zero or
+    # negative values as never-treated and positive values as treated cohorts.
+    first_treat = rng.choice([-1, 2, 3], size=n_units)
+    first_treat = np.repeat(first_treat, n_periods)
+    treat = (times >= first_treat).astype(float)
+    treat[first_treat <= 0] = 0
+    y = 1.0 + 2.0 * treat + rng.normal(size=n_units * n_periods)
+    df = pd.DataFrame({
+        "id": units,
+        "time": times,
+        "y": y,
+        "first_treat": first_treat,
+    })
+    return df
+
+
+def _make_csdid_data(n_units=50, n_periods=5, seed=42):
+    """Generate panel data where first_treat=0 marks never-treated units.
+
+    This matches Stata's csdid convention; use it for CSDID-specific tests.
+    DID-imputation tests should continue to use _make_did_data, which uses -1.
+    """
+    rng = np.random.default_rng(seed)
+    units = np.repeat(np.arange(n_units), n_periods)
+    times = np.tile(np.arange(n_periods), n_units)
     first_treat = rng.choice([0, 2, 3], size=n_units)
     first_treat = np.repeat(first_treat, n_periods)
     treat = (times >= first_treat).astype(float)
@@ -26,18 +51,13 @@ def _make_did_data(n_units=50, n_periods=5, seed=42):
     return df
 
 
-def _make_csdid_data(n_units=50, n_periods=5, seed=42):
-    """Generate panel data with zero denoting never-treated units."""
-    return _make_did_data(n_units=n_units, n_periods=n_periods, seed=seed)
-
-
 def _make_eventstudy_data(n_units=50, n_periods=5, seed=42):
     df = _make_did_data(n_units, n_periods, seed)
     df["dm2"] = (df["time"] - df["first_treat"] == -2).astype(float)
     df["dm1"] = (df["time"] - df["first_treat"] == -1).astype(float)
     df["d0"] = (df["time"] - df["first_treat"] == 0).astype(float)
     df["dp1"] = (df["time"] - df["first_treat"] == 1).astype(float)
-    df["never_treat"] = (df["first_treat"] == 0).astype(float)
+    df["never_treat"] = (df["first_treat"] <= 0).astype(float)
     return df
 
 
@@ -109,7 +129,7 @@ def test_csdid_unsupported_kwargs():
 
 def test_csdid_notyet_option_uses_not_yet_treated_controls():
     """notyet=True should be a supported csdid option for method='reg'."""
-    df = _make_did_data(n_units=200, n_periods=6)
+    df = _make_csdid_data(n_units=200, n_periods=6)
     res_default = csdid(
         df, y="y", id="id", time="time", first_treat="first_treat",
     ).estat("event")
@@ -223,6 +243,44 @@ def test_csdid_not_yet_treated_fallback():
     assert "Pre_avg" in names or any(k.startswith("Tm") for k in names)
 
 
+@pytest.mark.parametrize("method", ["reg", "drimp"])
+def test_csdid_notyet_includes_never_treated_units(method):
+    """Stata's notyet controls combine never-treated and future cohorts."""
+    rng = np.random.default_rng(20260616)
+    n_per_group = 12
+    periods = np.arange(5)
+    unit_cohorts = np.repeat([0, 2, 4], n_per_group)
+    units = np.repeat(np.arange(len(unit_cohorts)), len(periods))
+    time = np.tile(periods, len(unit_cohorts))
+    first_treat = np.repeat(unit_cohorts, len(periods))
+    x = rng.normal(size=len(units))
+    treated = (first_treat > 0) & (time >= first_treat)
+    y = 1.0 + 0.3 * x + 1.5 * treated + rng.normal(scale=0.2, size=len(units))
+    df = pd.DataFrame(
+        {
+            "id": units,
+            "time": time,
+            "y": y,
+            "first_treat": first_treat,
+            "x": x,
+        }
+    )
+
+    model = CSDID(
+        df,
+        y="y",
+        id="id",
+        time="time",
+        first_treat="first_treat",
+        xvars=["x"] if method == "drimp" else None,
+    )
+    model.fit(method=method, notyet=True)
+
+    never_units = set(np.flatnonzero(unit_cohorts == 0))
+    used_units = {unit for unit, _ in model._used_rows}
+    assert never_units <= used_units
+
+
 # ---------------------------------------------------------------------------
 # Edge-case / synthetic tests (Package 005)
 # ---------------------------------------------------------------------------
@@ -237,10 +295,10 @@ def test_did_imputation_autosample_non_imputable():
     # Cohort 2 treated: some units have no control observations
     # (unit 0 is treated at time 2, but we drop its pre-treatment rows)
     first_treat = np.repeat(
-        rng.choice([0, 2], size=n_units, p=[0.5, 0.5]), n_periods
+        rng.choice([-1, 2], size=n_units, p=[0.5, 0.5]), n_periods
     )
     treat = (times >= first_treat).astype(float)
-    treat[first_treat == 0] = 0
+    treat[first_treat < 0] = 0
     y = 1.0 + 2.0 * treat + rng.normal(size=n_units * n_periods)
     df = pd.DataFrame({"id": units, "time": times, "y": y, "first_treat": first_treat})
 
@@ -261,6 +319,80 @@ def test_did_imputation_missing_data_drops():
     assert res.sample.nobs <= len(df.dropna(subset=["y"]))
 
 
+def test_did_imputation_sample_mask_nobs_consistency():
+    """sample_mask length must equal n_input_rows and sum to nobs after autosample."""
+    df = pd.DataFrame({
+        "id": [0, 0, 1, 1, 2],
+        "time": [0, 1, 0, 1, 1],
+        "y": [1.0, 1.0, 1.0, 1.0, 2.0],
+        "first_treat": [-1, -1, -1, -1, 1],
+    })
+    res = did_imputation(
+        df, y="y", id="id", time="time", first_treat="first_treat",
+        autosample=True,
+    )
+    assert len(res.sample.sample_mask) == len(df)
+    assert sum(res.sample.sample_mask) == res.sample.nobs == 4
+
+
+def test_did_imputation_first_treat_zero_negative_never_treated():
+    """first_treat equal to 0, negative, or missing values identify never-treated units."""
+    df = pd.DataFrame({
+        "id": [0, 0, 1, 1, 2, 2, 3, 3],
+        "time": [0, 1, 0, 1, 0, 1, 0, 1],
+        "y": [1.0, 1.0, 1.0, 1.0, 2.0, 2.0, 3.0, 3.0],
+        "first_treat": [0, 0, -1, -1, -2, -2, 1, 1],
+    })
+    model = DIDImputation(df, y="y", id="id", time="time", first_treat="first_treat")
+    res = model.fit(autosample=True, saveestimates="effect")
+
+    # Units with first_treat <= 0 are never-treated -> no treatment effect estimated.
+    never_treated = df["first_treat"] <= 0
+    assert model.saveestimates_[never_treated].isna().all()
+
+    # Units with first_treat > 0 and post-treatment have a non-missing effect.
+    ever_treated_post = (df["first_treat"] > 0) & (df["time"] >= df["first_treat"])
+    assert model.saveestimates_[ever_treated_post].notna().all()
+
+    assert len(res.coefficients) > 0
+
+
+def test_did_imputation_first_treat_missing_never_treated():
+    """Rows with missing first_treat are treated as never-treated controls."""
+    df = pd.DataFrame({
+        "id": [0, 0, 1, 1, 2, 2],
+        "time": [0, 1, 0, 1, 0, 1],
+        "y": [1.0, 1.0, 1.0, 1.0, 2.0, 2.0],
+        "first_treat": [-1, -1, 1, 1, np.nan, np.nan],
+    })
+    res = did_imputation(
+        df, y="y", id="id", time="time", first_treat="first_treat",
+        autosample=True,
+    )
+    # Rows 4 and 5 (id 2) have missing first_treat and are kept as never-treated.
+    missing_rows = df["first_treat"].isna()
+    assert all(np.array(res.sample.sample_mask)[missing_rows.values])
+    assert res.sample.nobs == 6
+
+
+def test_did_imputation_negative_zero_time_values():
+    """Panels with negative or zero time values must be handled correctly."""
+    df = pd.DataFrame({
+        "id": [0, 0, 0, 0, 0, 1, 1, 1, 1, 1],
+        "time": [-2, -1, 0, 1, 2, -2, -1, 0, 1, 2],
+        "y": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 2.0, 2.0],
+        "first_treat": [0, 0, 0, 0, 0, 1, 1, 1, 1, 1],
+    })
+    res = did_imputation(
+        df, y="y", id="id", time="time", first_treat="first_treat",
+        autosample=True,
+    )
+    # id=0 is never-treated (first_treat=0); id=1 is treated at time 1.
+    assert len(res.coefficients) > 0
+    assert res.sample.nobs > 0
+    assert len(res.sample.sample_mask) == len(df)
+
+
 def test_eventstudyinteract_single_cohort():
     """EventStudyInteract should work with a single treated cohort."""
     rng = np.random.default_rng(77)
@@ -269,14 +401,14 @@ def test_eventstudyinteract_single_cohort():
     units = np.repeat(np.arange(n_units), n_periods)
     times = np.tile(np.arange(n_periods), n_units)
     # Only one cohort (period 2) plus never-treated
-    first_treat = np.repeat(rng.choice([0, 2], size=n_units), n_periods)
+    first_treat = np.repeat(rng.choice([-1, 2], size=n_units), n_periods)
     treat = (times >= first_treat).astype(float)
-    treat[first_treat == 0] = 0
+    treat[first_treat < 0] = 0
     y = 1.0 + 2.0 * treat + rng.normal(size=n_units * n_periods)
     df = pd.DataFrame({"id": units, "time": times, "y": y, "first_treat": first_treat})
     df["d0"] = ((df["time"] - df["first_treat"] == 0) & (df["first_treat"] > 0)).astype(float)
     df["dp1"] = ((df["time"] - df["first_treat"] == 1) & (df["first_treat"] > 0)).astype(float)
-    df["never_treat"] = (df["first_treat"] == 0).astype(float)
+    df["never_treat"] = (df["first_treat"] < 0).astype(float)
 
     res = eventstudyinteract(
         df, y="y", event_dummies=["d0", "dp1"],
@@ -323,6 +455,7 @@ def test_csdid_single_cohort():
     n_periods = 5
     units = np.repeat(np.arange(n_units), n_periods)
     times = np.tile(np.arange(n_periods), n_units)
+    # Use 0 for never-treated to match Stata's csdid convention
     first_treat = np.repeat(rng.choice([0, 2], size=n_units), n_periods)
     treat = (times >= first_treat).astype(float)
     treat[first_treat == 0] = 0
@@ -496,10 +629,10 @@ def test_did_imputation_controls_basic():
     n_periods = 6
     units = np.repeat(np.arange(n_units), n_periods)
     times = np.tile(np.arange(n_periods), n_units)
-    first_treat = rng.choice([0, 3], size=n_units)
+    first_treat = rng.choice([-1, 3], size=n_units)
     first_treat = np.repeat(first_treat, n_periods)
     treat = (times >= first_treat).astype(float)
-    treat[first_treat == 0] = 0
+    treat[first_treat < 0] = 0
 
     # Covariates that affect outcome but not treatment assignment
     x1 = rng.normal(size=n_units * n_periods)
@@ -546,7 +679,7 @@ def test_did_imputation_unitcontrols_basic():
     first_treat = rng.choice([0, 2], size=n_units)
     first_treat = np.repeat(first_treat, n_periods)
     treat = (times >= first_treat).astype(float)
-    treat[first_treat == 0] = 0
+    treat[first_treat < 0] = 0
 
     z = rng.normal(size=n_units * n_periods)
     y = 1.0 + 0.4 * z + 2.0 * treat + rng.normal(size=n_units * n_periods)
@@ -579,7 +712,7 @@ def test_did_imputation_timecontrols_basic():
     first_treat = rng.choice([0, 2], size=n_units)
     first_treat = np.repeat(first_treat, n_periods)
     treat = (times >= first_treat).astype(float)
-    treat[first_treat == 0] = 0
+    treat[first_treat < 0] = 0
 
     w = rng.normal(size=n_units * n_periods)
     y = 1.0 + 0.4 * w + 2.0 * treat + rng.normal(size=n_units * n_periods)
@@ -607,10 +740,10 @@ def test_did_imputation_controls_collinear():
     n_periods = 5
     units = np.repeat(np.arange(n_units), n_periods)
     times = np.tile(np.arange(n_periods), n_units)
-    first_treat = rng.choice([0, 3], size=n_units)
+    first_treat = rng.choice([-1, 3], size=n_units)
     first_treat = np.repeat(first_treat, n_periods)
     treat = (times >= first_treat).astype(float)
-    treat[first_treat == 0] = 0
+    treat[first_treat < 0] = 0
     y = 1.0 + 2.0 * treat + rng.normal(size=n_units * n_periods)
 
     # x_const is constant in the control (D==0) subsample
@@ -640,10 +773,10 @@ def test_did_imputation_all_three_controls():
     n_periods = 6
     units = np.repeat(np.arange(n_units), n_periods)
     times = np.tile(np.arange(n_periods), n_units)
-    first_treat = rng.choice([0, 3], size=n_units)
+    first_treat = rng.choice([-1, 3], size=n_units)
     first_treat = np.repeat(first_treat, n_periods)
     treat = (times >= first_treat).astype(float)
-    treat[first_treat == 0] = 0
+    treat[first_treat < 0] = 0
 
     x = rng.normal(size=n_units * n_periods)
     z = rng.normal(size=n_units * n_periods)
@@ -681,10 +814,10 @@ def test_did_imputation_pretrends_basic():
     n_periods = 6
     units = np.repeat(np.arange(n_units), n_periods)
     times = np.tile(np.arange(n_periods), n_units)
-    first_treat = rng.choice([0, 3], size=n_units)
+    first_treat = rng.choice([-1, 3], size=n_units)
     first_treat = np.repeat(first_treat, n_periods)
     treat = (times >= first_treat).astype(float)
-    treat[first_treat == 0] = 0
+    treat[first_treat < 0] = 0
 
     # Introduce a pretreatment trend: y increases by 0.2 per period before treatment
     pre_trend = np.where(
@@ -734,10 +867,10 @@ def test_did_imputation_pretrends_no_violation():
     n_periods = 6
     units = np.repeat(np.arange(n_units), n_periods)
     times = np.tile(np.arange(n_periods), n_units)
-    first_treat = rng.choice([0, 3], size=n_units)
+    first_treat = rng.choice([-1, 3], size=n_units)
     first_treat = np.repeat(first_treat, n_periods)
     treat = (times >= first_treat).astype(float)
-    treat[first_treat == 0] = 0
+    treat[first_treat < 0] = 0
     y = 1.0 + 2.0 * treat + rng.normal(size=n_units * n_periods)
 
     df = pd.DataFrame({
@@ -775,10 +908,10 @@ def test_did_imputation_pretrends_with_controls():
     n_periods = 6
     units = np.repeat(np.arange(n_units), n_periods)
     times = np.tile(np.arange(n_periods), n_units)
-    first_treat = rng.choice([0, 3], size=n_units)
+    first_treat = rng.choice([-1, 3], size=n_units)
     first_treat = np.repeat(first_treat, n_periods)
     treat = (times >= first_treat).astype(float)
-    treat[first_treat == 0] = 0
+    treat[first_treat < 0] = 0
 
     x = rng.normal(size=n_units * n_periods)
     y = 1.0 + 0.5 * x + 2.0 * treat + rng.normal(size=n_units * n_periods)
@@ -809,16 +942,16 @@ def test_did_imputation_wtr_basic():
     n_periods = 6
     units = np.repeat(np.arange(n_units), n_periods)
     times = np.tile(np.arange(n_periods), n_units)
-    first_treat = rng.choice([0, 3], size=n_units)
+    first_treat = rng.choice([-1, 3], size=n_units)
     first_treat = np.repeat(first_treat, n_periods)
     treat = (times >= first_treat).astype(float)
-    treat[first_treat == 0] = 0
+    treat[first_treat < 0] = 0
     y = 1.0 + 2.0 * treat + rng.normal(size=n_units * n_periods)
 
     # Create a weight variable that varies across treated units
     unit_weights = rng.random(n_units) + 0.5
     w = np.repeat(unit_weights, n_periods)
-    w[first_treat == 0] = 0.0
+    w[first_treat < 0] = 0.0
 
     df = pd.DataFrame({
         "id": units,
@@ -857,10 +990,10 @@ def test_did_imputation_hetby_basic():
     n_periods = 6
     units = np.repeat(np.arange(n_units), n_periods)
     times = np.tile(np.arange(n_periods), n_units)
-    first_treat = rng.choice([0, 3], size=n_units)
+    first_treat = rng.choice([-1, 3], size=n_units)
     first_treat = np.repeat(first_treat, n_periods)
     treat = (times >= first_treat).astype(float)
-    treat[first_treat == 0] = 0
+    treat[first_treat < 0] = 0
     # Group-specific treatment effects
     group = np.repeat(rng.choice([1, 2], size=n_units), n_periods)
     true_effect = np.where(group == 1, 1.5, 2.5)
@@ -897,10 +1030,10 @@ def test_did_imputation_saveestimates():
     n_periods = 5
     units = np.repeat(np.arange(n_units), n_periods)
     times = np.tile(np.arange(n_periods), n_units)
-    first_treat = rng.choice([0, 3], size=n_units)
+    first_treat = rng.choice([-1, 3], size=n_units)
     first_treat = np.repeat(first_treat, n_periods)
     treat = (times >= first_treat).astype(float)
-    treat[first_treat == 0] = 0
+    treat[first_treat < 0] = 0
     y = 1.0 + 2.0 * treat + rng.normal(size=n_units * n_periods)
 
     df = pd.DataFrame({
@@ -922,8 +1055,8 @@ def test_did_imputation_saveestimates():
     saved_effect = model.saveestimates_[ever_treated]
     assert saved_effect.notna().all()
 
-    # For control observations, effect should be NaN
-    control = df["first_treat"] == 0
+    # For control observations (first_treat <= 0 or missing), effect should be NaN
+    control = df["first_treat"] <= 0
     assert model.saveestimates_[control].isna().all()
 
 
@@ -934,10 +1067,10 @@ def test_did_imputation_saveweights():
     n_periods = 5
     units = np.repeat(np.arange(n_units), n_periods)
     times = np.tile(np.arange(n_periods), n_units)
-    first_treat = rng.choice([0, 3], size=n_units)
+    first_treat = rng.choice([-1, 3], size=n_units)
     first_treat = np.repeat(first_treat, n_periods)
     treat = (times >= first_treat).astype(float)
-    treat[first_treat == 0] = 0
+    treat[first_treat < 0] = 0
     y = 1.0 + 2.0 * treat + rng.normal(size=n_units * n_periods)
 
     df = pd.DataFrame({
@@ -958,6 +1091,43 @@ def test_did_imputation_saveweights():
     assert list(model.saveweights_.columns) == active_names
 
 
+def test_did_imputation_weights_project_out_controls_and_fixed_effects():
+    """SE weights must be orthogonal to the untreated regression design."""
+    df = pd.DataFrame(
+        {
+            "id": np.repeat(np.arange(4), 4),
+            "time": np.tile(np.arange(4), 4),
+            "first_treat": np.repeat([2.0, 3.0, np.nan, np.nan], 4),
+            "x": np.linspace(-1.5, 2.0, 16),
+            "y": np.zeros(16),
+        }
+    )
+    model = DIDImputation(
+        df,
+        y="y",
+        id="id",
+        time="time",
+        first_treat="first_treat",
+    )
+    treated = df["first_treat"].notna() & (df["time"] >= df["first_treat"])
+    control = ~treated
+    effective = treated & (df["time"] == df["first_treat"])
+
+    weights = model._compute_imputation_weights(
+        df,
+        effective,
+        control,
+        "id",
+        "time",
+        controls=["x"],
+    )
+
+    demeaned_x = df["x"] - df.loc[control, "x"].mean()
+    assert float(np.dot(weights, demeaned_x)) == pytest.approx(0.0, abs=1e-11)
+    assert weights.groupby(df["id"]).sum().abs().max() < 1e-11
+    assert weights.groupby(df["time"]).sum().abs().max() < 1e-11
+
+
 def test_did_imputation_sum_option():
     """sum=True should skip weight normalization and compute weighted sums."""
     rng = np.random.default_rng(59)
@@ -965,10 +1135,10 @@ def test_did_imputation_sum_option():
     n_periods = 5
     units = np.repeat(np.arange(n_units), n_periods)
     times = np.tile(np.arange(n_periods), n_units)
-    first_treat = rng.choice([0, 3], size=n_units)
+    first_treat = rng.choice([-1, 3], size=n_units)
     first_treat = np.repeat(first_treat, n_periods)
     treat = (times >= first_treat).astype(float)
-    treat[first_treat == 0] = 0
+    treat[first_treat < 0] = 0
     y = 1.0 + 2.0 * treat + rng.normal(size=n_units * n_periods)
 
     w = np.ones(n_units * n_periods)
@@ -1017,10 +1187,10 @@ def test_did_imputation_multiple_wtr_rejects_multi_horizon():
     n_periods = 6
     units = np.repeat(np.arange(n_units), n_periods)
     times = np.tile(np.arange(n_periods), n_units)
-    first_treat = rng.choice([0, 3], size=n_units)
+    first_treat = rng.choice([-1, 3], size=n_units)
     first_treat = np.repeat(first_treat, n_periods)
     treat = (times >= first_treat).astype(float)
-    treat[first_treat == 0] = 0
+    treat[first_treat < 0] = 0
     y = 1.0 + 2.0 * treat + rng.normal(size=n_units * n_periods)
 
     df = pd.DataFrame({
@@ -1051,7 +1221,7 @@ def test_csdid_dr_basic():
     n_periods = 6
     units = np.repeat(np.arange(n_units), n_periods)
     times = np.tile(np.arange(n_periods), n_units)
-    # Include never-treated (first_treat=0) for DR
+    # Include never-treated (first_treat=0) for DR, matching Stata's csdid convention
     first_treat = rng.choice([0, 3], size=n_units)
     first_treat = np.repeat(first_treat, n_periods)
     treat = (times >= first_treat).astype(float)
@@ -1086,6 +1256,7 @@ def test_csdid_dr_vs_reg():
     n_periods = 6
     units = np.repeat(np.arange(n_units), n_periods)
     times = np.tile(np.arange(n_periods), n_units)
+    # Use 0 for never-treated to match Stata's csdid convention
     first_treat = rng.choice([0, 3], size=n_units)
     first_treat = np.repeat(first_treat, n_periods)
     treat = (times >= first_treat).astype(float)
@@ -1185,6 +1356,7 @@ def test_csdid_agg_group():
     n_periods = 6
     units = np.repeat(np.arange(n_units), n_periods)
     times = np.tile(np.arange(n_periods), n_units)
+    # Use 0 for never-treated to match Stata's csdid convention
     first_treat = rng.choice([0, 2, 3], size=n_units)
     first_treat = np.repeat(first_treat, n_periods)
     treat = (times >= first_treat).astype(float)
@@ -1423,3 +1595,58 @@ def test_eventstudyinteract_weighted_changes_coefficients():
     betas_u = np.array([c.beta for c in unweighted.coefficients])
     betas_w = np.array([c.beta for c in weighted.coefficients])
     assert not np.allclose(betas_u, betas_w, rtol=1e-6)
+
+
+def test_csdid_rejects_inconsistent_first_treat():
+    """CSDID should raise ValueError when a unit has varying first_treat values."""
+    rng = np.random.default_rng(77)
+    n_units = 20
+    n_periods = 4
+    units = np.repeat(np.arange(n_units), n_periods)
+    times = np.tile(np.arange(n_periods), n_units)
+    first_treat = np.repeat(rng.choice([-1, 2], size=n_units), n_periods)
+    # Make unit 0 inconsistent: first period says -1, second says 2
+    first_treat[1] = 2
+    treat = (times >= first_treat).astype(float)
+    treat[first_treat < 0] = 0
+    y = 1.0 + 2.0 * treat + rng.normal(size=n_units * n_periods)
+    df = pd.DataFrame({
+        "id": units,
+        "time": times,
+        "y": y,
+        "first_treat": first_treat,
+    })
+    with pytest.raises(ValueError, match="not constant within unit"):
+        csdid(df, y="y", id="id", time="time", first_treat="first_treat")
+
+
+def test_csdid_cluster_missing_dropped():
+    """Rows with missing cluster values must be excluded from the estimation sample."""
+    df = _make_csdid_data(n_units=30, n_periods=5)
+    df["cluster"] = np.repeat(np.arange(30) // 3, 5)
+    # Units 0-4 have missing cluster values for all their rows
+    df.loc[df["id"] < 5, "cluster"] = np.nan
+    model = csdid(
+        df, y="y", id="id", time="time", first_treat="first_treat",
+        cluster="cluster",
+    )
+    res = model.estat("event")
+    missing_rows = df["cluster"].isna()
+    assert len(res.sample.sample_mask) == len(df)
+    assert sum(res.sample.sample_mask) == res.sample.nobs
+    assert all(not m for m in np.array(res.sample.sample_mask)[missing_rows.values])
+    # Cluster count is computed from the final estimation sample
+    assert res.diagnostics.cluster_count <= df.loc[~missing_rows, "cluster"].nunique()
+
+
+def test_csdid_cluster_varies_within_unit():
+    """CSDID must raise ValueError when a unit has varying cluster values."""
+    df = _make_csdid_data(n_units=20, n_periods=4)
+    df["cluster"] = np.repeat(np.arange(20) // 2, 4)
+    # Make unit 0 inconsistent across time
+    df.loc[(df["id"] == 0) & (df["time"] == 1), "cluster"] = 999
+    with pytest.raises(ValueError, match="cluster variable varies within unit"):
+        csdid(
+            df, y="y", id="id", time="time", first_treat="first_treat",
+            cluster="cluster",
+        )

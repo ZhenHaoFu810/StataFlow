@@ -13,7 +13,7 @@ StataFlow 提供**两层使用方式**：
 
 ## 2. 安装
 
-**环境要求：** Python 3.10+、NumPy、pandas、SciPy。
+**环境要求：** Python 3.10+、NumPy、pandas、SciPy、scikit-learn、PyYAML。
 
 ```bash
 pip install StataFlow

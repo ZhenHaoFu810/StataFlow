@@ -34,7 +34,7 @@ def estat_summarize(result: Any, data: pd.DataFrame, variables: list[str] | None
     Parameters
     ----------
     result : ResultSchema
-        Fitted result object with ``sample.mask`` attribute.
+        Fitted result object with ``sample.sample_mask`` attribute.
     data : pd.DataFrame
         Original dataframe.
     variables : list[str], optional
@@ -46,7 +46,7 @@ def estat_summarize(result: Any, data: pd.DataFrame, variables: list[str] | None
     -------
     dict mapping variable name to {'N', 'mean', 'sd', 'min', 'max'}.
     """
-    mask = getattr(getattr(result, "sample", None), "mask", None)
+    mask = getattr(getattr(result, "sample", None), "sample_mask", None)
     if mask is None:
         mask = pd.Series(True, index=data.index)
 

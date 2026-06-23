@@ -479,9 +479,9 @@ def _three_step_bw_two(Y_l, X_l, Y_r, X_r, c, p, q, deriv, kernel, vce, nnmatch,
 
     d_bw_l = (V_d_l / B_d_l ** 2) ** rate_d
     d_bw_r = (V_d_r / B_d_r ** 2) ** rate_d
-    if bwrestrict and bw_max is not None:
-        d_bw_l = min(d_bw_l, bw_max)
-        d_bw_r = min(d_bw_r, bw_max)
+    if bwrestrict:
+        d_bw_l = min(d_bw_l, range_l)
+        d_bw_r = min(d_bw_r, range_r)
 
     # Step 2: b_bw per side
     C_b_l = _rdrobust_bw(Y_l, X_l, c, q, p + 1, q + 1, c_bw, d_bw_l, scaleregul,
@@ -495,9 +495,9 @@ def _three_step_bw_two(Y_l, X_l, Y_r, X_r, c, p, q, deriv, kernel, vce, nnmatch,
     denom_b_r = B_b_r ** 2 + scaleregul * R_b_r
     b_bw_l = (V_b_l / denom_b_l) ** rate_b
     b_bw_r = (V_b_r / denom_b_r) ** rate_b
-    if bwrestrict and bw_max is not None:
-        b_bw_l = min(b_bw_l, bw_max)
-        b_bw_r = min(b_bw_r, bw_max)
+    if bwrestrict:
+        b_bw_l = min(b_bw_l, range_l)
+        b_bw_r = min(b_bw_r, range_r)
 
     # Step 3: h_bw per side
     C_h_l = _rdrobust_bw(Y_l, X_l, c, p, deriv, q, c_bw, b_bw_l, scaleregul,
@@ -511,9 +511,9 @@ def _three_step_bw_two(Y_l, X_l, Y_r, X_r, c, p, q, deriv, kernel, vce, nnmatch,
     denom_h_r = B_h_r ** 2 + scaleregul * R_h_r
     h_bw_l = (V_h_l / denom_h_l) ** rate_h
     h_bw_r = (V_h_r / denom_h_r) ** rate_h
-    if bwrestrict and bw_max is not None:
-        h_bw_l = min(h_bw_l, bw_max)
-        h_bw_r = min(h_bw_r, bw_max)
+    if bwrestrict:
+        h_bw_l = min(h_bw_l, range_l)
+        h_bw_r = min(h_bw_r, range_r)
 
     return h_bw_l, h_bw_r, b_bw_l, b_bw_r
 
@@ -788,6 +788,8 @@ class RDRobust:
             cols.append(self.cluster)
 
         df = self.data[cols].copy()
+        n_input = len(df)
+        df["_stataflow_row_id"] = np.arange(n_input)
         df = df.dropna()
         y = df[self.y_var].to_numpy(dtype=float)
         x = df[self.x_var].to_numpy(dtype=float)
@@ -815,6 +817,7 @@ class RDRobust:
                 y = y[valid]
                 x = x[valid]
                 fw = fw[valid]
+                df = df.iloc[valid].copy()
                 if covs_all is not None:
                     covs_all = covs_all[valid, :]
                 if T_all is not None:
@@ -825,7 +828,11 @@ class RDRobust:
             if fw is not None and fw.sum() > 0:
                 fw = fw / fw.sum() * len(fw)
 
-        n_input = len(self.data)
+        # Build sample mask after all row-level drops.
+        kept_ids = set(df["_stataflow_row_id"].values)
+        sample_mask = [i in kept_ids for i in range(n_input)]
+        df = df.drop(columns=["_stataflow_row_id"])
+
         nobs = len(y)
 
         if self.c <= np.min(x) or self.c >= np.max(x):
@@ -1254,6 +1261,7 @@ class RDRobust:
             sample=SampleInfo(
                 nobs=nobs,
                 n_input_rows=n_input,
+                sample_mask=sample_mask,
             ),
             fit=FitInfo(
                 df_model=float(2 * (self.p + 1)),
@@ -1261,8 +1269,12 @@ class RDRobust:
             ),
             coefficients=coefficients,
             variance=VarianceInfo(
-                row_names=["RD_Estimate"],
-                values=[[V_tau_rb]],
+                row_names=[c.name for c in coefficients],
+                values=[
+                    [V_tau_cl, 0.0, 0.0],
+                    [0.0, V_tau_cl, 0.0],
+                    [0.0, 0.0, V_tau_rb],
+                ],
             ),
             diagnostics=DiagnosticsInfo(
                 warnings=[],
@@ -1305,4 +1317,5 @@ class RDRobust:
             "level": self.level,
         }
 
+        result.validate()
         return result

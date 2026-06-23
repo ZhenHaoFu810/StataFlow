@@ -13,7 +13,8 @@ first_treat = first_treat.rename(columns={'year': 'first_treat'})
 
 # Merge back
 df = df.merge(first_treat, on='fcode', how='left')
-df['first_treat'] = df['first_treat'].fillna(0).astype(int)
+# Use -1 for never-treated to align with StataFlow/Stata semantics (0 means treated at period 0)
+df['first_treat'] = df['first_treat'].fillna(-1).astype(int)
 
 # Save as Stata .dta
 output_dir = Path(__file__).parent

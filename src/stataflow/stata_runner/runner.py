@@ -16,6 +16,7 @@ Does NOT:
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import shutil
 from pathlib import Path
@@ -46,10 +47,47 @@ FALLBACK_STATA_NAMES = [
 class StataResult:
     """Result from a Stata execution."""
     exit_code: int
+    stata_return_code: Optional[int] = None
     log_file: Optional[str] = None
     output_file: Optional[str] = None
     output_content: Optional[str] = None
     error_message: Optional[str] = None
+
+    @property
+    def process_exit_code(self) -> int:
+        """Return the raw operating-system process exit code."""
+        return self.exit_code
+
+    @property
+    def succeeded(self) -> bool:
+        """Whether both the process and the Stata do-file completed normally."""
+        return self.exit_code == 0 and self.stata_return_code is None
+
+
+_STATA_TERMINAL_RETURN_CODE = re.compile(r"^r\((\d+)\);$")
+
+
+class StataExecutionError(RuntimeError):
+    """Raised when a Stata do-file terminates with a Stata return code."""
+
+
+def _parse_stata_return_code(log_content: Optional[str]) -> Optional[int]:
+    """Parse a terminal Stata return code from the end of a batch log.
+
+    Stata's ``/e do`` mode can return an OS exit code of zero even when the
+    do-file terminates with ``r(<number>);``. Only the final non-empty log
+    line is considered so captured errors and ordinary displayed text do not
+    become false failures.
+    """
+    if not log_content:
+        return None
+    for line in reversed(log_content.splitlines()):
+        stripped = line.strip()
+        if not stripped:
+            continue
+        match = _STATA_TERMINAL_RETURN_CODE.fullmatch(stripped)
+        return int(match.group(1)) if match else None
+    return None
 
 
 def find_stata_executable(custom_path: Optional[str] = None) -> str:
@@ -121,22 +159,23 @@ class StataRunner:
             self._resolved_path = find_stata_executable(self.stata_path)
         return self._resolved_path
 
-    def _build_cmd_command(self, output_dir: str, do_file: str) -> str:
+    def _build_stata_args(self, do_file: str) -> list[str]:
         """
-        Build the Windows cmd command used for non-interactive Stata execution.
+        Build the argument list for non-interactive Stata execution.
 
-        `/e do` avoids the final confirmation dialog shown by `/b do`, but it
-        expects the process to start in the directory where the `.do` file
-        lives so that Stata writes its auto-generated `.log` alongside it.
+        `/e do` avoids the final confirmation dialog shown by `/b do`. The
+        caller must set ``cwd`` to the directory containing the `.do` file so
+        that Stata writes its auto-generated `.log` alongside it.
         """
         do_name = os.path.basename(do_file)
-        return f'cd /d "{output_dir}" && "{self.resolved_stata_path}" /e do {do_name}'
+        return [self.resolved_stata_path, "/e", "do", do_name]
 
     def run_do_file(
         self,
         do_content: str,
         output_dir: Optional[str] = None,
         timeout: int = 300,
+        raise_on_stata_error: bool = False,
     ) -> StataResult:
         """
         Run a Stata .do file using non-interactive mode.
@@ -148,6 +187,8 @@ class StataRunner:
             do_content: Content of the .do file.
             output_dir: Directory for .do and output files. Uses project stata/output if None.
             timeout: Timeout in seconds.
+            raise_on_stata_error: Raise ``RuntimeError`` when the Stata log
+                ends with a nonzero ``r(<number>);`` status.
 
         Returns:
             StataResult with exit code and log content.
@@ -172,7 +213,7 @@ class StataRunner:
             f.write(do_content)
 
         stata_log_file = do_file.replace(".do", ".log")
-        cmd_command = self._build_cmd_command(output_dir, do_file)
+        stata_args = self._build_stata_args(do_file)
 
         try:
             startupinfo = None
@@ -182,7 +223,7 @@ class StataRunner:
                 startupinfo.wShowWindow = 0
 
             result = subprocess.run(
-                cmd_command,
+                stata_args,
                 capture_output=True,
                 text=True,
                 timeout=timeout,
@@ -190,7 +231,7 @@ class StataRunner:
                 errors="replace",
                 cwd=output_dir,
                 startupinfo=startupinfo,
-                shell=True,
+                shell=False,
             )
 
             log_content = None
@@ -198,22 +239,33 @@ class StataRunner:
                 with open(stata_log_file, "r", encoding="utf-8", errors="replace") as f:
                     log_content = f.read()
 
+            stata_return_code = _parse_stata_return_code(log_content)
+            error_message = result.stderr if result.returncode != 0 else None
+            if stata_return_code is not None:
+                error_message = (
+                    f"Stata do-file terminated with r({stata_return_code}); "
+                    f"process exit code was {result.returncode}."
+                )
+                if raise_on_stata_error:
+                    raise StataExecutionError(error_message)
+
             return StataResult(
                 exit_code=result.returncode,
+                stata_return_code=stata_return_code,
                 log_file=stata_log_file if os.path.exists(stata_log_file) else None,
                 output_content=log_content,
-                error_message=result.stderr if result.returncode != 0 else None,
+                error_message=error_message,
             )
-        except subprocess.TimeoutExpired:
-            return StataResult(
-                exit_code=-1,
-                error_message=f"Stata execution timed out after {timeout}s",
-            )
-        except Exception as e:
-            return StataResult(
-                exit_code=-1,
-                error_message=str(e),
-            )
+        except subprocess.TimeoutExpired as exc:
+            raise StataExecutionError(
+                f"Stata execution timed out after {timeout}s"
+            ) from exc
+        except StataExecutionError:
+            raise
+        except Exception as exc:
+            raise StataExecutionError(
+                f"Unexpected error while running Stata: {exc}"
+            ) from exc
 
     def generate_min_do(self) -> str:
         """Generate a minimal .do file for smoke testing."""

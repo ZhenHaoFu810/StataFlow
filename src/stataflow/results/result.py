@@ -11,6 +11,8 @@ import json
 from dataclasses import dataclass, field, asdict
 from typing import Any, Optional
 
+import numpy as np
+
 
 @dataclass
 class ModelInfo:
@@ -65,6 +67,8 @@ class CoefficientRow:
     p_value: float = 0.0
     ci_low: float = 0.0
     ci_high: float = 0.0
+    is_base: bool = False
+    is_omitted: bool = False
 
 
 @dataclass
@@ -79,6 +83,13 @@ class DiagnosticsInfo:
     """Diagnostics and warnings."""
     residual_df_correction: Optional[str] = None
     cluster_count: Optional[int] = None
+    widstat: Optional[float] = None
+    idstat: Optional[float] = None
+    iddf: Optional[float] = None
+    idp: Optional[float] = None
+    hansen_j: Optional[float] = None
+    hansen_j_df: Optional[float] = None
+    hansen_j_pvalue: Optional[float] = None
     warnings: list[str] = field(default_factory=list)
 
 
@@ -121,6 +132,69 @@ class ResultSchema:
                 "It may have been deserialized from JSON or the model was not attached."
             )
         return self._model.predict(type=type, newdata=newdata)
+
+    def validate(self) -> None:
+        """Validate shape invariants across coefficients, variance matrix, and sample.
+
+        Raises ValueError if dimensions are inconsistent.
+        """
+        coef_names = [c.name for c in self.coefficients]
+        n_coef = len(coef_names)
+        v_names = self.variance.row_names
+        v_values = self.variance.values
+
+        # Coefficient / VCE dimension alignment.
+        # Empty results (e.g., before fitting) skip coefficient/variance checks.
+        if n_coef > 0 or len(v_values) > 0:
+            if n_coef != len(v_names):
+                raise ValueError(
+                    f"Shape mismatch: {n_coef} coefficients but "
+                    f"{len(v_names)} variance row_names."
+                )
+
+            # VCE must be a non-ragged 2-D square matrix.
+            if isinstance(v_values, np.ndarray):
+                if v_values.ndim != 2 or v_values.shape[0] != v_values.shape[1]:
+                    raise ValueError(
+                        f"Variance matrix is not a 2-D square matrix: "
+                        f"shape {v_values.shape}."
+                    )
+                if v_values.shape[0] != len(v_names):
+                    raise ValueError(
+                        f"Variance matrix dimension ({v_values.shape[0]}) does not "
+                        f"match row_names length ({len(v_names)})."
+                    )
+            elif v_values:
+                n_v = len(v_values)
+                if any(len(row) != n_v for row in v_values):
+                    raise ValueError(
+                        f"Variance matrix rows have non-uniform lengths."
+                    )
+                if n_v != len(v_names):
+                    raise ValueError(
+                        f"Variance matrix is not square: "
+                        f"{n_v}x{n_v} expected but {len(v_names)} row_names."
+                    )
+
+            # Coefficient names must match variance row_names in order.
+            if coef_names != v_names:
+                raise ValueError(
+                    f"Coefficient names do not match variance row_names in order: "
+                    f"{coef_names} vs {v_names}."
+                )
+
+        # Sample invariants.
+        mask = self.sample.sample_mask
+        if len(mask) != self.sample.n_input_rows:
+            raise ValueError(
+                f"Sample mask length ({len(mask)}) does not match n_input_rows "
+                f"({self.sample.n_input_rows})."
+            )
+        if mask and sum(mask) != self.sample.nobs:
+            raise ValueError(
+                f"Sample mask sum ({sum(mask)}) does not match nobs "
+                f"({self.sample.nobs})."
+            )
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary compatible with schema."""
@@ -212,7 +286,8 @@ class ResultSchema:
             result.diagnostics = DiagnosticsInfo(**data["diagnostics"])
         if "provenance" in data:
             result.provenance = ProvenanceInfo(**data["provenance"])
-        
+
+        result.validate()
         return result
 
     @classmethod
@@ -272,13 +347,19 @@ class ResultSchema:
             name_w = max(max(len(c.name) for c in self.coefficients), 6)
             name_w = min(name_w, 18)  # cap very long names
 
-            # Format strings
+            # GLM families report z-stats, not t-stats
+            if fam in ("glm", "ppml", "logit", "probit", "poisson"):
+                z_label = "z"
+                p_label = "P>|z|"
+            else:
+                z_label = "t"
+                p_label = "P>|t|"
             if show_ci:
                 header = (f"{'':>{name_w}}  {'Coef.':>10}  {'Std.Err.':>10}"
-                          f"  {'t':>6}  {'P>|t|':>6}  {'[95% CI]':>20}")
+                          f"  {z_label:>6}  {p_label:>6}  {'[95% CI]':>20}")
             else:
                 header = (f"{'':>{name_w}}  {'Coef.':>10}  {'Std.Err.':>10}"
-                          f"  {'t':>6}  {'P>|t|':>6}")
+                          f"  {z_label:>6}  {p_label:>6}")
             L.append(header)
             L.append("-" * len(header))
 

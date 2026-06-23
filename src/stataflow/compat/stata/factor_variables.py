@@ -6,32 +6,34 @@ Supported syntax (Phase C subset):
 - ``i.g1`` (categorical indicator, base level omitted)
 - ``ib2.g1`` / ``b2.g1`` (categorical indicator with explicit base level)
 - ``o2.g1`` (categorical indicator with explicit omitted level)
-- ``c.x1#c.x2`` (continuous × continuous interaction only)
+- ``c.x1#c.x2`` (continuous × continuous interaction)
 - ``c.x1##c.x2`` (continuous + continuous + interaction)
-- ``i.g1#i.g2`` (categorical × categorical interaction only)
+- ``i.g1#i.g2`` (categorical × categorical interaction)
 - ``i.g1##i.g2`` (categorical main effects + interaction)
-- ``i.g1#c.x1`` (categorical × continuous interaction only)
+- ``i.g1#c.x1`` (categorical × continuous interaction)
 - ``i.g1##c.x1`` (categorical main effects + continuous + interaction)
 - ``c.x1#i.g1`` / ``c.x1##i.g1`` (mixed interaction, symmetric with ``i.g1#c.x1``)
 - ``x1#x2`` / ``x1##x2`` (bare variables inside ``#`` / ``##`` are treated as continuous)
 - ``x1#i.g`` / ``x1##i.g`` / ``i.g#x1`` / ``i.g##x1`` (mixed bare/continuous and categorical)
+- ``i.g1#i.g2#c.x3`` / ``i.g1##i.g2##c.x3`` (three-way and higher-order interactions)
 
 Explicitly rejected with ``ValueError``:
 - ``ib.``, ``b.``, ``o.`` (without level number)
 - time-series operators (``L.x``, ``F.x``, etc.)
-- three-way or higher-order interactions
 - any other Stata factor syntax not listed above.
 """
 
 from __future__ import annotations
 
 import re
-from typing import List, Tuple, Set, Any
+from itertools import combinations, product
+from typing import List, Tuple, Set, Any, Optional
 
 import numpy as np
 import pandas as pd
 
 from stataflow.estimators._absorb_spec import AbsorbSpec
+from stataflow.results.result import CoefficientRow, ResultSchema
 
 
 # Regexes for unsupported syntax that must be hard-rejected
@@ -51,6 +53,50 @@ def _reject_unsupported(term: str) -> None:
     for pat, desc in _UNSUPPORTED_PATTERNS:
         if pat.search(term):
             raise ValueError(f"Unsupported factor syntax ({desc}) in term: {term}")
+
+
+def _strip_factor_prefix(atom: str) -> str:
+    """Return the variable name after stripping c., i., ib#., b#., o#., i(...). prefixes."""
+    patterns = [
+        r"^ib\d+\.",
+        r"^b\d+\.",
+        r"^o\d+\.",
+        r"^i\([^)]+\)\.",
+        r"^[ci]\.",
+    ]
+    for pat in patterns:
+        m = re.match(pat, atom)
+        if m:
+            return atom[m.end():]
+    if "." in atom:
+        raise ValueError(f"Invalid factor term atom: {atom}")
+    return atom
+
+
+def get_underlying_vars(term: str) -> list[str]:
+    """Extract underlying DataFrame column names from a Stata factor expression.
+
+    Examples
+    --------
+    - ``i.g`` -> ``['g']``
+    - ``c.x`` -> ``['x']``
+    - ``i.g##c.x`` -> ``['g', 'x']``
+    - ``i.g#i.h`` -> ``['g', 'h']``
+    - ``ib2.g`` -> ``['g']``
+    - ``i(1 2).g`` -> ``['g']``
+    - ``o2.g`` -> ``['g']``
+    """
+    _reject_unsupported(term)
+    parts = re.split(r"(##|#)", term)
+    parts = [p for p in parts if p and p not in ("#", "##")]
+    seen: set[str] = set()
+    out: list[str] = []
+    for atom in parts:
+        var = _strip_factor_prefix(atom)
+        if var not in seen:
+            seen.add(var)
+            out.append(var)
+    return out
 
 
 def _resolve_level(levels: List[Any], spec: int, dtype=None) -> Any:
@@ -145,6 +191,11 @@ def _levels_for_indicator(
     omitted : set
         Additional explicitly omitted levels
     """
+    if _is_string_like_variable(series):
+        raise ValueError(
+            f"string variables may not be used as factor variables (Stata r(109)); "
+            f"variable '{series.name}' has dtype {series.dtype}"
+        )
     if hasattr(series, "cat") and hasattr(series.cat, "categories"):
         levels = list(series.cat.categories)
     else:
@@ -168,17 +219,43 @@ def _col_name_safe(level) -> str:
     return str(level).replace(".", "_")
 
 
+def _is_string_like_variable(series: pd.Series) -> bool:
+    """Return True if *series* is a string/object-with-strings/categorical-string variable."""
+    dtype = series.dtype
+    if pd.api.types.is_string_dtype(dtype):
+        return True
+    if pd.api.types.is_categorical_dtype(dtype):
+        return any(isinstance(cat, str) for cat in series.cat.categories)
+    if dtype == object:
+        return bool(series.map(lambda v: isinstance(v, str), na_action="ignore").any())
+    return False
+
+
 def _make_dummy(series: pd.Series, level) -> pd.Series:
     """Indicator for ``series == level`` as float."""
     return (series == level).astype(float)
 
 
-def _expand_single_term(data: pd.DataFrame, term: str) -> List[str]:
+def _expand_single_term(data: pd.DataFrame, term: str, level_source: Optional[pd.DataFrame] = None) -> List[str]:
     """Expand one factor term into new column names added to *data* copy.
 
-    Returns the list of generated column names in order.
+    Parameters
+    ----------
+    data : pd.DataFrame
+        DataFrame to which generated columns are added.
+    term : str
+        Factor term to expand.
+    level_source : pd.DataFrame, optional
+        DataFrame used to determine factor levels (e.g. screened estimation sample).
+        Dummy columns are still written into *data*.
+
+    Returns
+    -------
+    list[str]
+        The list of generated column names in order.
     """
     _reject_unsupported(term)
+    src = level_source if level_source is not None else data
 
     # Split on # / ##, keeping delimiters
     parts = re.split(r"(##|#)", term)
@@ -192,7 +269,21 @@ def _expand_single_term(data: pd.DataFrame, term: str) -> List[str]:
                 raise ValueError(f"Variable '{var}' not found in data")
             return [var]
         elif kind == "i":
-            levels, base, omitted = _levels_for_indicator(data[var], base_spec, omitted_specs)
+            # FVAR-002: reject string columns as factor variables (Stata r(109)).
+            # For non-string non-numeric columns, explicit base/omitted levels are still
+            # rejected because numeric specs cannot be interpreted reliably.
+            if (base_spec is not None or omitted_specs) and not pd.api.types.is_numeric_dtype(src[var]):
+                if _is_string_like_variable(src[var]):
+                    raise ValueError(
+                        f"string variables may not be used as factor variables (Stata r(109)); "
+                        f"variable '{var}' has dtype {src[var].dtype}"
+                    )
+                raise ValueError(
+                    f"Factor variable '{term}' uses explicit level specification on a "
+                    f"non-numeric column '{var}' (dtype={src[var].dtype}). "
+                    f"Explicit base/omitted levels (ib#, o#) require numeric variables."
+                )
+            levels, base, omitted = _levels_for_indicator(src[var], base_spec, omitted_specs)
             if len(levels) <= 1:
                 # No variation to model
                 return []
@@ -244,8 +335,8 @@ def _expand_single_term(data: pd.DataFrame, term: str) -> List[str]:
 
         if lkind == "i" and rkind == "i":
             # i.g1 #/## i.g2
-            llevels, lbase, lomitted_set = _levels_for_indicator(data[lvar], lbase_spec, lomitted)
-            rlevels, rbase, romitted_set = _levels_for_indicator(data[rvar], rbase_spec, romitted)
+            llevels, lbase, lomitted_set = _levels_for_indicator(src[lvar], lbase_spec, lomitted)
+            rlevels, rbase, romitted_set = _levels_for_indicator(src[rvar], rbase_spec, romitted)
             lnonbase = [ll for ll in llevels if ll != lbase and ll not in lomitted_set]
             rnonbase = [rl for rl in rlevels if rl != rbase and rl not in romitted_set]
             if len(lnonbase) == 0 or len(rnonbase) == 0:
@@ -273,7 +364,7 @@ def _expand_single_term(data: pd.DataFrame, term: str) -> List[str]:
 
         if lkind == "i" and rkind == "c":
             # i.g1 #/## c.x
-            levels, base, omitted_set = _levels_for_indicator(data[lvar], lbase_spec, lomitted)
+            levels, base, omitted_set = _levels_for_indicator(src[lvar], lbase_spec, lomitted)
             nonbase = [lvl for lvl in levels if lvl != base and lvl not in omitted_set]
             if len(nonbase) > 0:
                 for lvl in nonbase:
@@ -292,7 +383,7 @@ def _expand_single_term(data: pd.DataFrame, term: str) -> List[str]:
 
         if lkind == "c" and rkind == "i":
             # c.x #/## i.g  (symmetric with i.g #/## c.x)
-            levels, base, omitted_set = _levels_for_indicator(data[rvar], rbase_spec, romitted)
+            levels, base, omitted_set = _levels_for_indicator(src[rvar], rbase_spec, romitted)
             nonbase = [lvl for lvl in levels if lvl != base and lvl not in omitted_set]
             if len(nonbase) > 0:
                 for lvl in nonbase:
@@ -325,15 +416,16 @@ def _expand_single_term(data: pd.DataFrame, term: str) -> List[str]:
         if not all(op == ops[0] for op in ops):
             raise ValueError("Mixed # and ## operators not supported for >2 way interactions")
         is_double = ops[0] == "##"
-        return _expand_multiway_interaction(data, atoms, is_double)
+        return _expand_multiway_interaction(data, atoms, is_double, level_source=src)
 
     # Any other structure is unsupported
     raise ValueError(f"Unsupported factor term structure: {term}")
 
 
-def _interaction_of_atoms(data: pd.DataFrame, atoms: list) -> list[str]:
+def _interaction_of_atoms(data: pd.DataFrame, atoms: list, level_source: Optional[pd.DataFrame] = None) -> list[str]:
     """Generate interaction columns for a list of atoms (cartesian product of expansions)."""
     from itertools import product
+    src = level_source if level_source is not None else data
     atom_cols = []
     for kind, var, base_spec, omitted in atoms:
         if kind in ("c", "bare"):
@@ -341,7 +433,7 @@ def _interaction_of_atoms(data: pd.DataFrame, atoms: list) -> list[str]:
                 raise ValueError(f"Variable '{var}' not found in data")
             atom_cols.append([var])
         elif kind == "i":
-            levels, base, omitted_set = _levels_for_indicator(data[var], base_spec, omitted)
+            levels, base, omitted_set = _levels_for_indicator(src[var], base_spec, omitted)
             nonbase = [ll for ll in levels if ll != base and ll not in omitted_set]
             cols = []
             for lvl in nonbase:
@@ -366,18 +458,200 @@ def _interaction_of_atoms(data: pd.DataFrame, atoms: list) -> list[str]:
     return result
 
 
-def _expand_multiway_interaction(data: pd.DataFrame, atoms: list, is_double: bool) -> list[str]:
+def _expand_multiway_interaction(data: pd.DataFrame, atoms: list, is_double: bool, level_source: Optional[pd.DataFrame] = None) -> list[str]:
     """Expand 3+ way factor interactions."""
     from itertools import combinations
     out_cols: list[str] = []
     for r in range(1, len(atoms) + 1):
         for subset in combinations(atoms, r):
             if is_double or r == len(atoms):
-                out_cols.extend(_interaction_of_atoms(data, subset))
+                out_cols.extend(_interaction_of_atoms(data, subset, level_source=level_source))
     return out_cols
 
 
-def expand_factor_terms(data: pd.DataFrame, terms: List[str]) -> Tuple[pd.DataFrame, List[str]]:
+def _factor_atom_rows(
+    source: pd.DataFrame,
+    atom: tuple[str, str, Any, Set[int]],
+) -> list[dict[str, Any]]:
+    """Return Stata display rows and active-column mappings for one atom."""
+    kind, var, base_spec, omitted_specs = atom
+    if kind == "bare":
+        kind = "c"
+    if kind == "c":
+        return [{"name": var, "active": var, "kind": "continuous"}]
+
+    levels, base, omitted = _levels_for_indicator(
+        source[var], base_spec, omitted_specs
+    )
+    rows = []
+    for level in levels:
+        prefix = _col_name_safe(level)
+        if level == base:
+            rows.append(
+                {
+                    "name": f"{prefix}b.{var}",
+                    "active": None,
+                    "kind": "factor",
+                    "is_base": True,
+                }
+            )
+        elif level in omitted:
+            rows.append(
+                {
+                    "name": f"{prefix}o.{var}",
+                    "active": None,
+                    "kind": "factor",
+                    "is_omitted": True,
+                }
+            )
+        else:
+            rows.append(
+                {
+                    "name": f"{prefix}.{var}",
+                    "active": f"{prefix}.{var}",
+                    "kind": "factor",
+                }
+            )
+    return rows
+
+
+def _interaction_layout(atom_rows: list[list[dict[str, Any]]]) -> list[dict[str, Any]]:
+    """Build the full Stata coefficient layout for an interaction."""
+    rows: list[dict[str, Any]] = []
+    for parts in product(*atom_rows):
+        # The expansion layer canonicalizes mixed interactions with factor
+        # atoms before continuous atoms, independent of input order.
+        parts = tuple(
+            sorted(parts, key=lambda part: part["kind"] == "continuous")
+        )
+        active = all(part.get("active") is not None for part in parts)
+        display_parts = []
+        active_parts = []
+        for part in parts:
+            name = part["name"]
+            if part["kind"] == "continuous":
+                display_parts.append(f"{'c' if active else 'co'}.{name}")
+                active_parts.append(f"c.{name}")
+            else:
+                display_parts.append(name)
+                if part.get("active") is not None:
+                    active_parts.append(part["active"])
+        rows.append(
+            {
+                "name": "#".join(display_parts),
+                "active": "#".join(active_parts) if active else None,
+                "is_base": any(part.get("is_base", False) for part in parts),
+                "is_omitted": any(
+                    part.get("is_omitted", False) for part in parts
+                ),
+            }
+        )
+    return rows
+
+
+def _build_factor_result_layout(
+    source: pd.DataFrame,
+    terms: list[str],
+) -> list[dict[str, Any]]:
+    """Build ordered active and base/omitted rows matching Stata factor syntax."""
+    layout: list[dict[str, Any]] = []
+    seen: set[str] = set()
+
+    def add(rows: list[dict[str, Any]]) -> None:
+        for row in rows:
+            if row["name"] not in seen:
+                seen.add(row["name"])
+                layout.append(row)
+
+    for term in terms:
+        _reject_unsupported(term)
+        raw_parts = [part for part in re.split(r"(##|#)", term) if part]
+        atoms = [_parse_atom(raw_parts[i]) for i in range(0, len(raw_parts), 2)]
+        operators = raw_parts[1::2]
+        if operators:
+            atoms = sorted(
+                atoms,
+                key=lambda atom: (atom[0] in ("c", "bare")),
+            )
+        atom_rows = [_factor_atom_rows(source, atom) for atom in atoms]
+
+        if not operators:
+            add(atom_rows[0])
+            continue
+        if not all(op == operators[0] for op in operators):
+            continue
+
+        if operators[0] == "##":
+            for size in range(1, len(atoms) + 1):
+                for indices in combinations(range(len(atoms)), size):
+                    if size == 1:
+                        add(atom_rows[indices[0]])
+                    else:
+                        add(_interaction_layout([atom_rows[i] for i in indices]))
+        else:
+            add(_interaction_layout(atom_rows))
+
+    return layout
+
+
+def restore_factor_omitted_rows(result: ResultSchema, expanded_data: pd.DataFrame) -> ResultSchema:
+    """Add Stata base/omitted coefficient rows and matching zero VCE rows."""
+    layout = expanded_data.attrs.get("stataflow_factor_result_layout", [])
+    if not layout:
+        return result
+
+    old_coefficients = result.coefficients
+    old_names = [row.name for row in old_coefficients]
+    old_positions = {name: i for i, name in enumerate(old_names)}
+    consumed: set[str] = set()
+    new_coefficients: list[CoefficientRow] = []
+    source_positions: list[Optional[int]] = []
+
+    for spec in layout:
+        active = spec.get("active")
+        if active in old_positions:
+            consumed.add(active)
+            new_coefficients.append(old_coefficients[old_positions[active]])
+            source_positions.append(old_positions[active])
+        elif active is None:
+            new_coefficients.append(
+                CoefficientRow(
+                    name=spec["name"],
+                    beta=0.0,
+                    std_err=0.0,
+                    t_stat=0.0,
+                    p_value=1.0,
+                    ci_low=0.0,
+                    ci_high=0.0,
+                    is_base=bool(spec.get("is_base", False)),
+                    is_omitted=True,
+                )
+            )
+            source_positions.append(None)
+
+    for i, row in enumerate(old_coefficients):
+        if row.name not in consumed:
+            new_coefficients.append(row)
+            source_positions.append(i)
+
+    old_vce = np.asarray(result.variance.values, dtype=float)
+    n_new = len(new_coefficients)
+    new_vce = np.zeros((n_new, n_new), dtype=float)
+    if old_vce.size:
+        for i, old_i in enumerate(source_positions):
+            if old_i is None:
+                continue
+            for j, old_j in enumerate(source_positions):
+                if old_j is not None:
+                    new_vce[i, j] = old_vce[old_i, old_j]
+
+    result.coefficients = new_coefficients
+    result.variance.row_names = [row.name for row in new_coefficients]
+    result.variance.values = new_vce.tolist()
+    return result
+
+
+def expand_factor_terms(data: pd.DataFrame, terms: List[str], screen_vars: Optional[List[str]] = None) -> Tuple[pd.DataFrame, List[str]]:
     """Expand a list of Stata-style factor terms into concrete DataFrame columns.
 
     Parameters
@@ -386,6 +660,10 @@ def expand_factor_terms(data: pd.DataFrame, terms: List[str]) -> Tuple[pd.DataFr
         Input data.
     terms : list[str]
         Terms such as ``["c.x1##c.x2", "i.g"]``.
+    screen_vars : list[str], optional
+        If provided, factor levels are determined only from rows where all
+        *screen_vars* are non-missing. This aligns base/omitted levels with
+        the actual estimation sample.
 
     Returns
     -------
@@ -395,13 +673,22 @@ def expand_factor_terms(data: pd.DataFrame, terms: List[str]) -> Tuple[pd.DataFr
         Ordered list of concrete column names to use in estimation.
     """
     df = data.copy()
+    if screen_vars is not None:
+        present = [v for v in screen_vars if v in df.columns]
+        if present:
+            mask = df[present].notna().all(axis=1)
+            df_for_levels = df[mask].copy()
+        else:
+            df_for_levels = df
+    else:
+        df_for_levels = df
     out: List[str] = []
     discrete_columns = set(df.attrs.get("stataflow_discrete_columns", []))
     unsupported_factor_margins = bool(
         df.attrs.get("stataflow_unsupported_factor_margins", False)
     )
     for term in terms:
-        expanded = _expand_single_term(df, term)
+        expanded = _expand_single_term(df, term, level_source=df_for_levels)
         out.extend(expanded)
         if "#" in term:
             atoms = [part for part in re.split(r"##|#", term) if part]
@@ -411,6 +698,12 @@ def expand_factor_terms(data: pd.DataFrame, terms: List[str]) -> Tuple[pd.DataFr
             discrete_columns.update(expanded)
     df.attrs["stataflow_discrete_columns"] = sorted(discrete_columns)
     df.attrs["stataflow_unsupported_factor_margins"] = unsupported_factor_margins
+    existing_layout = list(df.attrs.get("stataflow_factor_result_layout", []))
+    new_layout = _build_factor_result_layout(df_for_levels, terms)
+    existing_names = {row["name"] for row in existing_layout}
+    df.attrs["stataflow_factor_result_layout"] = existing_layout + [
+        row for row in new_layout if row["name"] not in existing_names
+    ]
     return df, out
 
 

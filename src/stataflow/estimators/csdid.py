@@ -1,5 +1,7 @@
 """Callaway-Sant'Anna CSDID estimator (method='reg')."""
 
+import warnings
+
 import numpy as np
 import pandas as pd
 from stataflow.results.result import (
@@ -40,8 +42,51 @@ class CSDID:
         self._event_se = {}
         self._nobs = 0
         self._n_clust = 0
+        self._n_input_rows = len(data)
+        self._used_rows: set = set()
+        self._df_clean: Optional[pd.DataFrame] = None
 
-    def _set_inference_units(self, df, units):
+    def _check_first_treat_consistency(self, df, uid, ft):
+        """Raise ValueError if any unit has varying first_treat values."""
+        nunique = df.groupby(uid)[ft].nunique()
+        inconsistent = nunique[nunique > 1]
+        if len(inconsistent) > 0:
+            bad_ids = list(inconsistent.index[:5])
+            raise ValueError(
+                f"first_treat variable '{ft}' is not constant within unit. "
+                f"Offending units (showing first 5): {bad_ids}. "
+                "Each unit must have a single first_treat value."
+            )
+
+    def _check_cluster_consistency(self, df, uid, cluster_col):
+        """Raise ValueError if the cluster variable varies within a unit."""
+        if cluster_col is None or cluster_col == uid:
+            return
+        if cluster_col not in df.columns:
+            raise ValueError(f"cluster variable '{cluster_col}' not found in data")
+        nunique = df.groupby(uid)[cluster_col].nunique()
+        inconsistent = nunique[nunique > 1]
+        if len(inconsistent) > 0:
+            raise ValueError("cluster variable varies within unit")
+
+    def _build_sample_mask(self) -> list[bool]:
+        """Build sample mask from used_rows and cleaned dataframe."""
+        if self._df_clean is None:
+            return [True] * self._n_input_rows
+        if not self._used_rows:
+            return [False] * self._n_input_rows
+        uid = self.id_name
+        time = self.time_name
+        used_set = self._used_rows
+        mask = [False] * self._n_input_rows
+        for _, row in self._df_clean.iterrows():
+            if (row[uid], row[time]) in used_set:
+                orig_idx = int(row.get("_stataflow_row_id", 0))
+                if 0 <= orig_idx < self._n_input_rows:
+                    mask[orig_idx] = True
+        return mask
+
+    def _set_inference_units(self, df: pd.DataFrame, units) -> None:
         """Cache the fitted unit order and its inference-cluster mapping."""
         self._units = list(units)
         cluster_col = self._cluster_var
@@ -58,7 +103,7 @@ class CSDID:
             raise ValueError("Missing cluster mapping for units in the estimation sample")
         self._cluster_codes, _ = pd.factorize(unit_clusters, sort=True)
 
-    def _influence_covariance(self, influence):
+    def _influence_covariance(self, influence) -> np.ndarray:
         """Return covariance from unit-level influence-function columns."""
         values = np.asarray(influence, dtype=float)
         if values.ndim == 1:
@@ -73,7 +118,7 @@ class CSDID:
         np.add.at(cluster_sums, self._cluster_codes, values)
         return cluster_sums.T @ cluster_sums / (len(self._units) ** 2)
 
-    def _aggregate_pairs(self, pairs):
+    def _aggregate_pairs(self, pairs) -> tuple[float, np.ndarray]:
         """Aggregate ATT pairs and return the estimate with its unit-level IF."""
         ag_rif = np.array([
             [self._rifgt[pair][unit] for pair in pairs]
@@ -126,8 +171,12 @@ class CSDID:
         time = self.time_name
         ft = self.first_treat_name
 
-        # Drop missings in key variables
-        df = df.dropna(subset=[y, uid, time, ft])
+        # Drop missings in key variables (cluster participates in screening)
+        cluster_col = cluster if cluster is not None else uid
+        if cluster_col not in df.columns:
+            raise ValueError(f"cluster variable '{cluster_col}' not found in data")
+        df["_stataflow_row_id"] = np.arange(len(df))
+        df = df.dropna(subset=[y, uid, time, ft, cluster_col])
 
         cohorts = sorted([g for g in df[ft].unique() if g > 0])
         years = sorted(df[time].unique())
@@ -150,22 +199,28 @@ class CSDID:
                 f"Examples: {example_str}"
             )
 
+        # Validate cluster is constant within unit before grouping
+        self._check_cluster_consistency(df, uid, cluster_col)
+
         # Wide format for influence function convenience
         df_wide = df.pivot(index=uid, columns=time, values=y)
+        self._check_first_treat_consistency(df, uid, ft)
         cohort_map = df.groupby(uid)[ft].first()
 
         # Compute ATT(g,t) and unit-level IFs
         att_gt = {}
         if_gt = {}  # dict of dicts: {(g,t): {unit_id: if_value}}
 
-        # Determine control group strategy: Stata default is never-treated if
-        # available, unless notyet=True forces not-yet-treated controls.
-        has_never_treated = (df[ft] == 0).any() and not notyet
+        # Stata defaults to never-treated controls when available.  The
+        # notyet option augments them with cohorts treated after both g and t.
+        has_never_treated = (df[ft] == 0).any()
 
         for g in cohorts:
             for t in years:
                 # Control group: never-treated by default; fall back to not-yet-treated
-                if has_never_treated:
+                if notyet:
+                    control_mask = (df[ft] == 0) | (df[ft] > max(g, t))
+                elif has_never_treated:
                     control_mask = df[ft] == 0
                 else:
                     control_mask = df[ft] > max(g, t)
@@ -216,7 +271,9 @@ class CSDID:
                 for u in units:
                     c = cohort_map.loc[u]
                     is_treat = 1 if c == g else 0
-                    if has_never_treated:
+                    if notyet:
+                        is_ctrl = 1 if c == 0 or c > max(g, t) else 0
+                    elif has_never_treated:
                         is_ctrl = 1 if c == 0 else 0
                     else:
                         is_ctrl = 1 if c > max(g, t) else 0
@@ -240,29 +297,39 @@ class CSDID:
                 att_gt[(g, t)] = (att, N_g)
 
         # Effective observations: all unit-year rows that appear in any (g,t) estimation
+        available_pairs = set(zip(df[uid], df[time]))
         used_rows = set()
         for (g, t), (att, N_g) in att_gt.items():
-            if has_never_treated:
+            if notyet:
+                ctrl_ids = df.loc[(df[ft] == 0) | (df[ft] > max(g, t)), uid].unique()
+            elif has_never_treated:
                 ctrl_ids = df.loc[df[ft] == 0, uid].unique()
             else:
                 ctrl_ids = df.loc[df[ft] > max(g, t), uid].unique()
             treat_ids = df.loc[df[ft] == g, uid].unique()
             for u in treat_ids:
-                used_rows.add((u, t))
+                if (u, t) in available_pairs:
+                    used_rows.add((u, t))
                 base = t - 1 if t < g else g - 1
-                if base >= min_year:
+                if base >= min_year and (u, base) in available_pairs:
                     used_rows.add((u, base))
             for u in ctrl_ids:
-                used_rows.add((u, t))
+                if (u, t) in available_pairs:
+                    used_rows.add((u, t))
                 base = t - 1 if t < g else g - 1
-                if base >= min_year:
+                if base >= min_year and (u, base) in available_pairs:
                     used_rows.add((u, base))
 
         self._nobs = len(used_rows)
-        cluster_col = cluster if cluster is not None else uid
-        self._n_clust = int(df[cluster_col].nunique()) if cluster_col in df.columns else n_units
-        self._cluster_var = cluster_col
+        self._used_rows = used_rows
         self._df_clean = df.copy()
+        self._cluster_var = cluster_col
+        # Cluster count is computed from the final estimation sample
+        used_units = {u for u, _ in used_rows}
+        if cluster_col == uid:
+            self._n_clust = len(used_units)
+        else:
+            self._n_clust = int(df.loc[df[uid].isin(used_units), cluster_col].nunique())
         return self._finalize_fit(att_gt, if_gt, df, units, cohort_map, has_never_treated)
 
     def _finalize_fit(self, att_gt, if_gt, df, units, cohort_map, has_never_treated):
@@ -274,8 +341,17 @@ class CSDID:
         # Group-time SEs
         se_gt = {}
         for k, ifs in if_gt.items():
-            vals = np.array(list(ifs.values()))
-            se_gt[k] = np.sqrt(np.sum(vals ** 2))
+            if self._cluster_var != uid:
+                unit_to_cluster = df.set_index(uid)[self._cluster_var].to_dict()
+                cluster_sums = {}
+                for u, val in ifs.items():
+                    c = unit_to_cluster.get(u)
+                    if c is not None:
+                        cluster_sums[c] = cluster_sums.get(c, 0.0) + val
+                se_gt[k] = np.sqrt(sum(v ** 2 for v in cluster_sums.values()))
+            else:
+                vals = np.array(list(ifs.values()))
+                se_gt[k] = np.sqrt(np.sum(vals ** 2))
 
         self._group_time_att = att_gt
         self._group_time_se = se_gt
@@ -301,8 +377,13 @@ class CSDID:
 
         event_est = {}
         event_rif = {}
-        event_if = {}
         event_se = {}
+        event_if = {}
+
+        # Pre_avg and Post_avg using aggte on event-time RIFs with equal weights
+        # Stata uses J(rows(aux), n, 1) as weight matrix for Pre_avg/Post_avg
+        pre_es = sorted([e for e in event_map if e < 0])
+        post_es = sorted([e for e in event_map if e >= 0])
 
         for e, pairs in event_map.items():
             k = len(pairs)
@@ -312,19 +393,12 @@ class CSDID:
                 for i, u in enumerate(units):
                     ag_rif[i, j] = rifgt[p][u]
                     ag_wt[i, j] = rifwt[p][u]
-
             atte, rif_event = self._aggte(ag_rif, ag_wt)
             if_event = rif_event - atte
-
             event_est[e] = atte
             event_rif[e] = {u: float(rif_event[idx]) for idx, u in enumerate(units)}
             event_if[e] = {u: float(if_event[idx]) for idx, u in enumerate(units)}
             event_se[e] = float(np.sqrt(self._influence_covariance(if_event)[0, 0]))
-
-        # Pre_avg and Post_avg using aggte on event-time RIFs with equal weights
-        # Stata uses J(rows(aux), n, 1) as weight matrix for Pre_avg/Post_avg
-        pre_es = sorted([e for e in event_est if e < 0])
-        post_es = sorted([e for e in event_est if e >= 0])
 
         if pre_es:
             k = len(pre_es)
@@ -360,7 +434,6 @@ class CSDID:
         self._event_if = event_if
         self._rifgt = rifgt
         self._rifwt = rifwt
-
         return self
 
     def _fit_dr(self, method="drimp", vce=None, cluster=None, notyet=False):
@@ -379,8 +452,12 @@ class CSDID:
                 "method='drimp' requires xvars. Pass xvars to CSDID() or fit()."
             )
 
-        # Drop missings in key variables
-        df = df.dropna(subset=[y, uid, time, ft] + xvars)
+        # Drop missings in key variables (cluster participates in screening)
+        cluster_col = cluster if cluster is not None else uid
+        if cluster_col not in df.columns:
+            raise ValueError(f"cluster variable '{cluster_col}' not found in data")
+        df["_stataflow_row_id"] = np.arange(len(df))
+        df = df.dropna(subset=[y, uid, time, ft, cluster_col] + xvars)
 
         cohorts = sorted([g for g in df[ft].unique() if g > 0])
         years = sorted(df[time].unique())
@@ -403,22 +480,28 @@ class CSDID:
                 f"Examples: {example_str}"
             )
 
+        # Validate cluster is constant within unit before grouping
+        self._check_cluster_consistency(df, uid, cluster_col)
+
         # Wide format for influence function convenience
         df_wide = df.pivot(index=uid, columns=time, values=y)
+        self._check_first_treat_consistency(df, uid, ft)
         cohort_map = df.groupby(uid)[ft].first()
 
         # Covariates in wide format (unit-level, first observation)
         X_wide = df.groupby(uid)[xvars].first()
 
-        # Control group strategy: never-treated by default; fall back to not-yet-treated
-        has_never_treated = (df[ft] == 0).any() and not notyet
+        # Stata's notyet option combines never-treated and future cohorts.
+        has_never_treated = (df[ft] == 0).any()
 
         att_gt = {}
         if_gt = {}
 
         for g in cohorts:
             for t in years:
-                if has_never_treated:
+                if notyet:
+                    control_mask = (df[ft] == 0) | (df[ft] > max(g, t))
+                elif has_never_treated:
                     control_mask = df[ft] == 0
                 else:
                     control_mask = df[ft] > max(g, t)
@@ -445,10 +528,16 @@ class CSDID:
                     continue
 
                 try:
-                    ps_model = LogisticRegression(
-                        penalty=None, solver="lbfgs", max_iter=1000
-                    )
-                    ps_model.fit(ps_X, ps_y)
+                    with warnings.catch_warnings():
+                        warnings.filterwarnings(
+                            "ignore",
+                            message=".*Setting penalty=None will ignore.*",
+                            category=UserWarning,
+                        )
+                        ps_model = LogisticRegression(
+                            C=np.inf, solver="lbfgs", max_iter=1000
+                        )
+                        ps_model.fit(ps_X, ps_y)
                     p_hat = ps_model.predict_proba(X_wide)[:, 1]
                 except Exception:
                     # Fall back to uniform weights if PS fails
@@ -529,29 +618,39 @@ class CSDID:
                 att_gt[(g, t)] = (att, N_g)
 
         # Effective observations
+        available_pairs = set(zip(df[uid], df[time]))
         used_rows = set()
         for (g, t), (att, N_g) in att_gt.items():
-            if has_never_treated:
+            if notyet:
+                ctrl_ids = df.loc[(df[ft] == 0) | (df[ft] > max(g, t)), uid].unique()
+            elif has_never_treated:
                 ctrl_ids = df.loc[df[ft] == 0, uid].unique()
             else:
                 ctrl_ids = df.loc[df[ft] > max(g, t), uid].unique()
             treat_ids = df.loc[df[ft] == g, uid].unique()
             for u in treat_ids:
-                used_rows.add((u, t))
+                if (u, t) in available_pairs:
+                    used_rows.add((u, t))
                 base = t - 1 if t < g else g - 1
-                if base >= min_year:
+                if base >= min_year and (u, base) in available_pairs:
                     used_rows.add((u, base))
             for u in ctrl_ids:
-                used_rows.add((u, t))
+                if (u, t) in available_pairs:
+                    used_rows.add((u, t))
                 base = t - 1 if t < g else g - 1
-                if base >= min_year:
+                if base >= min_year and (u, base) in available_pairs:
                     used_rows.add((u, base))
 
         self._nobs = len(used_rows)
-        cluster_col = cluster if cluster is not None else uid
-        self._n_clust = int(df[cluster_col].nunique()) if cluster_col in df.columns else n_units
-        self._cluster_var = cluster_col
+        self._used_rows = used_rows
         self._df_clean = df.copy()
+        self._cluster_var = cluster_col
+        # Cluster count is computed from the final estimation sample
+        used_units = {u for u, _ in used_rows}
+        if cluster_col == uid:
+            self._n_clust = len(used_units)
+        else:
+            self._n_clust = int(df.loc[df[uid].isin(used_units), cluster_col].nunique())
         return self._finalize_fit(
             att_gt, if_gt, df, units, cohort_map, has_never_treated
         )
@@ -624,19 +723,21 @@ class CSDID:
                 ci_high=float(conf_int[i, 1]),
             ))
 
-        if param_keys:
+        names = [c.name for c in coefficients]
+        keys = [_to_param_key(name) for name in names]
+        if keys:
             influence = np.column_stack([
                 [self._event_if[key].get(unit, 0.0) for unit in self._units]
-                for key in param_keys
+                for key in keys
             ])
         else:
             influence = np.empty((len(self._units), 0))
         cov = self._influence_covariance(influence)
-        n_active = len(display_keys)
+        n_active = len(names)
         df_model = float(n_active) if n_active > 0 else 0.0
         df_resid = float(self._n_clust - 1) if self._n_clust > 1 else float(self._nobs - n_active)
 
-        return ResultSchema(
+        result = ResultSchema(
             model=ModelInfo(
                 command="csdid",
                 estimator_family="csdid",
@@ -645,7 +746,8 @@ class CSDID:
             ),
             sample=SampleInfo(
                 nobs=self._nobs,
-                n_input_rows=self._nobs,
+                n_input_rows=self._n_input_rows,
+                sample_mask=self._build_sample_mask(),
             ),
             fit=FitInfo(
                 df_model=df_model,
@@ -653,7 +755,7 @@ class CSDID:
             ),
             coefficients=coefficients,
             variance=VarianceInfo(
-                row_names=display_keys,
+                row_names=names,
                 values=cov.tolist(),
             ),
             diagnostics=DiagnosticsInfo(
@@ -663,6 +765,8 @@ class CSDID:
                 stata_command=f"csdid y, ivar(id) time(time) gvar(first_treat) method({getattr(self, '_method', 'reg')})",
             ),
         )
+        result.validate()
+        return result
 
     @staticmethod
     def _aggte(ag_rif, ag_wt):
@@ -836,7 +940,8 @@ class CSDID:
             ),
             sample=SampleInfo(
                 nobs=self._nobs,
-                n_input_rows=self._nobs,
+                n_input_rows=self._n_input_rows,
+                sample_mask=self._build_sample_mask(),
             ),
             fit=FitInfo(
                 df_model=float(df),
@@ -888,7 +993,8 @@ class CSDID:
             ),
             sample=SampleInfo(
                 nobs=self._nobs,
-                n_input_rows=self._nobs,
+                n_input_rows=self._n_input_rows,
+                sample_mask=self._build_sample_mask(),
             ),
             fit=FitInfo(
                 df_model=df_model,

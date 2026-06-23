@@ -75,6 +75,7 @@ class FixedEffectsOLS:
 
         # Internal state
         self._coef_names: list[str] = []
+        self._active_x: list[str] = []
         self._n_entities: int = 0
         self._n_input_rows: int = 0
 
@@ -85,6 +86,7 @@ class FixedEffectsOLS:
         self._result: Optional[ResultSchema] = None
         self._df_clean: Optional[pd.DataFrame] = None
         self._entity_effects: Optional[pd.Series] = None
+        self._constant: float = 0.0
         self._y_w: Optional[np.ndarray] = None
         self._X_w: Optional[np.ndarray] = None
 
@@ -141,7 +143,7 @@ class FixedEffectsOLS:
             X_cols.append(df[var].values.astype(np.float64))
             self._coef_names.append(var)
 
-        X = np.column_stack(X_cols)
+        X = np.column_stack(X_cols) if X_cols else np.zeros((len(df), 0))
 
         # Within transformation (demean by entity)
         df_temp = df.copy()
@@ -154,10 +156,18 @@ class FixedEffectsOLS:
 
         # Demean
         y_w = y - entity_means['_y'].values
-        X_w = np.column_stack([
-            X[:, i] - entity_means[f'_X_{i}'].values
-            for i in range(len(self.x))
-        ])
+        if len(self.x) > 0:
+            X_w = np.column_stack([
+                X[:, i] - entity_means[f'_X_{i}'].values
+                for i in range(len(self.x))
+            ])
+        else:
+            X_w = np.zeros((len(y_w), 0))
+
+        if len(y_w) == 0:
+            raise ValueError("No observations remain after sample screening (all rows have missing values).")
+        if X_w.shape[1] == 0:
+            raise ValueError("Design matrix has 0 columns after sample screening. No regressors available.")
 
         return df, y_w, X_w, sample_mask, cluster_arr
 
@@ -204,6 +214,17 @@ class FixedEffectsOLS:
         G = self._n_entities  # Number of groups
         k = X_w.shape[1]  # Number of slope parameters
 
+        # Detect within-collinearity (group-invariant variables become collinear)
+        from stataflow.estimators._vce_utils import detect_collinear_columns
+        X_w, dropped_cols, kept_indices = detect_collinear_columns(X_w, self._coef_names)
+        if dropped_cols:
+            self._coef_names = [self._coef_names[i] for i in kept_indices]
+        if X_w.shape[1] == 0:
+            raise ValueError("All regressors are collinear after within transformation")
+        k = X_w.shape[1]
+        self._active_x = list(self._coef_names)
+        self._X_w = X_w
+
         # OLS on within-transformed data
         XtX = X_w.T @ X_w
         Xty = X_w.T @ y_w
@@ -225,10 +246,10 @@ class FixedEffectsOLS:
 
         # Degrees of freedom (Stata xtreg, fe convention)
         # For non-cluster FE: df_model = k + (G - 1), df_resid = N - G - k
-        # For FE + cluster: Stata reports e(df_m) = 1 (internal convention)
-        #   but F-statistic uses F(k, G-1)
+        # For FE + cluster: Stata stores e(df_m) = 0 while the displayed
+        # slope Wald test still uses F(k, number_of_clusters - 1).
         if vce == "cluster":
-            df_model_fe = 1.0  # Match Stata's e(df_m) reporting
+            df_model_fe = 0.0
         else:
             df_model_fe = float(k + (G - 1))
         df_resid_fe = float(n - G - k)
@@ -240,8 +261,14 @@ class FixedEffectsOLS:
         else:
             rmse = np.sqrt(rss / df_resid_fe) if df_resid_fe > 0 else 0.0
 
-        # Adjusted R-squared (within)
-        r2_adj = 1.0 - (1.0 - r2) * (n - 1) / df_resid_fe if df_resid_fe > 0 else 0.0
+        # Adjusted within R-squared. Clustered xtreg uses N-k-1 here rather
+        # than the absorbed-effects residual df used by conventional FE.
+        r2_adj_denominator = (n - k - 1) if vce == "cluster" else df_resid_fe
+        r2_adj = (
+            1.0 - (1.0 - r2) * (n - 1) / r2_adj_denominator
+            if r2_adj_denominator > 0
+            else 0.0
+        )
 
         # Variance-covariance matrix
         cluster_count = None
@@ -298,15 +325,23 @@ class FixedEffectsOLS:
         if k > 0 and df_resid_fe > 0:
             if vce == "ols":
                 # Conventional F-statistic
-                f_stat = (mss_w / k) / (rss / df_resid_fe)
-                f_pvalue = 1 - f_dist.cdf(f_stat, dfn=k, dfd=df_resid_fe)
+                if rss == 0:
+                    f_stat = float("inf")
+                    f_pvalue = 0.0
+                else:
+                    f_stat = (mss_w / k) / (rss / df_resid_fe)
+                    f_pvalue = 1 - f_dist.cdf(
+                        f_stat, dfn=df_model_fe, dfd=df_resid_fe
+                    )
             elif vce == "robust":
                 # Wald F-statistic for robust VCE
                 try:
                     cov_inv = np.linalg.inv(cov_beta)
                     wald_stat = float(beta @ cov_inv @ beta)
                     f_stat = wald_stat / k
-                    f_pvalue = 1 - f_dist.cdf(f_stat, dfn=k, dfd=df_resid_fe)
+                    f_pvalue = 1 - f_dist.cdf(
+                        f_stat, dfn=df_model_fe, dfd=df_resid_fe
+                    )
                 except np.linalg.LinAlgError:
                     f_stat = None
                     f_pvalue = None
@@ -339,57 +374,60 @@ class FixedEffectsOLS:
             ))
 
         # Recover entity effects for postestimation
-        entity_means = df_clean.groupby(self.fe)[[self.y] + self.x].mean()
-        alpha_i = entity_means[self.y].values - entity_means[self.x].values @ beta
+        entity_means = df_clean.groupby(self.fe)[[self.y] + self._coef_names].mean()
+        alpha_i = entity_means[self.y].values - entity_means[self._coef_names].values @ beta
         self._entity_effects = pd.Series(alpha_i, index=entity_means.index)
 
         # Add constant (grand mean) if requested
+        cov_beta_cons = None
         if self.add_constant:
-            grand_mean = float(np.mean(alpha_i))
+            # Stata reports ybar - xbar*b, which is the observation-weighted
+            # mean of the recovered entity effects on unbalanced panels.
+            grand_mean = float(
+                df_clean[self.y].mean()
+                - df_clean[self._coef_names].mean().to_numpy() @ beta
+            )
+            self._constant = grand_mean
+
+            # Build LSDV design matrix for consistent VCE expansion
+            unique_entities = df_clean[self.fe].unique()
+            G = len(unique_entities)
+            D = np.zeros((n, G))
+            for j, entity in enumerate(unique_entities):
+                D[df_clean[self.fe].values == entity, j] = 1
+
+            X_full = np.column_stack([df_clean[self._coef_names].values, D])
+            y_orig = df_clean[self.y].values.astype(np.float64)
+            beta_full = np.linalg.solve(X_full.T @ X_full, X_full.T @ y_orig)
+            residuals_full = y_orig - X_full @ beta_full
+            XtX_inv_full = np.linalg.inv(X_full.T @ X_full)
 
             if vce == "cluster":
-                # For cluster-robust SE of grand mean, use LSDV approach
-                # Build full LSDV design matrix
-                unique_entities = df_clean[self.fe].unique()
-                G = len(unique_entities)
-                D = np.zeros((n, G))
-                for j, entity in enumerate(unique_entities):
-                    D[df_clean[self.fe].values == entity, j] = 1
-
-                X_full = np.column_stack([df_clean[self.x].values, D])
-                k_full = X_full.shape[1]
-
-                # Get original y
-                y_orig = df_clean[self.y].values.astype(np.float64)
-
-                # LSDV OLS
-                beta_full = np.linalg.solve(X_full.T @ X_full, X_full.T @ y_orig)
-                residuals_full = y_orig - X_full @ beta_full
-
-                # Cluster-robust VCE with FE correction: (N-1)/(N-k-1) * G/(G-1)
-                XtX_full = X_full.T @ X_full
-                XtX_inv_full = np.linalg.inv(XtX_full)
-
                 from stataflow.estimators._vce_utils import compute_cluster_meat
                 meat_full, cluster_count_for_lsdv = compute_cluster_meat(
                     X_full, residuals_full, cluster_arr
                 )
-
                 n_adj_lsdv = (n - 1) / (n - k - 1) if n > k + 1 else 1.0
                 g_adj_lsdv = cluster_count_for_lsdv / (cluster_count_for_lsdv - 1) if cluster_count_for_lsdv > 1 else 1.0
-                V_CR_full = n_adj_lsdv * g_adj_lsdv * XtX_inv_full @ meat_full @ XtX_inv_full
-
-                # Extract covariance of entity dummies (alpha)
-                V_alpha = V_CR_full[k:, k:]  # Last G rows/cols are dummies
-
-                # Var(grand_mean) = (1/G^2) * 1' * V_alpha * 1
-                ones_G = np.ones(G)
-                var_grand_mean = float((1 / G**2) * ones_G @ V_alpha @ ones_G)
-                se_grand_mean = np.sqrt(max(var_grand_mean, 0))
+                V_full = n_adj_lsdv * g_adj_lsdv * XtX_inv_full @ meat_full @ XtX_inv_full
+            elif vce == "robust":
+                meat_full = (X_full * (residuals_full ** 2)[:, None]).T @ X_full
+                n_adj_full = (n - 1) / (n - k - 1) if n > k + 1 else 1.0
+                V_full = n_adj_full * XtX_inv_full @ meat_full @ XtX_inv_full
             else:
-                # For OLS, use the simpler formula
-                x_bar = np.mean(df_clean[self.x].values, axis=0)
-                se_grand_mean = float(np.sqrt(sigma_e2 * (1/n + x_bar @ np.linalg.inv(XtX) @ x_bar)))
+                sigma2_full = np.sum(residuals_full ** 2) / (n - G - k) if (n - G - k) > 0 else 0.0
+                V_full = sigma2_full * XtX_inv_full
+
+            # Extract Var(grand_mean) and Cov(beta_slopes, grand_mean)
+            V_alpha = V_full[k:, k:]
+            entity_weights = np.array([
+                np.mean(df_clean[self.fe].to_numpy() == entity)
+                for entity in unique_entities
+            ])
+            var_grand_mean = float(entity_weights @ V_alpha @ entity_weights)
+            se_grand_mean = np.sqrt(max(var_grand_mean, 0))
+            Cov_beta_alpha = V_full[:k, k:]
+            cov_beta_cons = Cov_beta_alpha @ entity_weights
 
             t_stat_grand = grand_mean / se_grand_mean
             p_value_grand = 2 * (1 - t_dist.cdf(np.abs(t_stat_grand), df=df_resid_fe))
@@ -405,6 +443,17 @@ class FixedEffectsOLS:
                 ci_low=ci_low_grand,
                 ci_high=ci_high_grand,
             ))
+
+        # Expand VCE to include _cons if present
+        if self.add_constant and cov_beta_cons is not None:
+            k_ext = k + 1
+            new_cov = np.zeros((k_ext, k_ext))
+            new_cov[:k, :k] = cov_beta
+            new_cov[:k, k] = cov_beta_cons
+            new_cov[k, :k] = cov_beta_cons
+            new_cov[k, k] = var_grand_mean
+            cov_beta = new_cov
+            self._coef_names = self._coef_names + ["_cons"]
 
         # Build result object
         result = ResultSchema()
@@ -458,6 +507,7 @@ class FixedEffectsOLS:
         self._result = result
         result._model = self
 
+        result.validate()
         return result
 
     def predict(self, type: str = "xb", newdata: Optional[pd.DataFrame] = None) -> np.ndarray:
@@ -472,27 +522,23 @@ class FixedEffectsOLS:
         if type not in ("xb", "residuals"):
             raise ValueError(f"type='{type}' not supported for FE. Use 'xb' or 'residuals'.")
 
-        grand_mean = float(self._entity_effects.mean()) if self._entity_effects is not None else 0.0
+        grand_mean = self._constant
 
         if newdata is not None:
-            required_cols = [self.y] + self.x if type == "residuals" else self.x
+            required_cols = [self.y] + self._active_x if type == "residuals" else self._active_x
             df = newdata[required_cols].copy()
             mask = df.notna().all(axis=1)
             if not mask.all():
                 # Stata-compatible: drop missing and predict on complete cases
                 df = df[mask]
-            X = df[self.x].values.astype(np.float64)
-            beta = np.zeros(X.shape[1])
-            for i, name in enumerate(self.x):
-                if name in self._coef_names:
-                    beta[i] = self._beta[self._coef_names.index(name)]
-            xb = X @ beta + (grand_mean if self.add_constant else 0.0)
+            X = df[self._active_x].values.astype(np.float64)
+            xb = X @ self._beta + (grand_mean if self.add_constant else 0.0)
             if type == "residuals":
                 y = df[self.y].values.astype(np.float64)
                 return y - xb
             return xb
         else:
-            xb = self._df_clean[self.x].values.astype(np.float64) @ self._beta
+            xb = self._df_clean[self._active_x].values.astype(np.float64) @ self._beta
             xb = xb + (grand_mean if self.add_constant else 0.0)
             if type == "xb":
                 return xb

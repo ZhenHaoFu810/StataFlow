@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+from scipy.linalg import solve_triangular
 
 from stataflow.estimators.rdrobust import _kernel_weight, _wls_poly
 
@@ -56,8 +57,8 @@ def _local_fwl_gamma(y, x, Z, c, h, kernel):
     return beta[1:]
 
 
-def _global_poly_fit(x, y, k=4):
-    """Global polynomial fit of order k with fallback to k-1, k-2."""
+def _global_poly_fit_raw(x, y, k=4):
+    """OLS fit of y on raw powers [1, x, x^2, ..., x^k] with fallback."""
     n = len(x)
     for order in [k, 3, 2]:
         if order > n - 1:
@@ -67,139 +68,109 @@ def _global_poly_fit(x, y, k=4):
             R[:, j] = x ** j
         try:
             gram = R.T @ R
-            inv_gram = np.linalg.pinv(gram)
+            # Use Cholesky inverse to match rdrobust's qrXXinv; fall back
+            # to pseudo-inverse for rank-deficient designs.
+            L = np.linalg.cholesky(gram)
+            invL = solve_triangular(L, np.eye(order + 1), lower=True)
+            inv_gram = invL.T @ invL
             gamma = inv_gram @ (R.T @ y)
-            gamma2 = inv_gram @ (R.T @ (y ** 2))
-            return gamma, gamma2, order
+            return gamma, order
         except Exception:
-            continue
+            try:
+                inv_gram = np.linalg.pinv(gram)
+                gamma = inv_gram @ (R.T @ y)
+                return gamma, order
+            except Exception:
+                continue
     raise ValueError("Global polynomial fit failed for all orders.")
 
 
-def _compute_bins_esmv(x, y, c, side="left"):
+def _compute_bins_esmv(x, y, c, side, n_total):
     """
-    Compute IMSE-optimal evenly-spaced bin count using spacings-based
-    bias and mimicking variance estimators (esmv).
+    Mimicking-variance evenly-spaced bin count.
+
+    Follows Calonico, Cattaneo and Titiunik (2015a) and the
+    rdrobust 2.2 reference implementation.
     """
-    n = len(x)
-    if n < 5:
+    n_side = len(x)
+    if n_side < 5:
         return 1
 
-    gamma, gamma2, k = _global_poly_fit(x, y)
-
-    # Evaluate derivatives and fitted values
-    R = np.zeros((n, k + 1), dtype=float)
-    for j in range(k + 1):
-        R[:, j] = x ** j
-    mu = R @ gamma
-    mu2 = R @ gamma2
-    var_y = np.var(y, ddof=1) if n > 1 else 1.0
-
-    # Derivative for bias: use first derivative of fitted polynomial
-    dR = np.zeros((n, k + 1), dtype=float)
-    for j in range(1, k + 1):
-        dR[:, j] = j * x ** (j - 1)
-    mu1 = dR @ gamma
+    gamma, _ = _global_poly_fit_raw(x, y, k=4)
 
     if side == "left":
-        x_min, x_max = np.min(x), c
+        range_x = c - float(np.min(x))
     else:
-        x_min, x_max = c, np.max(x)
-    range_x = x_max - x_min
+        range_x = float(np.max(x)) - c
     if range_x <= 0:
         return 1
 
-    # Evenly spaced grid for spacings
-    n_grid = max(n, 100)
-    x_grid = np.linspace(x_min, x_max, n_grid)
-    dx = range_x / (n_grid - 1)
-
-    # Evaluate mu1 on grid
-    dR_grid = np.zeros((n_grid, k + 1), dtype=float)
+    k = len(gamma) - 1
+    drk = np.zeros((n_side, k), dtype=float)
     for j in range(1, k + 1):
-        dR_grid[:, j] = j * x_grid ** (j - 1)
-    mu1_grid = dR_grid @ gamma
+        drk[:, j - 1] = j * x ** (j - 1)
+    mu1_hat = drk @ gamma[1:]
 
-    # Bias estimator for ES
-    # B = (range_x^2 / 12) * \int mu'(x)^2 dx
-    # where \int mu'(x)^2 dx \approx sum(mu1_grid^2) * dx
-    B = ((range_x ** 2) / 12.0) * np.sum(mu1_grid ** 2) * dx
-
-    # Variance estimator (spacings-based)
-    sort_idx = np.argsort(x)
+    # Spacings-based variance estimator (stable sort to match R/Stata)
+    sort_idx = np.argsort(x, kind="stable")
     x_s = x[sort_idx]
     y_s = y[sort_idx]
-    dx_i = np.diff(x_s)
-    dy_i = np.diff(y_s)
-    valid = dx_i > 0
+    dxi = np.diff(x_s)
+    dyi = np.diff(y_s)
+    valid = dxi > 0
     if valid.sum() == 0:
-        V = 1.0
-    else:
-        V = (0.5 / range_x) * np.sum(dx_i[valid] * (dy_i[valid] ** 2))
+        return 1
 
+    V = (0.5 / range_x) * np.sum(dxi[valid] * (dyi[valid] ** 2))
     if V <= 0:
         V = 1e-10
 
-    # MV adjustment
-    J_mv = max(1, int(np.ceil((var_y / V) * (n / (np.log(n) ** 2)))))
-    J_dw = max(1, int(np.ceil(((2 * B / V) * n) ** (1.0 / 3))))
-
-    # esmv = min of the two
-    return min(J_mv, J_dw)
+    var_y = float(np.var(y, ddof=1)) if n_side > 1 else 1.0
+    J_mv = int(np.ceil((var_y / V) * (n_total / (np.log(n_total) ** 2))))
+    return max(1, J_mv)
 
 
-def _compute_bins_qsmv(x, y, c, side="left"):
+def _compute_bins_qsmv(x, y, c, side, n_total):
     """
-    Compute IMSE-optimal quantile-spaced bin count using spacings-based
-    bias and mimicking variance estimators (qsmv).
+    Mimicking-variance quantile-spaced bin count.
+
+    Follows Calonico, Cattaneo and Titiunik (2015a) and the
+    rdrobust 2.2 reference implementation.
     """
-    n = len(x)
-    if n < 5:
+    n_side = len(x)
+    if n_side < 5:
         return 1
 
-    gamma, gamma2, k = _global_poly_fit(x, y)
+    gamma, _ = _global_poly_fit_raw(x, y, k=4)
 
-    dR = np.zeros((n, k + 1), dtype=float)
-    for j in range(1, k + 1):
-        dR[:, j] = j * x ** (j - 1)
-    mu1 = dR @ gamma
-
-    var_y = np.var(y, ddof=1) if n > 1 else 1.0
-
-    if side == "left":
-        x_min, x_max = np.min(x), c
-    else:
-        x_min, x_max = c, np.max(x)
-    range_x = x_max - x_min
-    if range_x <= 0:
-        return 1
-
-    sort_idx = np.argsort(x)
+    sort_idx = np.argsort(x, kind="stable")
     x_s = x[sort_idx]
     y_s = y[sort_idx]
-    dx_i = np.diff(x_s)
-    dy_i = np.diff(y_s)
-    valid = dx_i > 0
-
-    # Bias for QS
+    dxi = np.diff(x_s)
+    dyi = np.diff(y_s)
+    valid = dxi > 0
     if valid.sum() == 0:
-        B = 1.0
-    else:
-        B = (n ** 2 / (24 * n)) * np.sum(dx_i[valid] ** 2 * mu1[sort_idx][:-1][valid] ** 2)
+        return 1
 
-    # Variance for QS
-    if valid.sum() == 0:
-        V = 1.0
-    else:
-        V = (1.0 / (2 * n)) * np.sum(dy_i[valid] ** 2)
+    x_bar = (x_s[1:] + x_s[:-1]) / 2.0
+    k = len(gamma) - 1
+    drk_i = np.zeros((len(x_bar), k), dtype=float)
+    for j in range(1, k + 1):
+        drk_i[:, j - 1] = j * x_bar ** (j - 1)
+    mu1_i_hat = drk_i @ gamma[1:]
 
+    B = (n_side ** 2 / (24.0 * n_total)) * np.sum(
+        dxi[valid] ** 2 * mu1_i_hat[valid] ** 2
+    )
+    # Stata's qs spacings variance sums dyi^2 over all adjacent pairs,
+    # including pairs with tied x (dxi==0). Do not apply the valid mask here.
+    V = (1.0 / (2.0 * n_side)) * np.sum(dyi ** 2)
     if V <= 0:
         V = 1e-10
 
-    J_mv = max(1, int(np.ceil((var_y / V) * (n / (np.log(n) ** 2)))))
-    J_dw = max(1, int(np.ceil(((2 * B / V) * n) ** (1.0 / 3))))
-
-    return min(J_mv, J_dw)
+    var_y = float(np.var(y, ddof=1)) if n_side > 1 else 1.0
+    J_mv = int(np.ceil((var_y / V) * (n_total / (np.log(n_total) ** 2))))
+    return max(1, J_mv)
 
 
 def _evenly_spaced_bins(x_min, x_max, J):
@@ -327,12 +298,13 @@ class RDPlot:
             else:
                 J_l, J_r = self.nbins
         else:
-            if self.binselect.startswith("es"):
-                J_l = _compute_bins_esmv(x_l, y_l, self.c, side="left")
-                J_r = _compute_bins_esmv(x_r, y_r, self.c, side="right")
-            elif self.binselect.startswith("qs"):
-                J_l = _compute_bins_qsmv(x_l, y_l, self.c, side="left")
-                J_r = _compute_bins_qsmv(x_r, y_r, self.c, side="right")
+            nobs = N_l + N_r
+            if self.binselect == "esmv":
+                J_l = _compute_bins_esmv(x_l, y_l, self.c, "left", nobs)
+                J_r = _compute_bins_esmv(x_r, y_r, self.c, "right", nobs)
+            elif self.binselect == "qsmv":
+                J_l = _compute_bins_qsmv(x_l, y_l, self.c, "left", nobs)
+                J_r = _compute_bins_qsmv(x_r, y_r, self.c, "right", nobs)
             else:
                 raise ValueError(f"Unsupported binselect: {self.binselect}")
 
@@ -340,12 +312,14 @@ class RDPlot:
         J_r = max(1, J_r)
 
         # Construct bins
-        if self.binselect.startswith("es"):
+        if self.binselect == "esmv":
             edges_l = _evenly_spaced_bins(np.min(x_l) if N_l > 0 else self.c - 1, self.c, J_l)
             edges_r = _evenly_spaced_bins(self.c, np.max(x_r) if N_r > 0 else self.c + 1, J_r)
-        else:
+        elif self.binselect == "qsmv":
             edges_l = _quantile_spaced_bins(x_l, J_l) if N_l > 0 else np.array([self.c - 1, self.c])
             edges_r = _quantile_spaced_bins(x_r, J_r) if N_r > 0 else np.array([self.c, self.c + 1])
+        else:
+            raise ValueError(f"Unsupported binselect: {self.binselect}")
 
         # Local polynomial fit
         nplot = 500

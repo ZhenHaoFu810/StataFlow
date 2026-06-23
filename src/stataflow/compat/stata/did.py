@@ -39,6 +39,12 @@ def did_imputation(
 
     Parameters
     ----------
+    first_treat : str
+        Name of the variable recording the first treatment period for each
+        unit. This wrapper follows Stata's native ``did_imputation`` encoding:
+        missing values identify never-treated units (the control group), while
+        every finite value, including zero or a negative period, identifies a
+        treated cohort. No silent recoding is performed.
     cluster : str, optional
         Cluster variable for cluster-robust standard errors.
         Defaults to ``id`` (the unit identifier) when not provided,

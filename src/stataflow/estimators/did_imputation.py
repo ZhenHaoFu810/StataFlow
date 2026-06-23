@@ -32,7 +32,7 @@ class DIDImputation:
         Time identifier variable name.
     first_treat : str
         Variable recording the first treatment period for each unit.
-        Never-treated units should have value 0 or missing.
+        Never-treated units must have a missing value, matching Stata's ado.
     """
 
     def __init__(
@@ -100,23 +100,12 @@ class DIDImputation:
             raise ValueError("sum cannot be combined with autosample")
 
         df = self.data.copy()
+        n_input_rows = len(df)
+        df["_stataflow_row_id"] = np.arange(n_input_rows)
 
-        # Warn about first_treat encoding compatibility with Stata
-        min_time = df[self.time_var].min()
-        has_never_treated = (df[self.first_treat_var] <= 0).any()
-        if has_never_treated and min_time > 0:
-            import warnings
-            warnings.warn(
-                "Detected first_treat <= 0 with time starting at a positive value. "
-                "Stata's did_imputation treats first_treat=0 as treatment in period 0, "
-                "which may produce different results from Python (which treats first_treat<=0 as never-treated). "
-                "To match Stata exactly on the same data, consider setting first_treat to missing for never-treated units.",
-                UserWarning,
-                stacklevel=2,
-            )
-
-        # Sample screening: drop rows with missing key variables
-        key_vars = [self.y_var, self.id_var, self.time_var, self.first_treat_var]
+        # Stata uses missing first_treat to identify never-treated controls, so
+        # only outcome and panel identifiers participate in missing screening.
+        key_vars = [self.y_var, self.id_var, self.time_var]
         cov_vars = []
         if controls is not None:
             cov_vars.extend(controls)
@@ -128,12 +117,25 @@ class DIDImputation:
         mask = df[all_vars].notna().all(axis=1)
         df = df.loc[mask].copy()
 
+        # Stata's did_imputation ado uses missing for never-treated units. For
+        # compatibility with the StataFlow test suite and the eventstudyinteract
+        # wrapper, any non-positive finite value (<= 0) is also treated as
+        # never-treated; only strictly positive first-treatment periods identify
+        # an ever-treated cohort.
+        ft = df[self.first_treat_var]
+        ever_treated_mask = ft.notna() & (ft > 0)
+
         # Compute treatment indicator and relative time
-        df["_D"] = (df[self.time_var] >= df[self.first_treat_var]).astype(int)
-        df.loc[df[self.first_treat_var] <= 0, "_D"] = 0
-        df["_K_all"] = df[self.time_var] - df[self.first_treat_var]
-        df["_K"] = df[self.time_var] - df[self.first_treat_var]
-        df.loc[df[self.first_treat_var] <= 0, "_K"] = np.nan
+        df["_D"] = 0
+        df.loc[ever_treated_mask, "_D"] = (
+            df.loc[ever_treated_mask, self.time_var]
+            >= df.loc[ever_treated_mask, self.first_treat_var]
+        ).astype(int)
+        df["_K"] = np.nan
+        df.loc[ever_treated_mask, "_K"] = (
+            df.loc[ever_treated_mask, self.time_var]
+            - df.loc[ever_treated_mask, self.first_treat_var]
+        )
 
         # Construct pretreatment dummies for pretrends test
         pretrend_cols = []
@@ -244,9 +246,9 @@ class DIDImputation:
 
         # Compute effect for all ever-treated observations (including pretrends)
         df["_effect"] = np.nan
-        ever_treated_mask = df[self.first_treat_var] > 0
-        df.loc[ever_treated_mask, "_effect"] = (
-            df.loc[ever_treated_mask, self.y_var] - df.loc[ever_treated_mask, "_Y0"]
+        effect_mask = df[self.first_treat_var].notna() & (df[self.first_treat_var] > 0)
+        df.loc[effect_mask, "_effect"] = (
+            df.loc[effect_mask, self.y_var] - df.loc[effect_mask, "_Y0"]
         )
 
         # Determine horizons to compute.
@@ -418,12 +420,23 @@ class DIDImputation:
         for tr in tau_results:
             if not tr.get("dropped", False):
                 effective_sample_mask = effective_sample_mask | tr["effective_mask"]
-        nobs_all = int(effective_sample_mask.sum())
+
+        # Map the effective sample back to original input rows so that
+        # sample_mask has length n_input_rows and sum(sample_mask) == nobs.
+        kept_row_ids = set(df.loc[effective_sample_mask, "_stataflow_row_id"].values)
+        final_sample_mask = [rid in kept_row_ids for rid in range(n_input_rows)]
+        nobs_all = len(kept_row_ids)
+        df = df.drop(columns=["_stataflow_row_id"])
 
         # Compute standard errors
         if cluster:
             tau_results = self._compute_se(
-                df, tau_results, cluster, control_mask, ever_treated_mask
+                df,
+                tau_results,
+                cluster,
+                control_mask,
+                ever_treated_mask,
+                controls=controls,
             )
 
         # Build coefficient rows for tau horizons
@@ -522,7 +535,8 @@ class DIDImputation:
 
         sample_info = SampleInfo(
             nobs=nobs_all,
-            n_input_rows=nobs_all,
+            n_input_rows=n_input_rows,
+            sample_mask=final_sample_mask,
         )
 
         fit_info = FitInfo(
@@ -530,14 +544,15 @@ class DIDImputation:
             df_resid=float(nobs_all - 1) if cluster else float(nobs_all),
         )
 
-        # Covariance matrix (only for non-dropped coefficients)
-        active_coeffs = [c for c in coefficients if c.std_err > 0]
-        cov = np.zeros((len(active_coeffs), len(active_coeffs)))
-        for i, c in enumerate(active_coeffs):
+        # Covariance matrix for all reported coefficients.
+        # Dropped coefficients (std_err == 0) remain in the matrix with zero
+        # variance so that coefficients and variance row_names stay aligned.
+        cov = np.zeros((len(coefficients), len(coefficients)))
+        for i, c in enumerate(coefficients):
             cov[i, i] = c.std_err ** 2
 
         variance_info = VarianceInfo(
-            row_names=[c.name for c in active_coeffs],
+            row_names=[c.name for c in coefficients],
             values=cov.tolist(),
         )
 
@@ -818,6 +833,7 @@ class DIDImputation:
         id_var: str,
         time_var: str,
         wtr_values: Optional[pd.Series] = None,
+        controls: Optional[list[str]] = None,
         max_iter: int = 100000,
         tol: float = 1e-14,
     ) -> pd.Series:
@@ -839,30 +855,72 @@ class DIDImputation:
             if n_eff > 0:
                 w.loc[effective_mask] = 1.0 / n_eff
 
-        controls = df.loc[control_mask].copy()
+        # Build the imputation weights as the minimum-norm control weights that
+        # (1) are orthogonal to each demeaned control variable,
+        # (2) sum to zero within every unit, and
+        # (3) sum to zero within every time period.
+        # This is a linear least-squares problem on the control subsample; solve
+        # it directly instead of iterating, which avoids the previous slow/
+        # non-converging loop.
+        control_mask_arr = np.asarray(control_mask)
+        control_idx = np.where(control_mask_arr)[0]
+        n_ctrl = len(control_idx)
+        if n_ctrl == 0:
+            return w
 
-        for _ in range(max_iter):
-            # Demean within units (control obs only)
-            # sumw = sum(wei * w) over ALL observations in the unit
-            # denom = sum(wei) over CONTROL observations in the unit
-            # update: w_control -= sumw / denom
-            unit_sumw = df.groupby(id_var).apply(lambda g: w.loc[g.index].sum())
-            unit_denom = controls.groupby(id_var).size()
-            unit_adjustment = unit_sumw / unit_denom
-            w.loc[control_mask] -= controls[id_var].map(unit_adjustment).values
+        unit_ids = df[id_var].to_numpy()
+        time_vals = df[time_var].to_numpy()
+        unit_unique, unit_inv = np.unique(unit_ids, return_inverse=True)
+        time_unique, time_inv = np.unique(time_vals, return_inverse=True)
+        n_u = len(unit_unique)
+        n_t = len(time_unique)
 
-            # Demean within times (control obs only)
-            time_sumw = df.groupby(time_var).apply(lambda g: w.loc[g.index].sum())
-            time_denom = controls.groupby(time_var).size()
-            time_adjustment = time_sumw / time_denom
-            w.loc[control_mask] -= controls[time_var].map(time_adjustment).values
+        rows = []
+        rhs = []
 
-            max_diff = max(
-                unit_adjustment.abs().max() if len(unit_adjustment) > 0 else 0.0,
-                time_adjustment.abs().max() if len(time_adjustment) > 0 else 0.0,
-            )
-            if max_diff < tol:
-                break
+        # Unit-sum constraints
+        rows_u = np.zeros((n_u, n_ctrl))
+        rows_u[unit_inv[control_idx], np.arange(n_ctrl)] = 1.0
+        rows.append(rows_u)
+        unit_sumw = (
+            pd.Series(w.to_numpy(), index=unit_ids)
+            .groupby(level=0)
+            .sum()
+            .reindex(unit_unique, fill_value=0.0)
+            .to_numpy()
+        )
+        rhs.append(-unit_sumw)
+
+        # Time-sum constraints
+        rows_t = np.zeros((n_t, n_ctrl))
+        rows_t[time_inv[control_idx], np.arange(n_ctrl)] = 1.0
+        rows.append(rows_t)
+        time_sumw = (
+            pd.Series(w.to_numpy(), index=time_vals)
+            .groupby(level=0)
+            .sum()
+            .reindex(time_unique, fill_value=0.0)
+            .to_numpy()
+        )
+        rhs.append(-time_sumw)
+
+        # Orthogonality to demeaned controls
+        for control_var in controls or []:
+            demeaned = df[control_var].to_numpy() - df.loc[control_mask, control_var].mean()
+            rows.append(demeaned[control_idx].reshape(1, -1))
+            rhs.append(np.array([-np.dot(w.to_numpy(), demeaned)]))
+
+        A = np.vstack(rows)
+        b = np.concatenate(rhs)
+
+        # Drop rows with no corresponding control observations (e.g. units that
+        # only appear in the effective treated sample).
+        nonzero = np.abs(A).sum(axis=1) > 0
+        A = A[nonzero]
+        b = b[nonzero]
+
+        x = np.linalg.lstsq(A, b, rcond=None)[0]
+        w.iloc[control_idx] = x
 
         return w
 
@@ -873,6 +931,7 @@ class DIDImputation:
         cluster_var: str,
         control_mask: pd.Series,
         treated_mask: pd.Series,
+        controls: Optional[list[str]] = None,
     ) -> list[dict]:
         """Compute cluster-robust standard errors."""
         for tr in tau_results:
@@ -889,6 +948,7 @@ class DIDImputation:
             w = self._compute_imputation_weights(
                 df, effective_mask, control_mask, self.id_var, self.time_var,
                 wtr_values=wtr_values,
+                controls=controls,
             )
             tr["imputation_weights"] = w
 

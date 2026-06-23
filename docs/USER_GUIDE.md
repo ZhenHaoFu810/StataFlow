@@ -13,7 +13,7 @@ Every public command is validated against Stata 17 through **dual-run testing**:
 
 ## 2. Installation
 
-**Requirements:** Python 3.10+, NumPy, pandas, SciPy.
+**Requirements:** Python 3.10+, NumPy, pandas, SciPy, scikit-learn, PyYAML.
 
 ```bash
 pip install StataFlow
@@ -227,7 +227,7 @@ StataFlow supports Stata-style factor variable notation in all `x` arguments:
 - Bare variables (without `i.` or `c.` prefix) inside `#` / `##` are treated as **continuous**, matching common Stata usage.
 - A bare variable as a main effect (e.g., `x=["x1"]`) is treated according to its dtype.
 
-**Not supported:** `L.x` / `F.x` time-series operators, `ib.` without a level, three-way interactions (`i.g1#i.g2#c.x3`).
+**Not supported:** `L.x` / `F.x` time-series operators, `ib.` without a level. Three-way and higher-order interactions (e.g., `i.g1#i.g2#c.x3`) are supported.
 
 ## 8. Post-Estimation
 
@@ -261,9 +261,9 @@ All `ResultSchema` objects contain fit statistics accessible via `result.fit`:
 
 ```python
 print(result.fit.r2)           # R-squared
-print(result.fit.r2_a)         # Adjusted R-squared
+print(result.fit.r2_adj)       # Adjusted R-squared
 print(result.fit.rmse)         # Root MSE
-print(result.fit.f_statistic)  # F-statistic
+print(result.fit.f_stat)       # F-statistic
 print(result.fit.ll)           # Log-likelihood (ML models)
 print(result.fit.deviance)     # Deviance (Poisson/PPML)
 ```

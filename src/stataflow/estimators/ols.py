@@ -131,10 +131,15 @@ class OLS:
 
             # Add weights to dataframe for missing check
             df["_stataflow_weights"] = weight_arr
+            nonmissing_weights = df["_stataflow_weights"].notna()
+            if (df.loc[nonmissing_weights, "_stataflow_weights"] < 0).any():
+                raise ValueError("aweight requires nonnegative weights")
 
         # Drop missing values
         if self.missing == "drop":
             mask = df.notna().all(axis=1)
+            if weight_arr is not None:
+                mask &= df["_stataflow_weights"] > 0
             df = df[mask]
         else:
             raise ValueError(f"missing='{self.missing}' not supported in v1")
@@ -143,14 +148,12 @@ class OLS:
 
         # Extract arrays
         y = df[self.y].values.astype(np.float64)
+        if len(y) == 0:
+            raise ValueError("No observations remain after sample screening")
 
         # Extract weights after missing drop
         if weight_arr is not None:
             weight_arr = df["_stataflow_weights"].values.astype(np.float64)
-            # Validate weights are positive
-            if np.any(weight_arr <= 0):
-                raise ValueError("aweight requires all weights > 0")
-
             # Normalize weights so that sum(w) = N (Stata aweight convention)
             # w* = w * N / sum(w)
             n_after_drop = len(y)
@@ -179,7 +182,12 @@ class OLS:
             X_cols.append(np.ones(len(df)))
             self._coef_names.append("_cons")
 
-        X = np.column_stack(X_cols)
+        X = np.column_stack(X_cols) if X_cols else np.zeros((len(df), 0))
+
+        if X.shape[0] == 0:
+            raise ValueError("No observations remain after sample screening (all rows have missing values).")
+        if X.shape[1] == 0:
+            raise ValueError("Design matrix has 0 columns after sample screening. No regressors available.")
 
         # Detect collinearity
         X, dropped = self._detect_collinearity(X, self._coef_names)
@@ -323,10 +331,10 @@ class OLS:
             # X' Omega X = sum_i (x_i * e_i^2 * x_i')
             e_sq = residuals ** 2
             if w is not None:
-                # For weighted regression, apply weight adjustment
-                # HC1 with weights: n/(n-k) * (X'WX)^{-1} * (X' W Omega W X) * (X'WX)^{-1}
-                # where the "meat" accounts for the weighting
-                XtOmegaX = (X_w * e_sq[:, np.newaxis]).T @ X_w
+                # Weighted robust VCE aligned with Stata's [aweight] + robust:
+                # score contribution is w_i * x_i * e_i, so the meat is
+                # sum_i (w_i * x_i * e_i) (w_i * x_i * e_i)' = X' W^2 Omega X
+                XtOmegaX = (X * ((w ** 2) * e_sq)[:, np.newaxis]).T @ X
             else:
                 XtOmegaX = (X * e_sq[:, np.newaxis]).T @ X
 
@@ -341,7 +349,9 @@ class OLS:
             XtX_inv = np.linalg.inv(XtX)
 
             n_adj = (n - 1) / (n - k) if n > k else 1.0
-            X_meat = X_w if w is not None else X
+            # Weighted cluster VCE: score contribution is w_i * x_i * e_i.
+            # Use full-weighted design matrix for the meat.
+            X_meat = X * w[:, np.newaxis] if w is not None else X
 
             if isinstance(cluster_arr, list):
                 # Multi-way clustering (Cameron-Gelbach-Miller 2011)
@@ -352,8 +362,12 @@ class OLS:
                 V_parts = []
                 for c_arr in cluster_arr:
                     meat, G = compute_cluster_meat(X_meat, residuals, c_arr)
+                    if G <= 1:
+                        raise ValueError(
+                            f"multi-way cluster-robust VCE requires at least 2 clusters in each dimension, found {G}"
+                        )
                     cluster_counts.append(G)
-                    g_adj = G / (G - 1) if G > 1 else 1.0
+                    g_adj = G / (G - 1)
                     V_i = n_adj * g_adj * XtX_inv @ meat @ XtX_inv
                     V_parts.append(V_i)
 
@@ -371,13 +385,20 @@ class OLS:
                 V_12 = n_adj * g_adj_12 * XtX_inv @ meat_12 @ XtX_inv
 
                 cov_beta = V_parts[0] + V_parts[1] - V_12
+                from stataflow.estimators._vce_utils import fix_psd
+
+                cov_beta = fix_psd(cov_beta)
                 cluster_count = min(cluster_counts)  # for df_resid
             else:
                 # One-way clustering
                 from stataflow.estimators._vce_utils import compute_cluster_meat
 
                 meat, cluster_count = compute_cluster_meat(X_meat, residuals, cluster_arr)
-                g_adj = cluster_count / (cluster_count - 1) if cluster_count > 1 else 1.0
+                if cluster_count <= 1:
+                    raise ValueError(
+                        f"cluster-robust VCE requires at least 2 clusters, found {cluster_count}"
+                    )
+                g_adj = cluster_count / (cluster_count - 1)
                 cov_beta = n_adj * g_adj * XtX_inv @ meat @ XtX_inv
 
             # For cluster VCE, df_resid based on number of clusters
@@ -406,9 +427,18 @@ class OLS:
         if df_model > 0:
             if vce == "ols":
                 # Conventional F-statistic
-                f_stat = (mss / df_model) / (rss / df_resid)
-                from scipy.stats import f as f_dist
-                f_pvalue = 1 - f_dist.cdf(f_stat, dfn=df_model, dfd=df_resid)
+                if rss == 0:
+                    # Perfect fit: F is +inf, p-value is 0 (Stata behavior)
+                    f_stat = float("inf")
+                    f_pvalue = 0.0
+                elif df_resid == 0:
+                    # No residual degrees of freedom
+                    f_stat = None
+                    f_pvalue = None
+                else:
+                    f_stat = (mss / df_model) / (rss / df_resid)
+                    from scipy.stats import f as f_dist
+                    f_pvalue = 1 - f_dist.cdf(f_stat, dfn=df_model, dfd=df_resid)
             elif vce == "robust":
                 # Wald F-statistic for robust VCE
                 # F = (1/df_model) * beta' * V_rob^{-1} * beta
@@ -438,31 +468,53 @@ class OLS:
                     f_stat = None
                     f_pvalue = None
             elif vce == "cluster":
-                # Wald F-statistic for cluster VCE (same formula as robust)
-                const_idx = self._coef_names.index("_cons") if "_cons" in self._coef_names else -1
-
-                if const_idx >= 0:
-                    slope_idx = [i for i in range(k) if i != const_idx]
-                else:
-                    slope_idx = list(range(k))
-
-                beta_slopes = beta[slope_idx]
-                cov_slopes = cov_beta[np.ix_(slope_idx, slope_idx)]
-
-                try:
-                    # NEW-LINEAR-01: guard against ill-conditioned cov_slopes
-                    cond = np.linalg.cond(cov_slopes)
-                    if cond > 1e12 or not np.isfinite(cond):
-                        cov_inv = np.linalg.pinv(cov_slopes)
+                # Stata's two-way cluster extension reports the conventional
+                # model F, while retaining min(G1, G2) - 1 in e(df_r).  The
+                # denominator used by the displayed F is therefore N - k,
+                # not the cluster-based residual degrees of freedom.
+                if isinstance(cluster_arr, list):
+                    conventional_df_resid = n - k
+                    if rss == 0:
+                        f_stat = float("inf")
+                        f_pvalue = 0.0
+                    elif conventional_df_resid <= 0:
+                        f_stat = None
+                        f_pvalue = None
                     else:
-                        cov_inv = np.linalg.inv(cov_slopes)
-                    wald_stat = float(beta_slopes @ cov_inv @ beta_slopes)
-                    f_stat = wald_stat / df_model
-                    from scipy.stats import f as f_dist
-                    f_pvalue = 1 - f_dist.cdf(f_stat, dfn=df_model, dfd=df_resid)
-                except (np.linalg.LinAlgError, ValueError):
-                    f_stat = None
-                    f_pvalue = None
+                        f_stat = (mss / df_model) / (rss / conventional_df_resid)
+                        from scipy.stats import f as f_dist
+
+                        f_pvalue = 1 - f_dist.cdf(
+                            f_stat,
+                            dfn=df_model,
+                            dfd=df_resid,
+                        )
+                else:
+                    # One-way clustering uses a Wald F based on the cluster VCE.
+                    const_idx = self._coef_names.index("_cons") if "_cons" in self._coef_names else -1
+
+                    if const_idx >= 0:
+                        slope_idx = [i for i in range(k) if i != const_idx]
+                    else:
+                        slope_idx = list(range(k))
+
+                    beta_slopes = beta[slope_idx]
+                    cov_slopes = cov_beta[np.ix_(slope_idx, slope_idx)]
+
+                    try:
+                        # NEW-LINEAR-01: guard against ill-conditioned cov_slopes
+                        cond = np.linalg.cond(cov_slopes)
+                        if cond > 1e12 or not np.isfinite(cond):
+                            cov_inv = np.linalg.pinv(cov_slopes)
+                        else:
+                            cov_inv = np.linalg.inv(cov_slopes)
+                        wald_stat = float(beta_slopes @ cov_inv @ beta_slopes)
+                        f_stat = wald_stat / df_model
+                        from scipy.stats import f as f_dist
+                        f_pvalue = 1 - f_dist.cdf(f_stat, dfn=df_model, dfd=df_resid)
+                    except (np.linalg.LinAlgError, ValueError):
+                        f_stat = None
+                        f_pvalue = None
         else:
             f_stat = None
             f_pvalue = None
@@ -531,6 +583,7 @@ class OLS:
         self._result = result
         result._model = self
 
+        result.validate()
         return result
 
     def predict(self, type: str = "xb", newdata: Optional[pd.DataFrame] = None) -> np.ndarray:
