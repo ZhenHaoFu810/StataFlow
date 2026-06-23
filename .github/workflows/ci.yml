@@ -54,5 +54,5 @@ jobs:
         run: |
           python -m venv clean_venv
           source clean_venv/bin/activate
-          pip install dist_tmp/StataFlow-*.whl
+          pip install dist_tmp/stataflow-*.whl
           python -c "import stataflow; print(stataflow.__version__)"
