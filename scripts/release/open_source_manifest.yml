@@ -19,6 +19,7 @@ whitelist:
     - ".gitignore"
     - ".gitattributes"
     - ".pre-commit-config.yaml"
+    - "CHANGELOG.md"
     - "VALIDATION.md"
 
   directories:
@@ -33,6 +34,10 @@ whitelist:
     - "docs/USER_GUIDE.zh-CN.md"
     - "docs/cookbook.md"
     - "docs/cookbook.zh-CN.md"
+    - "docs/release/open-source-status.md"
+    - "docs/release/open-source-update-log-1.1.0.md"
+    - "docs/release/known-issues.md"
+    - "docs/release/release-candidate-checklist.md"
     - ".github/workflows/ci.yml"
     - "scripts/release/PRE_PUBLIC_SYNC_CHECKLIST.md"
 
