@@ -28,6 +28,7 @@ htmlcov/
 
 # Stata temporary files (tests generate these dynamically; do not track realdata_*.log)
 *.dta
+!research/data/public/**/*.dta
 *.log
 *.raw
 *.gph

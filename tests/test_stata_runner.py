@@ -62,6 +62,11 @@ def test_stata_runner_generate_min_do():
 def test_stata_runner_build_stata_args():
     """Test Stata argument list generation for non-interactive execution."""
     runner = StataRunner()
+    try:
+        _ = runner.resolved_stata_path
+    except FileNotFoundError:
+        pytest.skip("Stata executable not found on this machine")
+
     args = runner._build_stata_args(r"D:\tmp\out\run_123.do")
 
     assert args[0] == runner.resolved_stata_path
