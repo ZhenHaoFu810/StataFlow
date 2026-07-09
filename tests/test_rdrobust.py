@@ -143,6 +143,23 @@ def test_rdrobust_coefficients_schema_populated():
         assert c.ci_low < c.ci_high
 
 
+def test_rdrobust_low_effective_sample_reports_stata_warning():
+    x_l = -np.arange(1, 7) * 0.1
+    x_r = np.arange(1, 7) * 0.1
+    x = np.concatenate([x_l, x_r])
+    y = np.concatenate([1.0 + 2.0 * x_l, 4.0 + 2.0 * x_r])
+    df = pd.DataFrame({"y": y, "x": x})
+
+    res = rdrobust(df, y="y", x="x", c=0.0, h=0.5, kernel="uniform")
+
+    assert res._rd_extras["N_h_l"] == 5
+    assert res._rd_extras["N_h_r"] == 5
+    assert any(
+        "low number of effective observations" in warning
+        for warning in res.diagnostics.warnings
+    )
+
+
 def test_rdrobust_bwselect_mserd_synthetic():
     """Automatic bandwidth selection produces positive bandwidths and reasonable estimates."""
     df = _make_rd_data(n=500, jump=2.0)

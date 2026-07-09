@@ -269,9 +269,10 @@ class EventStudyInteract:
                 Xe_g = X_g.T @ (sw_g * e_g)
                 meat += np.outer(Xe_g, Xe_g)
 
-            # Small-sample adjustment: first absorb_var FEs are nested in cluster
+            # Small-sample adjustment: reghdfe counts the implicit constant in
+            # its cluster VCE absorbed-degrees-of-freedom correction.
             nested_dof = sum(int(df[av].nunique()) - 1 for av in self.absorb_vars[1:])
-            k_eff = k_kept + nested_dof
+            k_eff = k_kept + nested_dof + 1
             n_adj = (n - 1) / (n - k_eff) if n > k_eff else 1.0
             g_adj = G / (G - 1) if G > 1 else 1.0
             VV_kept = n_adj * g_adj * XtX_inv @ meat @ XtX_inv

@@ -242,6 +242,8 @@ class ResultSchema:
                     "p_value": row.p_value,
                     "ci_low": row.ci_low,
                     "ci_high": row.ci_high,
+                    "is_base": row.is_base,
+                    "is_omitted": row.is_omitted,
                 }
                 for row in self.coefficients
             ],

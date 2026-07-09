@@ -1,6 +1,6 @@
 # Known Issues
 
-This document registers issues that are acknowledged but not treated as release-blocking for the current Stable release (v1.1.0).
+This document registers issues that are acknowledged but not treated as release-blocking for the current Stable release (`1.1.0`) and the July 2026 v1.2.0+ correctness-hardening release-candidate sync.
 
 ## v1.1.0 update
 
@@ -11,6 +11,19 @@ The `revalidation-v1.1` audit remediation (2026-06-04) closed all 108 identified
 - **8** were deferred to v1.2.0+ (display-layer parameters and advanced first-stage statistics).
 
 See [`open-source-update-log-1.1.0.md`](./open-source-update-log-1.1.0.md) for the full user-facing change list.
+
+---
+
+## 2026-07-09 correctness-hardening update
+
+The v1.2.0+ release-candidate sync closed the internal modular revalidation queue used to harden correctness and public-export readiness:
+
+- R3 HDFE remediation was closed, including M03 omitted-VCE audit-helper handling.
+- FE, GLM, PPMLHDFE, factor-variable, residual, RD, DID, IV, and postestimation evidence was refreshed or marked with explicit support boundaries.
+- Golden-test collection now has explicit guards for active-row metadata and unsupported weight combinations.
+- Public release checks were refreshed: public tests (`405 passed`), internal audit (`95 passed`), golden collection (`839 tests collected`), examples, wheel build, and export dry-run.
+
+This sync did not expand unsupported option surfaces. Remaining gaps below are still intentionally documented boundaries.
 
 ---
 
@@ -58,7 +71,7 @@ The following are known mathematical/algorithmic gaps where Python and Stata res
 
 ---
 
-## 4. Documentation / usability
+## 5. Documentation / usability
 
 - **Source map / support matrix synchronization:** While current state is aligned, historical drift between code changes and documentation updates has occurred. The Codex review protocol now requires documentation alignment as a gating step.
 - **Output formatting:** No unified `summary(style="stata")` formatter exists yet.

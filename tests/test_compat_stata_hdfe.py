@@ -6,6 +6,7 @@ import pytest
 
 from stataflow.compat.stata import reghdfe, ppmlhdfe
 from stataflow.estimators import AbsorbingOLS, PPMLHDFE
+from stataflow.estimators._absorb_spec import AbsorbSpec
 
 
 def _make_hdfe_data(n=100, seed=42):
@@ -55,6 +56,114 @@ def test_reghdfe_multi_absorb():
         assert np.isclose(c.beta, d.beta, rtol=1e-10)
 
 
+def test_reghdfe_near_collinearity_uses_shared_parameter_choice():
+    """HDFE collinearity screening should use the shared stable pivot rule."""
+    rng = np.random.default_rng(20260703)
+    n_groups = 8
+    n_periods = 10
+    n = n_groups * n_periods
+    group = np.repeat(np.arange(n_groups), n_periods)
+    x1 = rng.normal(size=n)
+    x2 = (x1 + rng.normal(scale=1e-7, size=n)) * 1e6
+    effects = np.repeat(rng.normal(size=n_groups), n_periods)
+    y = 1.0 + effects + 2.0e-6 * x2 + rng.normal(scale=0.2, size=n)
+    df = pd.DataFrame({"y": y, "x1": x1, "x2": x2, "g": group})
+
+    result = reghdfe(df, y="y", x=["x1", "x2"], absorb="g")
+
+    assert [row.name for row in result.coefficients] == ["x2", "_cons"]
+    assert result.variance.row_names == ["x2", "_cons"]
+    assert result.diagnostics.warnings == ["Collinear variables dropped: x1"]
+
+
+def test_reghdfe_nested_fe_cluster_df_a_matches_stata_repro():
+    """M03-HDFE-001: FE nested in cluster should not inflate absorbed DoF."""
+    rng = np.random.default_rng(303)
+    n_firm = 24
+    n_time = 4
+    n = n_firm * n_time
+    firm = np.repeat(np.arange(1, n_firm + 1), n_time)
+    year = np.tile(np.arange(1, n_time + 1), n_firm)
+    industry = (firm - 1) // 4 + 1
+    alpha = rng.normal(0, 1, n_firm)[firm - 1]
+    eta = rng.normal(0, 1, 6)[industry - 1]
+    x = rng.normal(0, 1, n) + 0.2 * eta
+    y = 1.0 + 1.5 * x + alpha + eta + rng.normal(0, 0.5, n)
+    df = pd.DataFrame({"firm": firm, "year": year, "industry": industry, "y": y, "x": x})
+
+    result = reghdfe(
+        df,
+        y="y",
+        x=["x"],
+        absorb=["firm", "year"],
+        vce="cluster",
+        cluster="industry",
+    )
+
+    assert result.fit.df_a == pytest.approx(3.0)
+    assert result.fit.df_resid == pytest.approx(5.0)
+    assert result.diagnostics.cluster_count == 6
+    assert {row.name for row in result.coefficients} == {"x", "_cons"}
+
+
+def test_absorbing_ols_slope_absorption_df_a_and_cluster_se_match_stata_repro():
+    """M03-HDFE-002: absorbed firm slopes should contribute to df_a and VCE."""
+    rng = np.random.default_rng(606)
+    n_firm = 12
+    n_time = 5
+    n = n_firm * n_time
+    firm = np.repeat(np.arange(1, n_firm + 1), n_time)
+    year = np.tile(np.arange(1, n_time + 1), n_firm)
+    alpha = rng.normal(0, 1, n_firm)[firm - 1]
+    slope = rng.normal(0, 0.3, n_firm)[firm - 1]
+    x = rng.normal(0, 1, n)
+    y = 1.0 + 1.0 * x + alpha + slope * year + rng.normal(0, 0.5, n)
+    df = pd.DataFrame({"firm": firm, "year": year, "y": y, "x": x})
+
+    result = AbsorbingOLS(
+        df,
+        y="y",
+        x=["x"],
+        absorb=[AbsorbSpec(var="firm", slopes=["year"], has_intercept=True)],
+        add_constant=True,
+        drop_singletons=True,
+    ).fit(vce="cluster", cluster="firm")
+    x_row = next(row for row in result.coefficients if row.name == "x")
+
+    assert result.fit.df_a == pytest.approx(12.0)
+    assert result.fit.df_resid == pytest.approx(11.0)
+    assert result.diagnostics.cluster_count == 12
+    assert x_row.beta == pytest.approx(0.9442661726360293, rel=1e-12)
+    assert x_row.std_err == pytest.approx(0.09394816089718806, rel=1e-12)
+
+
+def test_reghdfe_disconnected_graph_reports_missing_adjusted_r2_at_zero_df_resid():
+    """M03-HDFE-003: saturated disconnected FE graph should not report r2_adj."""
+    rng = np.random.default_rng(404)
+    rows = []
+    for f in [1, 2, 3, 4]:
+        years_for_f = [(f % 4) + 1, ((f + 1) % 4) + 1]
+        for t in years_for_f:
+            rows.append({"firm": f, "year": t})
+    df = pd.DataFrame(rows)
+    df["x"] = rng.normal(0, 1, len(df))
+    alpha = {1: 1.0, 2: 2.0, 3: -1.0, 4: -2.0}
+    gamma = {1: 0.5, 2: -0.5, 3: 0.3, 4: -0.3}
+    df["y"] = (
+        1.0
+        + 2.0 * df["x"]
+        + df["firm"].map(alpha)
+        + df["year"].map(gamma)
+        + rng.normal(0, 0.1, len(df))
+    )
+
+    result = reghdfe(df, y="y", x=["x"], absorb=["firm", "year"], vce="ols")
+
+    assert result.fit.df_resid == pytest.approx(0.0)
+    assert result.fit.r2_adj is None
+    assert result.fit.df_a == pytest.approx(7.0)
+
+
 def test_reghdfe_unsupported_kwargs():
     df = _make_hdfe_data()
     with pytest.raises(ValueError, match="Unsupported arguments"):
@@ -69,6 +178,56 @@ def test_ppmlhdfe_delegation():
     for c in res.coefficients:
         d = next(dc for dc in direct.coefficients if dc.name == c.name)
         assert np.isclose(c.beta, d.beta, rtol=1e-10)
+
+
+def test_ppmlhdfe_nested_fe_cluster_df_a_matches_stata_repro():
+    """M06-PPMLHDFE-007: FE nested in cluster should be redundant in df_a."""
+    rng = np.random.default_rng(20260613)
+    n_entity = 20
+    n_time = 10
+    entity_id = np.repeat(np.arange(1, n_entity + 1), n_time)
+    time_id = np.tile(np.arange(1, n_time + 1), n_entity)
+    n = len(entity_id)
+    x1 = rng.normal(0, 1, size=n)
+    x2 = rng.normal(0, 1, size=n)
+    entity_fe = rng.normal(-0.5, 1.0, size=n_entity)
+    time_fe = rng.normal(0, 0.5, size=n_time)
+    eta = 0.3 + 0.6 * x1 - 0.4 * x2 + entity_fe[entity_id - 1] + time_fe[time_id - 1]
+    rate = np.exp(eta)
+    rate[rng.random(n) < 0.15] *= 0.05
+    df = pd.DataFrame(
+        {
+            "entity_id": entity_id,
+            "time_id": time_id,
+            "x1": x1,
+            "x2": x2,
+            "y": rng.poisson(rate),
+        }
+    )
+
+    result = PPMLHDFE(
+        df,
+        y="y",
+        x=["x1", "x2"],
+        absorb=["entity_id", "time_id"],
+    ).fit(vce="cluster", cluster="entity_id")
+
+    assert result.fit.df_a == pytest.approx(9.0)
+    assert result.diagnostics.cluster_count == 19
+    assert np.isnan(result.fit.df_resid)
+
+
+def test_ppmlhdfe_cluster_df_resid_is_missing_like_stata_e_df_r():
+    df = _make_ppml_data(n=120, seed=314)
+    result = PPMLHDFE(
+        df,
+        y="y",
+        x=["x1", "x2"],
+        absorb=["g1"],
+    ).fit(vce="cluster", cluster="g1")
+
+    assert result.diagnostics.cluster_count == df["g1"].nunique()
+    assert np.isnan(result.fit.df_resid)
 
 
 def test_ppmlhdfe_unsupported_kwargs():

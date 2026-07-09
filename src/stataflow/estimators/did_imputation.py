@@ -117,13 +117,11 @@ class DIDImputation:
         mask = df[all_vars].notna().all(axis=1)
         df = df.loc[mask].copy()
 
-        # Stata's did_imputation ado uses missing for never-treated units. For
-        # compatibility with the StataFlow test suite and the eventstudyinteract
-        # wrapper, any non-positive finite value (<= 0) is also treated as
-        # never-treated; only strictly positive first-treatment periods identify
-        # an ever-treated cohort.
+        # Stata's did_imputation ado uses missing for never-treated units.
+        # Every finite first_treat value, including zero or a negative period,
+        # identifies an ever-treated cohort.
         ft = df[self.first_treat_var]
-        ever_treated_mask = ft.notna() & (ft > 0)
+        ever_treated_mask = ft.notna()
 
         # Compute treatment indicator and relative time
         df["_D"] = 0
@@ -246,7 +244,7 @@ class DIDImputation:
 
         # Compute effect for all ever-treated observations (including pretrends)
         df["_effect"] = np.nan
-        effect_mask = df[self.first_treat_var].notna() & (df[self.first_treat_var] > 0)
+        effect_mask = df[self.first_treat_var].notna()
         df.loc[effect_mask, "_effect"] = (
             df.loc[effect_mask, self.y_var] - df.loc[effect_mask, "_Y0"]
         )

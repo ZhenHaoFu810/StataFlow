@@ -43,6 +43,30 @@ def test_ivregress_2sls_delegation():
         assert np.isclose(c.beta, d.beta, rtol=1e-10)
 
 
+def test_ivregress_near_collinearity_uses_shared_parameter_choice():
+    """IV collinearity screening should drop unstable regressors consistently."""
+    rng = np.random.default_rng(20260703)
+    n = 120
+    x1 = rng.normal(size=n)
+    x2 = (x1 + rng.normal(scale=1e-7, size=n)) * 1e6
+    z = rng.normal(size=n)
+    endog = 0.8 * z + 0.2 * rng.normal(size=n)
+    y = 1.0 + 1.5 * endog + 2.0e-6 * x2 + rng.normal(scale=0.3, size=n)
+    df = pd.DataFrame({"y": y, "endog": endog, "x1": x1, "x2": x2, "z": z})
+
+    result = ivregress_2sls(
+        df,
+        y="y",
+        x_exog=["x1", "x2"],
+        x_endog=["endog"],
+        instruments=["z"],
+    )
+
+    assert [row.name for row in result.coefficients] == ["x2", "endog", "_cons"]
+    assert result.variance.row_names == ["x2", "endog", "_cons"]
+    assert "x1" in result.diagnostics.warnings[0]
+
+
 def test_ivregress_2sls_unsupported_kwargs():
     df = _make_iv_data()
     with pytest.raises(ValueError, match="Unsupported arguments"):

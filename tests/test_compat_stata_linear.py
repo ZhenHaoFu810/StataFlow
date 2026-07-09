@@ -172,6 +172,50 @@ def test_fe_cluster_reporting_matches_stata_17():
     assert result.fit.f_pvalue == pytest.approx(0.1477, abs=5e-5)
 
 
+def test_fe_cluster_two_slopes_stores_rank_minus_one_df_model():
+    """Clustered ``xtreg, fe`` stores e(df_m)=rank-1 for multiple slopes."""
+    rng = np.random.default_rng(66666)
+    n_entities = 30
+    n_periods = 4
+    n = n_entities * n_periods
+    entity_id = np.repeat(np.arange(n_entities), n_periods)
+    x1 = rng.normal(0, 1, n)
+    x2 = rng.normal(0, 1, n)
+    entity_fe = np.repeat(rng.normal(0, 2, n_entities), n_periods)
+    error = rng.normal(0, 1, n)
+    df = pd.DataFrame({
+        "id": entity_id,
+        "x1": x1,
+        "x2": x2,
+        "y": 1 + 1.5 * x1 - 2 * x2 + entity_fe + error,
+    })
+
+    result = FixedEffectsOLS(
+        df, y="y", x=["x1", "x2"], fe="id", add_constant=True
+    ).fit(vce="cluster", cluster="id")
+
+    assert result.fit.df_model == 1
+
+
+def test_xtreg_fe_residuals_match_stata_y_minus_xb():
+    """FE residuals match Stata ``predict, residuals``."""
+    df = pd.DataFrame({
+        "id": [1, 1, 1, 2, 2, 2, 3, 3],
+        "x": [0.0, 1.0, 2.0, 0.5, 1.5, 2.5, 0.2, 1.2],
+        "y": [1.0, 2.2, 3.1, -0.1, 1.2, 2.1, 2.0, 3.1],
+    })
+    train = df.iloc[:6].copy()
+    result = xtreg_fe(train, y="y", x=["x"], fe="id")
+
+    residuals = result.predict(type="residuals", newdata=df)
+    model = result._model
+    xb = df[model._active_x].to_numpy(dtype=float) @ model._beta + model._constant
+    expected = df["y"].to_numpy(dtype=float) - xb
+
+    assert len(residuals) == len(df)
+    assert np.allclose(residuals, expected)
+
+
 def test_xtreg_fe_level():
     df = _make_fe_data()
     res = xtreg_fe(df, y="y", x=["x1"], fe="id", level=90)

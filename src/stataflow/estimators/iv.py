@@ -1134,8 +1134,14 @@ class IVAbsorbingOLS:
                     else:  # cluster
                         if self._has_effective_fe:
                             # ivreghdfe calls ivreg2 on residualized, no-constant
-                            # data and passes the non-nested absorbed df separately.
-                            iv1_ct = len(self._x_exog_indices_in_full) + k_excl
+                            # data but still counts the structural constant in
+                            # the weak-ID small-sample adjustment.
+                            const_penalty = (
+                                1 if self.add_constant and self._df_a == 0 else 0
+                            )
+                            iv1_ct = (
+                                const_penalty + len(self._x_exog_indices_in_full) + k_excl
+                            )
                             dofminus = self._df_a
                         else:
                             iv1_ct = (
@@ -1273,6 +1279,8 @@ class IVAbsorbingOLS:
             e_sq = residuals ** 2
             XtOmegaX = (X_proj * e_sq[:, np.newaxis]).T @ X_proj
             cov_full = M_inv @ XtOmegaX @ M_inv
+            if self._has_effective_fe and df_resid > 0:
+                cov_full = cov_full * (n / df_resid)
         else:
             if len(self._cluster_arrs) == 1:
                 from stataflow.estimators._vce_utils import compute_cluster_meat
@@ -1538,6 +1546,7 @@ class IVAbsorbingOLS:
         n: int,
         k_x_full: int,
         k_x_reported: int,
+        df_resid: float,
         fuller: float,
         kclass: float | None,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
@@ -1618,6 +1627,8 @@ class IVAbsorbingOLS:
             rss = float(np.sum(residuals ** 2))
             sigma2 = rss / n if n > 0 else 0.0
             V = sigma2 * np.linalg.inv(Qh) / N
+            if self._has_effective_fe and df_resid > 0:
+                V = V * (N / df_resid)
         else:
             # Compute omega using LIML residuals
             if vce == "robust":
@@ -1763,7 +1774,7 @@ class IVAbsorbingOLS:
             rss_2s_resid = float(np.sum((y_resid - X_tilde_proj @ beta_reported_for_f) ** 2))
         else:  # liml
             beta_full, residuals, cov_full, extra_stats = self._fit_liml(
-                X_full, Z_full, y, vce, n, k_x_full, k_x_reported, fuller, kclass
+                X_full, Z_full, y, vce, n, k_x_full, k_x_reported, df_resid, fuller, kclass
             )
             rss_struct = float(np.sum(residuals ** 2))
 
