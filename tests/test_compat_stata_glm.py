@@ -40,6 +40,24 @@ def test_logit_delegation():
         assert np.isclose(c.beta, d.beta, rtol=1e-10)
 
 
+def test_logit_near_collinearity_uses_shared_parameter_choice():
+    """GLM collinearity screening should use the shared stable pivot rule."""
+    rng = np.random.default_rng(20260703)
+    n = 160
+    x1 = rng.normal(size=n)
+    x2 = (x1 + rng.normal(scale=1e-7, size=n)) * 1e6
+    eta = -0.3 + 2.0e-6 * x2
+    p = 1.0 / (1.0 + np.exp(-eta))
+    y = rng.binomial(1, p, size=n)
+    df = pd.DataFrame({"y": y, "x1": x1, "x2": x2})
+
+    result = logit(df, y="y", x=["x1", "x2"])
+
+    assert [row.name for row in result.coefficients] == ["x2", "_cons"]
+    assert result.variance.row_names == ["x2", "_cons"]
+    assert result.diagnostics.warnings == ["Collinear variables dropped: x1"]
+
+
 def test_logit_noconstant():
     df = _make_binary_data()
     res = logit(df, y="y", x=["x1", "x2"], noconstant=True)

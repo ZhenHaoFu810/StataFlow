@@ -484,7 +484,7 @@ class PPMLHDFE:
                 cluster_count = len(unique_clusters)
             else:
                 cluster_count = min(len(np.unique(ca)) for ca in cluster_arrs)
-            df_resid = float(cluster_count - 1)
+            df_resid = float("nan")
         else:
             cluster_count = None
             df_resid = float(n - k_full)

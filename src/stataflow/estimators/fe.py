@@ -246,10 +246,10 @@ class FixedEffectsOLS:
 
         # Degrees of freedom (Stata xtreg, fe convention)
         # For non-cluster FE: df_model = k + (G - 1), df_resid = N - G - k
-        # For FE + cluster: Stata stores e(df_m) = 0 while the displayed
-        # slope Wald test still uses F(k, number_of_clusters - 1).
+        # For FE + cluster: Stata stores e(df_m) as rank - 1 while the
+        # displayed slope Wald test still uses F(k, number_of_clusters - 1).
         if vce == "cluster":
-            df_model_fe = 0.0
+            df_model_fe = float(max(k - 1, 0))
         else:
             df_model_fe = float(k + (G - 1))
         df_resid_fe = float(n - G - k)
@@ -515,7 +515,7 @@ class FixedEffectsOLS:
 
         Matches Stata's xtreg, fe semantics:
         - predict, xb returns x*b + _cons (grand mean of entity effects)
-        - predict, residuals returns y - (x*b + _cons)
+        - predict, residuals returns y - xb
         """
         if not self._is_fitted:
             raise ValueError("Model has not been fitted yet. Call fit() first.")
@@ -525,7 +525,11 @@ class FixedEffectsOLS:
         grand_mean = self._constant
 
         if newdata is not None:
-            required_cols = [self.y] + self._active_x if type == "residuals" else self._active_x
+            required_cols = (
+                [self.y] + self._active_x
+                if type == "residuals"
+                else self._active_x
+            )
             df = newdata[required_cols].copy()
             mask = df.notna().all(axis=1)
             if not mask.all():

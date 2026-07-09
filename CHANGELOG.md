@@ -1,3 +1,36 @@
+# Changelog
+
+## v1.2.0+ correctness-hardening release-candidate sync
+
+**Date:** 2026-07-09
+**Package version:** 1.1.0
+**Scope:** Public-documentation refresh, release-candidate verification, golden/final-gate cleanup, and open-source sync preparation.
+
+This sync does not change the package version or introduce breaking API changes. It prepares the public repository for a v1.2.0+ correctness-hardening PR after the internal modular revalidation queue was closed.
+
+### Highlights
+
+- Closed the R3 HDFE remediation queue, including M03 omitted-VCE audit-helper handling.
+- Organized completed R0/R1/R2/R4 remediation work into reviewable commit units.
+- Closed FE, GLM, PPMLHDFE, factor-variable, residual, DID, RD, IV, and postestimation revalidation evidence.
+- Clarified the M09 postestimation contract: `FixedEffectsOLS.predict(type="residuals")` maps to Stata `predict, residuals` (`y - xb`).
+- Cleaned golden/final-gate contracts for active-row comparisons, unsupported weight cases, DID sample invariants, and golden collection guards.
+- Refreshed README and release docs for public sync.
+
+### Verification
+
+- Public tests: `405 passed, 76 warnings`.
+- Internal audit suite: `95 passed, 19 warnings`.
+- Golden collect-only guard: `839 tests collected`.
+- Compile check passed for `src/stataflow`, `tests/golden`, and `tests/audit_v1_3`.
+- Public examples passed: `demo_regress`, `demo_reghdfe`, `demo_ppmlhdfe`, `demo_ivregress_2sls`.
+- Wheel build passed: `stataflow-1.1.0-py3-none-any.whl`.
+- Open-source export dry-run selected 150 public files and reported 0 orphan removals.
+
+One Stata 17 batch timeout was observed during a full internal audit attempt. The affected logit `estat ic` test passed independently in 11.26 seconds and the full audit suite passed on rerun, so this is treated as an external Stata batch flake rather than a contract failure.
+
+---
+
 # Open-Source Update Log: 1.1.0
 
 **Date:** 2026-06-04  

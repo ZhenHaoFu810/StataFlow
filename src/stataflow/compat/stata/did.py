@@ -49,9 +49,20 @@ def did_imputation(
         Cluster variable for cluster-robust standard errors.
         Defaults to ``id`` (the unit identifier) when not provided,
         matching Stata's ``did_imputation`` default behavior.
+    window : list[int], optional
+        Not supported in the Stata-compatible wrapper for the current target
+        Stata ado (Borusyak ``did_imputation`` Nov 2023), which rejects
+        ``window()``. Use :meth:`DIDImputation.fit` directly for the
+        Python-native horizon-filtering extension.
     """
     if kwargs:
         raise ValueError(f"Unsupported arguments: {list(kwargs.keys())}")
+    if window is not None:
+        raise NotImplementedError(
+            "window is not supported by the current target Stata did_imputation ado "
+            "(Nov 2023). Use DIDImputation.fit(window=...) as a Python-native "
+            "extension, or omit window for Stata-compatible runs."
+        )
 
     model = DIDImputation(
         data=data,

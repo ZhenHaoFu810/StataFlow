@@ -940,6 +940,11 @@ class RDRobust:
         N_h_r = int(np.sum(w_h_r > 0))
         N_b_l = int(np.sum(w_b_l > 0))
         N_b_r = int(np.sum(w_b_r > 0))
+        warnings: list[str] = []
+        if N_h_l < 10 or N_h_r < 10 or N_b_l < 10 or N_b_r < 10:
+            warnings.append(
+                "Estimates might be unreliable due to low number of effective observations."
+            )
 
         ind_l = w_b_l > 0
         ind_r = w_b_r > 0
@@ -1277,7 +1282,7 @@ class RDRobust:
                 ],
             ),
             diagnostics=DiagnosticsInfo(
-                warnings=[],
+                warnings=warnings,
             ),
             provenance=ProvenanceInfo(
                 source="python",

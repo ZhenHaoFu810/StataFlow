@@ -144,6 +144,34 @@ def test_result_schema_json_round_trip():
     assert restored.variance.row_names == ["x1"]
 
 
+def test_result_schema_json_round_trip_preserves_omitted_factor_metadata():
+    """JSON round-trip preserves Stata factor base/omitted row flags."""
+    original = ResultSchema()
+    original.model = ModelInfo(command="regress", estimator_family="ols")
+    original.sample = SampleInfo(nobs=10, n_input_rows=10, sample_mask=[True] * 10)
+    original.coefficients = [
+        CoefficientRow(
+            name="1b.g",
+            beta=0.0,
+            std_err=0.0,
+            is_base=True,
+            is_omitted=True,
+        ),
+        CoefficientRow(name="2.g", beta=1.0, std_err=0.2),
+    ]
+    original.variance = VarianceInfo(
+        row_names=["1b.g", "2.g"],
+        values=[[0.0, 0.0], [0.0, 0.04]],
+    )
+
+    restored = ResultSchema.from_json(original.to_json())
+
+    assert restored.coefficients[0].is_base is True
+    assert restored.coefficients[0].is_omitted is True
+    assert restored.coefficients[1].is_base is False
+    assert restored.coefficients[1].is_omitted is False
+
+
 def test_result_schema_json_is_valid():
     """Test that to_json produces valid JSON."""
     result = ResultSchema()
