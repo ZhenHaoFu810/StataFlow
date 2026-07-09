@@ -56,7 +56,7 @@ python scripts/release/export_open_source.py --force --target-root '..\StataFlow
 - [x] Command completed with no unexpected errors.
 - [x] Target directory is the public mirror repository (`..\StataFlow_open_source`).
 - [x] Public mirror diff contains only manifest-selected public files.
-- [ ] Public mirror branch is pushed to GitHub.
+- [x] Public mirror branch is pushed to GitHub as `codex/public-hardening-sync`.
 
 ---
 
@@ -82,9 +82,9 @@ python scripts/release/export_open_source.py --force --target-root '..\StataFlow
 
 ### 3.3 GitHub Release Hygiene
 
-- [ ] Public sync branch is pushed.
-- [ ] Draft PR is opened against `main`.
-- [ ] Release-candidate tag is created only after the public mirror commit is verified.
+- [x] Public sync branch is pushed.
+- [x] Draft PR is opened against `main`: [#4](https://github.com/ZhenHaoFu810/StataFlow/pull/4).
+- [x] Release-candidate tag is created only after the public mirror commit is verified: `v1.1.0-public-hardening-20260709`.
 - [ ] Final release tag is created only after PR review/merge decision.
 
 ---
