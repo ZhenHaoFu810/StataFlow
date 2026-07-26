@@ -214,6 +214,13 @@ class FixedEffectsOLS:
         G = self._n_entities  # Number of groups
         k = X_w.shape[1]  # Number of slope parameters
 
+        # Stata xtreg, fe robust is panel-robust: same meat/multiplier as
+        # cluster(panel_id). Keep reported vcetype="robust" (not cluster).
+        panel_robust = vce == "robust"
+        vce_eff = "cluster" if (vce == "cluster" or panel_robust) else vce
+        if panel_robust:
+            cluster_arr = df_clean[self.fe].to_numpy()
+
         # Detect within-collinearity (group-invariant variables become collinear)
         from stataflow.estimators._vce_utils import detect_collinear_columns
         X_w, dropped_cols, kept_indices = detect_collinear_columns(X_w, self._coef_names)
@@ -246,24 +253,22 @@ class FixedEffectsOLS:
 
         # Degrees of freedom (Stata xtreg, fe convention)
         # For non-cluster FE: df_model = k + (G - 1), df_resid = N - G - k
-        # For FE + cluster: Stata stores e(df_m) as rank - 1 while the
-        # displayed slope Wald test still uses F(k, number_of_clusters - 1).
-        if vce == "cluster":
+        # For FE + cluster / panel-robust: e(df_m) as rank-1 style; df_resid = G_clust-1
+        if vce_eff == "cluster":
             df_model_fe = float(max(k - 1, 0))
         else:
             df_model_fe = float(k + (G - 1))
         df_resid_fe = float(n - G - k)
 
         # RMSE
-        if vce == "cluster":
+        if vce_eff == "cluster":
             # For FE + cluster, RMSE uses (N - k - 1) denominator (Stata convention)
             rmse = np.sqrt(rss / (n - k - 1)) if (n - k - 1) > 0 else 0.0
         else:
             rmse = np.sqrt(rss / df_resid_fe) if df_resid_fe > 0 else 0.0
 
-        # Adjusted within R-squared. Clustered xtreg uses N-k-1 here rather
-        # than the absorbed-effects residual df used by conventional FE.
-        r2_adj_denominator = (n - k - 1) if vce == "cluster" else df_resid_fe
+        # Adjusted within R-squared. Clustered / panel-robust xtreg uses N-k-1.
+        r2_adj_denominator = (n - k - 1) if vce_eff == "cluster" else df_resid_fe
         r2_adj = (
             1.0 - (1.0 - r2) * (n - 1) / r2_adj_denominator
             if r2_adj_denominator > 0
@@ -274,37 +279,25 @@ class FixedEffectsOLS:
         cluster_count = None
         sigma_e2 = rss / df_resid_fe if df_resid_fe > 0 else 0.0
 
-        if vce == "ols":
+        if vce_eff == "ols":
             # Conventional homoskedastic VCE
             cov_beta = sigma_e2 * np.linalg.inv(XtX)
-        elif vce == "robust":
-            # White/Huber robust VCE (sandwich)
-            XtX_inv = np.linalg.inv(XtX)
-            # Meat: X' * diag(u^2) * X
-            meat = X_w.T @ (X_w * (residuals_w ** 2)[:, None])
-            # Small-sample correction: (N-1)/(N-k-1) for FE structure
-            n_adj = (n - 1) / (n - k - 1) if n > k + 1 else 1.0
-            cov_beta = n_adj * XtX_inv @ meat @ XtX_inv
-        elif vce == "cluster":
-            # Cluster-robust VCE
+        elif vce_eff == "cluster":
+            # Cluster-robust / panel-robust VCE (Stata xtreg, fe robust ≡ cluster panel)
             XtX_inv = np.linalg.inv(XtX)
 
-            # Compute clustered meat (shared utility per ADR-0004)
             from stataflow.estimators._vce_utils import compute_cluster_meat
             meat, cluster_count = compute_cluster_meat(X_w, residuals_w, cluster_arr)
 
-            # Small sample corrections for FE + cluster
             # Stata xtreg, fe vce(cluster) uses: G/(G-1) * (N-1)/(N-k-1)
-            # Note: (N-1)/(N-k-1) instead of (N-1)/(N-k) accounts for the FE structure
             n_adj = (n - 1) / (n - k - 1) if n > k + 1 else 1.0
             g_adj = cluster_count / (cluster_count - 1) if cluster_count > 1 else 1.0
             cov_beta = n_adj * g_adj * XtX_inv @ meat @ XtX_inv
 
-            # For cluster VCE, df_resid = G - 1
             df_resid_fe = float(cluster_count - 1)
-            
-            # RMSE for FE + cluster uses (N - k - 1) denominator (Stata convention)
             rmse = np.sqrt(rss / (n - k - 1)) if (n - k - 1) > 0 else 0.0
+        else:
+            raise ValueError(f"Internal VCE path error: vce_eff={vce_eff!r}")
 
         # Standard errors
         diag_cov = np.diag(cov_beta)
@@ -321,10 +314,8 @@ class FixedEffectsOLS:
         ci_high = beta + t_crit * se
 
         # F-statistic: F(k, df_resid) testing all slope coefficients = 0
-        # Note: Stata xtreg, fe reports F(k, N-G-k) for slope coefficients only
         if k > 0 and df_resid_fe > 0:
-            if vce == "ols":
-                # Conventional F-statistic
+            if vce_eff == "ols":
                 if rss == 0:
                     f_stat = float("inf")
                     f_pvalue = 0.0
@@ -333,20 +324,8 @@ class FixedEffectsOLS:
                     f_pvalue = 1 - f_dist.cdf(
                         f_stat, dfn=df_model_fe, dfd=df_resid_fe
                     )
-            elif vce == "robust":
-                # Wald F-statistic for robust VCE
-                try:
-                    cov_inv = np.linalg.inv(cov_beta)
-                    wald_stat = float(beta @ cov_inv @ beta)
-                    f_stat = wald_stat / k
-                    f_pvalue = 1 - f_dist.cdf(
-                        f_stat, dfn=df_model_fe, dfd=df_resid_fe
-                    )
-                except np.linalg.LinAlgError:
-                    f_stat = None
-                    f_pvalue = None
-            elif vce == "cluster":
-                # Wald F-statistic for cluster VCE
+            else:
+                # Wald F for cluster / panel-robust
                 try:
                     cov_inv = np.linalg.inv(cov_beta)
                     wald_stat = float(beta @ cov_inv @ beta)
@@ -402,18 +381,18 @@ class FixedEffectsOLS:
             residuals_full = y_orig - X_full @ beta_full
             XtX_inv_full = np.linalg.inv(X_full.T @ X_full)
 
-            if vce == "cluster":
+            if vce_eff == "cluster":
                 from stataflow.estimators._vce_utils import compute_cluster_meat
                 meat_full, cluster_count_for_lsdv = compute_cluster_meat(
                     X_full, residuals_full, cluster_arr
                 )
                 n_adj_lsdv = (n - 1) / (n - k - 1) if n > k + 1 else 1.0
-                g_adj_lsdv = cluster_count_for_lsdv / (cluster_count_for_lsdv - 1) if cluster_count_for_lsdv > 1 else 1.0
+                g_adj_lsdv = (
+                    cluster_count_for_lsdv / (cluster_count_for_lsdv - 1)
+                    if cluster_count_for_lsdv > 1
+                    else 1.0
+                )
                 V_full = n_adj_lsdv * g_adj_lsdv * XtX_inv_full @ meat_full @ XtX_inv_full
-            elif vce == "robust":
-                meat_full = (X_full * (residuals_full ** 2)[:, None]).T @ X_full
-                n_adj_full = (n - 1) / (n - k - 1) if n > k + 1 else 1.0
-                V_full = n_adj_full * XtX_inv_full @ meat_full @ XtX_inv_full
             else:
                 sigma2_full = np.sum(residuals_full ** 2) / (n - G - k) if (n - G - k) > 0 else 0.0
                 V_full = sigma2_full * XtX_inv_full
@@ -460,6 +439,8 @@ class FixedEffectsOLS:
         result.model = ModelInfo(
             command="xtreg",
             estimator_family="fe",
+            # Report user-facing VCE label: robust stays "robust" even though
+            # the sandwich is panel-clustered (Stata xtreg, fe robust contract).
             vcetype=vce,
             weight_type=self.weight_type,
             fe_vars=[self.fe],
@@ -518,7 +499,7 @@ class FixedEffectsOLS:
         - predict, residuals returns y - xb
         """
         if not self._is_fitted:
-            raise ValueError("Model has not been fitted yet. Call fit() first.")
+            raise ValueError("Model has not been fitted. Call fit() first.")
         if type not in ("xb", "residuals"):
             raise ValueError(f"type='{type}' not supported for FE. Use 'xb' or 'residuals'.")
 
@@ -553,7 +534,7 @@ class FixedEffectsOLS:
     def margins(self, type: str = "dydx") -> SimpleNamespace:
         """Compute marginal effects."""
         if not self._is_fitted:
-            raise ValueError("Model has not been fitted yet. Call fit() first.")
+            raise ValueError("Model has not been fitted. Call fit() first.")
         from stataflow.postestimation import margins_ame_linear, _build_margins_result
 
         effects = margins_ame_linear(self._beta)

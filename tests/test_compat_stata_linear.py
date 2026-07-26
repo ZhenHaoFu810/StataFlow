@@ -480,6 +480,126 @@ def test_xtreg_fe_rejects_multiway_cluster():
         xtreg_fe(df, y="y", x=["x1"], fe="id", vce="cluster", cluster=["id", "x2"])
 
 
+def _w14_panel(seed: int = 20260719) -> pd.DataFrame:
+    """Balanced panel matching Wave 14 VCE probe structure."""
+    rng = np.random.default_rng(seed)
+    n_entities, n_periods = 40, 6
+    n = n_entities * n_periods
+    panel_id = np.repeat(np.arange(1, n_entities + 1), n_periods)
+    time_id = np.tile(np.arange(1, n_periods + 1), n_entities)
+    cluster_nested = ((panel_id - 1) // 4) + 1
+    cluster_nonnested = (panel_id + time_id) % 5 + 1
+    x1 = rng.normal(size=n)
+    entity_fe = np.repeat(rng.normal(scale=1.5, size=n_entities), n_periods)
+    y = 1.0 + 0.8 * x1 + entity_fe + rng.normal(size=n)
+    return pd.DataFrame(
+        {
+            "y": y,
+            "x1": x1,
+            "panel_id": panel_id.astype(int),
+            "time_id": time_id.astype(int),
+            "cluster_nested": cluster_nested.astype(int),
+            "cluster_nonnested": cluster_nonnested.astype(int),
+        }
+    )
+
+
+def test_xtreg_fe_robust_uses_panel_level_scores():
+    """Stata ``xtreg, fe robust`` is panel-robust: V equals cluster(panel)."""
+    panel_df = _w14_panel()
+    robust = xtreg_fe(panel_df, y="y", x=["x1"], fe="panel_id", vce="robust")
+    clustered = xtreg_fe(
+        panel_df, y="y", x=["x1"], fe="panel_id", vce="cluster", cluster="panel_id"
+    )
+    np.testing.assert_allclose(
+        np.asarray(robust.variance.values),
+        np.asarray(clustered.variance.values),
+        rtol=1e-12,
+        atol=1e-12,
+    )
+    assert robust.model.vcetype == "robust"
+    assert robust.model.cluster_var is None
+    assert robust.fit.df_resid == panel_df["panel_id"].nunique() - 1
+
+
+def test_fixedeffects_ols_robust_matches_panel_cluster_directly():
+    """Core estimator path must match; fix cannot live only in the wrapper."""
+    panel_df = _w14_panel(seed=11)
+    robust = FixedEffectsOLS(
+        panel_df, y="y", x=["x1"], fe="panel_id", add_constant=True
+    ).fit(vce="robust")
+    clustered = FixedEffectsOLS(
+        panel_df, y="y", x=["x1"], fe="panel_id", add_constant=True
+    ).fit(vce="cluster", cluster="panel_id")
+    np.testing.assert_allclose(
+        np.asarray(robust.variance.values),
+        np.asarray(clustered.variance.values),
+        rtol=1e-12,
+        atol=1e-12,
+    )
+    assert robust.model.vcetype == "robust"
+
+
+def test_xtreg_fe_robust_unbalanced_and_multi_slope():
+    """Panel-robust path handles unbalanced panels and multiple slopes."""
+    rng = np.random.default_rng(99)
+    rows = []
+    for i in range(1, 16):
+        t_i = 3 + (i % 4)
+        for t in range(t_i):
+            rows.append(
+                {
+                    "id": i,
+                    "t": t,
+                    "x1": rng.normal(),
+                    "x2": rng.normal(),
+                    "y": rng.normal(),
+                }
+            )
+    df = pd.DataFrame(rows)
+    robust = xtreg_fe(df, y="y", x=["x1", "x2"], fe="id", vce="robust")
+    clustered = xtreg_fe(df, y="y", x=["x1", "x2"], fe="id", vce="cluster", cluster="id")
+    np.testing.assert_allclose(
+        np.asarray(robust.variance.values),
+        np.asarray(clustered.variance.values),
+        rtol=1e-12,
+        atol=1e-12,
+    )
+    assert {c.name for c in robust.coefficients} >= {"x1", "x2", "_cons"}
+    assert robust.fit.df_resid == df["id"].nunique() - 1
+
+
+@pytest.mark.parametrize("nested", [True, False])
+def test_areg_cluster_nested_nonnested_finite_sample(nested):
+    """areg cluster SE must use areg-owned k_eff (not reghdfe nested write-off)."""
+    df = _w14_panel()
+    cl = "cluster_nested" if nested else "cluster_nonnested"
+    model = AbsorbingOLS(
+        data=df, y="y", x=["x1"], absorb="panel_id", add_constant=True
+    )
+    result = model.fit(vce="cluster", cluster=cl)
+    # Sanity: SEs finite, df_resid = G-1, both slope and intercept present.
+    assert result.fit.df_resid == df[cl].nunique() - 1
+    names = {c.name: c.std_err for c in result.coefficients}
+    assert names["x1"] > 0 and names["_cons"] > 0
+    n_panels = df["panel_id"].nunique()
+    # areg keeps absorb rank in df_a even when FE is nested in cluster (G-1 with const).
+    expected_df_a = float(n_panels - (1 if model.add_constant else 0))
+    assert model._df_a == expected_df_a
+    # k_eff = k_x + const + df_a (areg-owned); nested write-off would give k_eff≈2.
+    k_eff = model._cluster_k_eff(1)
+    assert k_eff == 1 + 1 + int(expected_df_a)
+    if nested:
+        # Historical bug used k_eff=2 → SE ~8–9% too small vs correct k_eff.
+        # Correct SE must exceed the wrong-scale SE by the finite-sample ratio.
+        n = len(df)
+        G = df[cl].nunique()
+        m_wrong = (G / (G - 1)) * ((n - 1) / (n - 2))
+        m_right = (G / (G - 1)) * ((n - 1) / (n - k_eff))
+        se_wrong_proxy = names["x1"] * np.sqrt(m_wrong / m_right)
+        assert names["x1"] > se_wrong_proxy * 1.05
+
+
 def test_areg_rejects_multiway_cluster():
     """areg must raise ValueError for multi-way cluster, not TypeError."""
     df = _make_fe_data()

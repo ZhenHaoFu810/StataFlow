@@ -40,6 +40,9 @@ class AbsorbingOLS:
         Independent variable names.
     absorb : str | list[str]
         Categorical variable(s) to absorb. Multiple variables are supported.
+        Note: a bare string selects Stata ``areg`` semantics; a list (even of
+        length one) selects ``reghdfe`` semantics. The two modes use different
+        cluster small-sample rank rules (see ``_cluster_k_eff``).
     add_constant : bool, default True
         Whether to include a constant term.
     missing : str, default "drop"
@@ -511,11 +514,19 @@ class AbsorbingOLS:
     def _cluster_k_eff(self, k_x: int) -> int:
         """Effective rank for cluster small-sample adjustment.
 
-        Aligns with Stata reghdfe/areg: ``k_eff = k_x + df_a + nested_adj``,
-        where ``nested_adj`` is 1 if any absorbed FE is nested in a cluster
-        variable. This replaces the previous ``k_full - nested_params`` rule,
-        which produced incorrect (sometimes negative) k_eff for nested FEs.
+        Command-owned formulas (must not be shared blindly):
+
+        * **reghdfe**: ``k_eff = k_x + df_a + nested_adj``, where ``nested_adj``
+          is 1 if any absorbed FE is nested in a cluster variable. Nested FE
+          levels are already excluded from ``df_a`` in reghdfe mode.
+        * **areg**: ``k_eff = k_x + 1_{const} + df_a``. Stata ``areg`` keeps
+          absorbed rank in ``e(df_a)`` even when FE is nested in cluster and
+          counts the reported intercept in the finite-sample factor.
         """
+        if not self._reghdfe_mode:
+            const_adj = 1 if self.add_constant else 0
+            return k_x + const_adj + int(round(self._df_a))
+
         nested_adj = 0
         fe_info = getattr(self, '_dummy_info', []) or getattr(self, '_fe_info', [])
         for info in fe_info:
@@ -856,11 +867,16 @@ class AbsorbingOLS:
                 n_levels = info['num_levels']
                 n_slopes = len(info.get('slopes', []))
                 has_intercept = info.get('has_intercept', True)
-                intercept_df = (
-                    1
-                    if has_intercept and not self._fe_is_nested_in_cluster(info)
-                    else 0
-                )
+                # reghdfe zeros nested FE intercept contribution; areg does not
+                # (Stata areg keeps e(df_a)=G-1 even when absorb is nested in cluster).
+                if self._reghdfe_mode:
+                    intercept_df = (
+                        1
+                        if has_intercept and not self._fe_is_nested_in_cluster(info)
+                        else 0
+                    )
+                else:
+                    intercept_df = 1 if has_intercept else 0
                 params_per_level = intercept_df + n_slopes
                 effective_levels.append(n_levels * params_per_level)
 
@@ -1153,7 +1169,7 @@ class AbsorbingOLS:
 
         if use_map:
             # MAP path does not yet support slope absorption (_cons recovery
-            # and variance formulas need adaptation).  All slope golden tests
+            # and variance formulas need adaptation). Stata comparison cases
             # use small-N datasets that stay on the LSDV path.
             has_slopes = any(
                 len(spec.slopes) > 0 for spec in self.absorb_specs
@@ -1535,7 +1551,7 @@ class AbsorbingOLS:
             df_model=df_model,
             df_resid=df_resid,
             df_a=df_a,
-            rank=k_full,
+            rank=int(np.linalg.matrix_rank(cov_reported)),
             rss=rss,
             tss=tss,
             mss=rss_r - rss if rss_r is not None else None,
@@ -1597,7 +1613,7 @@ class AbsorbingOLS:
     def predict(self, type: str = "xb", newdata: Optional[pd.DataFrame] = None) -> np.ndarray:
         """Generate predictions after fitting."""
         if not self._is_fitted:
-            raise ValueError("Model has not been fitted yet. Call fit() first.")
+            raise ValueError("Model has not been fitted. Call fit() first.")
         if type not in ("xb", "residuals", "d", "xbd", "dresiduals", "stdp"):
             raise ValueError(
                 f"type='{type}' not supported for AbsorbingOLS. "
@@ -1645,7 +1661,7 @@ class AbsorbingOLS:
     def margins(self, type: str = "dydx") -> SimpleNamespace:
         """Compute marginal effects."""
         if not self._is_fitted:
-            raise ValueError("Model has not been fitted yet. Call fit() first.")
+            raise ValueError("Model has not been fitted. Call fit() first.")
         from stataflow.postestimation import margins_ame_linear, _build_margins_result
 
         k = len(self._beta_reported)
@@ -1666,7 +1682,7 @@ class AbsorbingOLS:
             with the estimated FE coefficient (alpha) for that level.
         """
         if not self._is_fitted:
-            raise ValueError("Model has not been fitted yet. Call fit() first.")
+            raise ValueError("Model has not been fitted. Call fit() first.")
         if self._beta_full is None:
             raise ValueError("No fitted coefficients available.")
 

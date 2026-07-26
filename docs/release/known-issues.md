@@ -1,84 +1,69 @@
 # Known Issues
 
-This document registers issues that are acknowledged but not treated as release-blocking for the current Stable release (`1.1.0`) and the July 2026 v1.2.0+ correctness-hardening release-candidate sync.
+This page records the non-blocking limitations of StataFlow 1.2.0. The
+[command support matrix](../command-support-matrix/README.md) is the
+authoritative option-by-option reference.
 
-## v1.1.0 update
+## Community Command Coverage
 
-The `revalidation-v1.1` audit remediation (2026-06-04) closed all 108 identified issues:
-
-- **96** were fixed in code and verified.
-- **4** were promoted to documented known limitations (see below and [ADR-0003](../adr/ADR-0003-lsdv-cons-se-under-multiway-cluster.md)).
-- **8** were deferred to v1.2.0+ (display-layer parameters and advanced first-stage statistics).
-
-See [`open-source-update-log-1.1.0.md`](./open-source-update-log-1.1.0.md) for the full user-facing change list.
-
----
-
-## 2026-07-09 correctness-hardening update
-
-The v1.2.0+ release-candidate sync closed the internal modular revalidation queue used to harden correctness and public-export readiness:
-
-- R3 HDFE remediation was closed, including M03 omitted-VCE audit-helper handling.
-- FE, GLM, PPMLHDFE, factor-variable, residual, RD, DID, IV, and postestimation evidence was refreshed or marked with explicit support boundaries.
-- Golden-test collection now has explicit guards for active-row metadata and unsupported weight combinations.
-- Public release checks were refreshed: public tests (`405 passed`), internal audit (`95 passed`), golden collection (`839 tests collected`), examples, wheel build, and export dry-run.
-
-This sync did not expand unsupported option surfaces. Remaining gaps below are still intentionally documented boundaries.
-
----
-
-## 1. Vendor command completeness — all are partial subsets
-
-All community commands in `stataflow.compat.stata` are implemented as **high-frequency-path subsets**, not full Stata command reproductions. This is by design for the Beta phase, but users may misinterpret wrapper availability as full support.
+Community commands implement documented, high-frequency subsets rather than
+every option provided by the corresponding Stata package.
 
 | Command | Status | Largest remaining gap |
-|---------|--------|----------------------|
-| `reghdfe` | Beta | 3-way+ clustering, mobility-group DoF adjustments, `group`/`individual` FE |
-| `ivreghdfe` | Beta | CUE estimator, HAC standard errors (`dkraay`), `partial`/`fwl`, `orthog`/`endogtest`/`redundant` |
-| `ppmlhdfe` | Beta | Full `separation` methods (`ir`, `simplex`, `mu`), 3-way+ clustering, `keepsingletons` |
+|---|---|---|
+| `reghdfe` | Beta | 3-way+ clustering, mobility-group DoF, `group`/`individual` FE |
+| `ivreghdfe` | Beta | CUE, `partial`/`fwl`, `orthog`/`endogtest`/`redundant` |
+| `ppmlhdfe` | Beta | Full `separation` methods, 3-way+ clustering, `keepsingletons` |
 | `did_imputation` | Beta | `window`, `minn`, `hbalance`, `leaveout`, `avgeffectsby` |
-| `eventstudyinteract` | Beta | `covariates`, `window`, `minn`, complete matrix returns (`e(b_interact)`, etc.) |
+| `eventstudyinteract` | Beta | `covariates`, `window`, `minn`, complete matrix returns |
 | `csdid` | Beta | `method="ipw"`, `gtcontrol`, `longdiff` |
-| `rdrobust` | Beta | `deriv > 0` (Kink RD), `rdplot` bin-selection algorithm alignment (2-3x difference vs Stata) |
+| `rdrobust` | Beta | `deriv > 0`; exact `rdplot` bin-selection alignment |
 
-See individual support matrices in `docs/command-support-matrix/` for the exact supported/planned/unsupported split.
+## Documented Numerical Differences
 
----
+These boundaries apply outside the strict July 2026 release snapshot or to
+display/postestimation paths not represented by the aggregate 40-case table.
 
-## 2. Structural alignment residuals
+| Area | Observed difference | Public boundary |
+|---|---:|---|
+| `reghdfe` / `ivreghdfe` constant SE under 2-way clustering | about 2-16% | Governed by [ADR-0003](../adr/ADR-0003-lsdv-cons-se-under-multiway-cluster.md) |
+| `ivreghdfe` clustered `stdp` when clusters nest all FEs | about 0.28% | `rtol=5e-3` |
+| `ppmlhdfe` Pearson/deviance/working residuals | about 0.35% | `rtol=5e-3` |
+| `reghdfe` MAP clustered slope SE when clusters nest an FE | about 0.5% | `rtol=5e-3` |
+| `rdrobust` fuzzy RD SE | up to 5% synthetic; 0.5% Senate | Completed comparison, outside strict release aggregate |
+| `rdrobust` cluster / nearest-neighbor cluster SE | up to 3% | Completed comparison, outside strict release aggregate |
+| `rdrobust` automatic bandwidth paths | estimates up to 0.5%; bandwidths up to 1% | Completed comparison, outside strict release aggregate |
 
-The following are known mathematical/algorithmic gaps where Python and Stata results differ within documented tolerances. These are **not fixable without architectural changes** and are governed by ADRs:
+The former `rdrobust` nearest-neighbor discrepancy on repeated mass points was
+fixed in 1.2.0 and is not a known limitation.
 
-| Area | Residual | Tolerance | ADR / Explanation |
-|------|----------|-----------|-------------------|
-| `reghdfe` / `ivreghdfe` _cons SE under 2-way cluster | ~2-16% | Documented | ADR-0003: LSDV vs iterative demeaning structural difference |
-| `ivreghdfe` cluster `stdp` when cluster nests all FEs | ~0.28% | `rtol=5e-3` | Known VCE small-sample factor difference |
-| `ppmlhdfe` residuals (pearson/deviance/working) | ~0.35% | `rtol=5e-3` | IRLS/HDFE convergence precision difference |
-| `reghdfe` MAP cluster slope SE when cluster nests FE (1-way) | ~0.5% | `rtol=5e-3` | MAP builds cluster meat on partialled-out data; LSDV builds on full design matrix. Constant SE and OLS/robust VCEs are exact. |
+## Unsupported Surfaces
 
----
+- Three-way and higher clustering is not supported.
+- Weight support is command-specific. Only commands that document `aweight`
+  accept analytic weights; other Stata weight types are not generally
+  available.
+- Most Stata-compatible estimation wrappers return `ResultSchema`; `csdid()`
+  returns a fitted `CSDID` model. Use the core estimator layer for prediction
+  and margins workflows that require a fitted model.
+- `rdrobust` kink designs (`deriv > 0`) remain unsupported.
+- The `rdplot` companion is available, but its bin-selection algorithm is not
+  claimed to reproduce Stata exactly.
 
-## 3. Infrastructure limitations
+## Runtime Behavior
 
-- **Three-way and higher multi-way clustering:** Not yet supported. Only 2-way cluster is implemented for `reghdfe`, `ivreghdfe`, and `ppmlhdfe`.
-- **Weights beyond `aweight`:** `fweight`, `pweight`, `iweight` are not yet supported.
-- **Post-estimation on wrappers:** The `compat.stata` wrapper layer returns `ResultSchema` and does not expose `.predict()` / `.margins()` directly. Use the core estimator layer for post-estimation.
-- **CI/CD:** GitHub Actions pipeline is configured (`.github/workflows/ci.yml`) and runs on Python 3.10, 3.11, and 3.12. Golden dual-run tests (which require local Stata 17) are excluded from CI.
+When a two-way clustered covariance meat matrix is not positive
+semi-definite, affected HDFE estimators emit `RuntimeWarning` and apply the
+documented PSD correction. See
+[ADR-0004](../adr/ADR-0004-psd-fix-architecture.md).
 
-## 4. Runtime warnings and intentional fallbacks
+Unsupported arguments raise `ValueError` or `NotImplementedError`; they are
+never silently ignored.
 
-- **2-way cluster rank-deficiency detection:** When the Cameron-Gelbach-Miller meat matrix is not positive semi-definite (for example, when one cluster dimension is small or nested within fixed effects), `reghdfe`, `ivreghdfe`, and `ppmlhdfe` emit a `RuntimeWarning` and apply a PSD-fix fallback. This is intentional behavior and matches the documented fallback path; standard errors in these cases may differ slightly from Stata's internal fallback. Slope SEs in non-rank-deficient cases remain aligned to `< 1e-6`.
+## Validation Boundary
 
----
-
-## 5. Documentation / usability
-
-- **Source map / support matrix synchronization:** While current state is aligned, historical drift between code changes and documentation updates has occurred. The Codex review protocol now requires documentation alignment as a gating step.
-- **Output formatting:** No unified `summary(style="stata")` formatter exists yet.
-
----
-
-## Issue registration policy
-
-- New issues discovered during development are added here before being promoted to the backlog or a dedicated task card.
-- Issues marked as "known" in this file are explicitly **not** treated as release blockers for the Beta, but they inform the roadmap for subsequent phases.
+The July 2026 Stata 17 comparison snapshot contains `40/40` passing numerical
+cases plus one DID functional check. Full local Stata validation checks
+completed with `856 passed, 12 skipped`; the public suite completed `10/10`
+reproducible validation cases. See [VALIDATION.md](../../VALIDATION.md) for
+the formula, family maxima, and evidence links.

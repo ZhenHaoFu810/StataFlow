@@ -179,6 +179,19 @@ class CSDID:
         df["_stataflow_row_id"] = np.arange(len(df))
         df = df.dropna(subset=[y, uid, time, ft, cluster_col])
 
+        # Wave 14 / ISSUE-013: reject relative gvar vs calendar time.
+        from stataflow.estimators._did_time_contract import (
+            assert_nonempty_did_fit,
+            validate_treatment_time_units,
+        )
+
+        validate_treatment_time_units(
+            df[time],
+            df[ft],
+            never_is_missing=False,
+            command="csdid",
+        )
+
         cohorts = sorted([g for g in df[ft].unique() if g > 0])
         years = sorted(df[time].unique())
         min_year = min(years)
@@ -331,6 +344,13 @@ class CSDID:
             self._n_clust = len(used_units)
         else:
             self._n_clust = int(df.loc[df[uid].isin(used_units), cluster_col].nunique())
+        assert_nonempty_did_fit(
+            nobs=int(self._nobs),
+            coefficients=[],
+            command="csdid",
+            att_dict=att_gt,
+            require_effects=True,
+        )
         return self._finalize_fit(att_gt, if_gt, df, units, cohort_map, has_never_treated)
 
     def _finalize_fit(self, att_gt, if_gt, df, units, cohort_map, has_never_treated):
@@ -459,6 +479,18 @@ class CSDID:
             raise ValueError(f"cluster variable '{cluster_col}' not found in data")
         df["_stataflow_row_id"] = np.arange(len(df))
         df = df.dropna(subset=[y, uid, time, ft, cluster_col] + xvars)
+
+        from stataflow.estimators._did_time_contract import (
+            assert_nonempty_did_fit,
+            validate_treatment_time_units,
+        )
+
+        validate_treatment_time_units(
+            df[time],
+            df[ft],
+            never_is_missing=False,
+            command="csdid",
+        )
 
         cohorts = sorted([g for g in df[ft].unique() if g > 0])
         years = sorted(df[time].unique())
@@ -652,6 +684,13 @@ class CSDID:
             self._n_clust = len(used_units)
         else:
             self._n_clust = int(df.loc[df[uid].isin(used_units), cluster_col].nunique())
+        assert_nonempty_did_fit(
+            nobs=int(self._nobs),
+            coefficients=[],
+            command="csdid",
+            att_dict=att_gt,
+            require_effects=True,
+        )
         return self._finalize_fit(
             att_gt, if_gt, df, units, cohort_map, has_never_treated
         )
@@ -676,34 +715,29 @@ class CSDID:
 
     def estat_event(self):
         """Return a ResultSchema with event study estimates."""
+        if not hasattr(self, "_rifgt") or not self._rifgt:
+            raise ValueError("Model has not been fitted. Call fit() first.")
+
         params = self.params
         bse = self.bse
 
         # Build ordered list of display keys: Pre_avg, Post_avg, Tm*, Tp*
         numeric_events = [k for k in params if not isinstance(k, str)]
 
-        display_keys = []
+        display_items = []
         if "Pre_avg" in params:
-            display_keys.append("Pre_avg")
+            display_items.append(("Pre_avg", "Pre_avg"))
         if "Post_avg" in params:
-            display_keys.append("Post_avg")
+            display_items.append(("Post_avg", "Post_avg"))
         for e in sorted(numeric_events):
+            event_label = f"{abs(float(e)):g}" if e < 0 else f"{float(e):g}"
             if e < 0:
-                display_keys.append(f"Tm{abs(e)}")
+                display_items.append((f"Tm{event_label}", e))
             else:
-                display_keys.append(f"Tp{e}")
+                display_items.append((f"Tp{event_label}", e))
 
-        # Map display key back to params key
-        def _to_param_key(k):
-            if k in ("Pre_avg", "Post_avg"):
-                return k
-            if k.startswith("Tm"):
-                return -int(k[2:])
-            if k.startswith("Tp"):
-                return int(k[2:])
-            raise ValueError(f"Unknown key: {k}")
-
-        param_keys = [_to_param_key(k) for k in display_keys]
+        display_keys = [label for label, _ in display_items]
+        param_keys = [key for _, key in display_items]
 
         coefs = np.array([params[k] for k in param_keys])
         ses = np.array([bse[k] for k in param_keys])
@@ -725,7 +759,7 @@ class CSDID:
             ))
 
         names = [c.name for c in coefficients]
-        keys = [_to_param_key(name) for name in names]
+        keys = param_keys
         if keys:
             influence = np.column_stack([
                 [self._event_if[key].get(unit, 0.0) for unit in self._units]
@@ -808,10 +842,36 @@ class CSDID:
         else:
             raise ValueError(f"Unknown aggtype: {aggtype!r}")
 
+    @property
+    def result(self) -> ResultSchema:
+        """Default result for the fitted model.
+
+        Returns the ``ResultSchema`` of the default (event) aggregation,
+        identical to ``self.estat("event")``. Explicit aggregations remain
+        available through :meth:`estat` (ADR-0005).
+        """
+        return self.estat("event")
+
+    def summary(self, width: int = 80, show_ci: bool = False) -> str:
+        """Return the display text of the default (event) aggregation.
+
+        Delegates to ``self.result.summary()``; no result construction is
+        duplicated here (ADR-0005).
+        """
+        return self.result.summary(width=width, show_ci=show_ci)
+
+    def display(self, width: int = 80, show_ci: bool = False) -> None:
+        """Print the default (event) aggregation table to stdout.
+
+        Delegates to ``self.result.display()``; no result construction is
+        duplicated here (ADR-0005).
+        """
+        self.result.display(width=width, show_ci=show_ci)
+
     def estat_simple(self):
         """Simple average of all ATT(g,t)."""
         if not hasattr(self, "_rifgt") or not self._rifgt:
-            raise ValueError("Model has not been fitted.")
+            raise ValueError("Model has not been fitted. Call fit() first.")
 
         post_treatment_pairs = [
             pair for pair in self._group_time_att if pair[1] >= pair[0]
@@ -828,7 +888,7 @@ class CSDID:
     def estat_group(self):
         """ATT averaged by cohort."""
         if not hasattr(self, "_rifgt") or not self._rifgt:
-            raise ValueError("Model has not been fitted.")
+            raise ValueError("Model has not been fitted. Call fit() first.")
 
         cohorts = sorted(set(g for g, t in self._group_time_att.keys()))
 
@@ -843,7 +903,7 @@ class CSDID:
 
             atte, influence = self._aggregate_pairs(pairs)
 
-            names.append(f"g{int(g)}")
+            names.append(f"g{float(g):g}")
             coefs.append(atte)
             influence_columns.append(influence)
 
@@ -857,7 +917,7 @@ class CSDID:
     def estat_calendar(self):
         """ATT averaged by calendar time."""
         if not hasattr(self, "_rifgt") or not self._rifgt:
-            raise ValueError("Model has not been fitted.")
+            raise ValueError("Model has not been fitted. Call fit() first.")
 
         times = sorted(set(t for g, t in self._group_time_att.keys()))
 
@@ -872,7 +932,7 @@ class CSDID:
 
             atte, influence = self._aggregate_pairs(pairs)
 
-            names.append(f"t{int(t)}")
+            names.append(f"t{float(t):g}")
             coefs.append(atte)
             influence_columns.append(influence)
 
@@ -885,6 +945,8 @@ class CSDID:
 
     def estat_pretrend(self):
         """Joint Wald test of pre-trends."""
+        if not hasattr(self, "_rifgt") or not self._rifgt:
+            raise ValueError("Model has not been fitted. Call fit() first.")
         pre_pairs = sorted(
             pair for pair in self._group_time_att if pair[1] < pair[0]
         )

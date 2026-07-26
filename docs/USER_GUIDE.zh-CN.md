@@ -1,5 +1,7 @@
 # StataFlow 用户手册
 
+[English](./USER_GUIDE.md)
+
 ## 1. 什么是 StataFlow？
 
 StataFlow（`stataflow`）是一个 Python 计量经济学工具包，目标是高精度复现 **Stata 17** 的估计结果。它面向希望用 Python 做计量分析的科研人员、数据分析师和经济学者。
@@ -9,7 +11,7 @@ StataFlow 提供**两层使用方式**：
 - **`stataflow.compat.stata`** — Stata 风格命令函数（`regress()`、`reghdfe()`、`logit()` 等）。推荐大多数用户使用，语法与 Stata 高度相似。
 - **`stataflow`（核心 estimator）** — Python 原生 estimator 类（`OLS`、`Logit`、`PPMLHDFE` 等）。面向需要编程式控制、后估计分析及与 Python 数据管道集成的进阶用户。
 
-每个对外命令都通过 **dual-run 测试** 验证：在相同的合成数据和真实数据集上分别运行 Stata 17 和 Python，对系数、标准误、t 统计量和拟合统计量进行字段级比对。
+每个对外命令都通过 **Stata 17 对照**验证：在相同的合成数据和真实数据集上分别运行 Stata 17 和 Python，对系数、标准误、t 统计量和拟合统计量进行字段级比对。
 
 ## 2. 安装
 
@@ -31,10 +33,10 @@ pip install -e .
 
 ```python
 import stataflow
-print(stataflow.__version__)  # 例如 "1.1.0"
+print(stataflow.__version__)  # "1.2.0"
 ```
 
-> 仅当需要本地运行 golden dual-run 测试时才需安装 Stata 17。包本身在正常使用中不依赖 Stata。
+> 仅当需要本地运行可复现验证用例时才需安装 Stata 17。包本身在正常使用中不依赖 Stata。
 
 ## 3. 核心概念：从 Stata 到 Python
 
@@ -61,11 +63,13 @@ df.describe()    # 描述统计（类似 summarize）
 | `reg y x1 x2, cluster(id)` | `regress(df, y="y", x=["x1", "x2"], vce="cluster", cluster="id")` | |
 | `absorb(firm year)` | `absorb="firm year"` 或 `absorb=["firm", "year"]` | 两种形式均可 |
 | `i.group##c.x` | `x=["i.group##c.x"]` | 因子语法支持 |
-| `[aw=w]` | `aweight="w"` | 仅支持分析权重 |
+| `[aw=w]` | `aweight="w"` | 仅在明确列出 `aweight` 的命令中可用 |
 
 ### 3.3 读取结果
 
-所有命令返回 `ResultSchema` 对象。最简单的查看方式：
+大多数 Stata 兼容估计 wrapper 返回 `ResultSchema` 对象。`csdid()` 是例外：
+它返回拟合好的 `CSDID` 模型，并通过 `.result`、`.summary()` 和 `.display()`
+提供默认 event aggregation。查看 `ResultSchema` 结果的最简单方式是：
 
 ```python
 result = regress(df, y="wage", x=["edu", "exper"], vce="robust")
@@ -207,7 +211,9 @@ result = model.fit(vce="cluster", cluster="state")
 | `var1#var2` | 仅交互项 | `state#post` |
 | `var1##var2` | 主效应 + 交互项 | `state##post` |
 
-**注意**：`#` / `##` 中的裸变量默认按连续变量处理。`L.x` / `F.x` 时间序列算子、三向交互不支持。
+**注意**：`#` / `##` 中的裸变量默认按连续变量处理。三向及更高阶
+交互（如 `i.g1#i.g2#c.x3`）受支持；`L.x` / `F.x` 时间序列算子以及
+不指定水平的 `ib.` 不受支持。
 
 ## 8. 已知对齐残差
 
@@ -215,7 +221,7 @@ result = model.fit(vce="cluster", cluster="state")
 
 | 领域 | 残差 | 容忍度 | 说明 |
 |------|------|--------|------|
-| 双向聚类 `_cons` 标准误（`reghdfe`、`ivreghdfe`、`ppmlhdfe`） | ~2–16% | 已记录 | [ADR-0003](../adr/ADR-0003-lsdv-cons-se-under-multiway-cluster.md)：LSDV 与迭代去均值框架的结构性差异。**斜率标准误仍保持 `< 1e-6` 对齐。** |
+| 双向聚类 `_cons` 标准误（`reghdfe`、`ivreghdfe`、`ppmlhdfe`） | ~2–16% | 已记录 | [ADR-0003](./adr/ADR-0003-lsdv-cons-se-under-multiway-cluster.md)：LSDV 与迭代去均值框架的结构性差异。**斜率标准误仍保持 `< 1e-6` 对齐。** |
 | 双向聚类秩亏回退 | RuntimeWarning | 已记录 | 当 Cameron-Gelbach-Miller meat 矩阵非正定时，会应用 PSD fix。非秩亏场景下斜率标准误仍保持精确。 |
 | `ivreghdfe` cluster `stdp`（cluster 嵌套所有 FE 时） | ~0.28% | `rtol=5e-3` | 已知的小样本修正因子差异 |
 | `ppmlhdfe` 残差 | ~0.35% | `rtol=5e-3` | IRLS/HDFE 收敛精度差异 |
@@ -242,6 +248,26 @@ ic = estat_ic(result)
 print(f"AIC = {ic['aic']:.2f}, BIC = {ic['bic']:.2f}")
 ```
 
+### CSDID 结果契约
+
+`csdid()` 返回拟合好的 `CSDID` 模型对象而非 `ResultSchema`。该模型提供默认可展示结果（ADR-0005）：
+
+```python
+from stataflow.compat.stata import csdid
+
+model = csdid(df, y="y", id="id", time="time", first_treat="first_treat")
+
+model.display()          # 默认（event）聚合的 Stata 风格表格
+text = model.summary()   # 同一表格的字符串形式
+result = model.result    # 默认（event）聚合的 ResultSchema
+
+# 显式聚合仍通过 estat() 获取
+simple = model.estat("simple")
+pretrend = model.estat("pretrend")
+```
+
+`model.result` 与 `model.estat("event")` 逐字段一致。注意 `aggtype` 是 `model.estat()` 的参数，不是 `csdid()` wrapper 的参数。
+
 ## 10. 常见问题
 
 **Q: `x` 为什么必须是列表？** 因为 stataflow 允许在 `x` 中使用 Stata 风格的因子变量语法（例如 `["i.state##c.post"]`），必须用列表来区分单个字符串与变量名列表。
@@ -250,15 +276,16 @@ print(f"AIC = {ic['aic']:.2f}, BIC = {ic['bic']:.2f}")
 
 **Q: 如何区分 `xtreg_fe` 和 `reghdfe`？** `xtreg_fe` 用于单一 FE（面板变量），`reghdfe` 支持多个 FE 及高级功能（MAP、斜率吸收、DK VCE 等）。简单面板模型两者均可使用；2+ FE 场景必须用 `reghdfe`。
 
-**Q: 双向聚类标准误的 RuntimeWarning 是什么意思？** 在 `reghdfe`/`ivreghdfe`/`ppmlhdfe` 的双向聚类中，如果某个聚类维度较小或嵌套在固定效应内，可能导致矩条件矩阵秩亏。此时会发出 `RuntimeWarning` 并应用 PSD fix 回退。非秩亏场景下斜率标准误仍保持 `< 1e-6` 对齐；常数项标准误可能存在约 3%（合成数据）至 16%（真实数据）的残差，详见 [ADR-0003](../adr/ADR-0003-lsdv-cons-se-under-multiway-cluster.md)。
+**Q: 双向聚类标准误的 RuntimeWarning 是什么意思？** 在 `reghdfe`/`ivreghdfe`/`ppmlhdfe` 的双向聚类中，如果某个聚类维度较小或嵌套在固定效应内，可能导致矩条件矩阵秩亏。此时会发出 `RuntimeWarning` 并应用 PSD fix 回退。非秩亏场景下斜率标准误仍保持 `< 1e-6` 对齐；常数项标准误可能存在约 3%（合成数据）至 16%（真实数据）的残差，详见 [ADR-0003](./adr/ADR-0003-lsdv-cons-se-under-multiway-cluster.md)。
 
 ## 11. 下一步
 
 - **[Cookbook（英文）](./cookbook.md)** — 逐命令可复制代码示例
 - **[中文使用手册（详细版）](./cookbook.zh-CN.md)** — 含教程、图解和完整代码
 - **[命令支持矩阵](./command-support-matrix/README.md)** — 逐命令完整参数支持表
-- **[示例](../examples/)** — 可直接运行的 demo 脚本
+- **[示例](../examples/)** — 9 个可直接运行的 demo，覆盖全部 14 个公开命令
+- **[验证证据 JSON](../research/results/validation/evidence-summary.json)** — 可追溯的 Stata 17 对照汇总
 
 ---
 
-*最后更新：2026-06-04*
+*最后更新：2026 年 7 月。*

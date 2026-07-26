@@ -1,4 +1,97 @@
 {
+  "release_validation": {
+    "version": "1.2.0",
+    "frozen_scope": "July 2026",
+    "relative_deviation_formula": "|Python - Stata| / max(|Stata|, 1e-15)",
+    "total_comparisons": {
+      "passed": 40,
+      "total": 40,
+      "functional_checks": 1,
+      "max_coefficient_relative_deviation": 2.48e-07,
+      "max_standard_error_relative_deviation": 2.25e-07,
+      "public_estimation_command_count": 14,
+      "exported_helper_count": 1,
+      "exported_helper": "rdplot"
+    },
+    "full_local_stata_validation": {
+      "passed": 856,
+      "skipped": 12,
+      "skip_categories": {
+        "unsupported_weight_contracts": 8,
+        "stata_fields_not_stored": 4
+      }
+    },
+    "public_reproducible_validation": {
+      "passed": 10,
+      "total": 10
+    },
+    "families": [
+      {
+        "family": "linear_fe",
+        "passed": 18,
+        "total": 18,
+        "functional_checks": 0,
+        "max_coefficient_relative_deviation": 2.48e-07,
+        "max_standard_error_relative_deviation": 2.25e-07,
+        "covered_commands": [
+          "regress",
+          "areg",
+          "xtreg_fe",
+          "reghdfe"
+        ]
+      },
+      {
+        "family": "iv",
+        "passed": 5,
+        "total": 5,
+        "functional_checks": 0,
+        "max_coefficient_relative_deviation": 1.16e-08,
+        "max_standard_error_relative_deviation": 3.74e-08,
+        "covered_commands": [
+          "ivregress_2sls",
+          "ivreghdfe"
+        ]
+      },
+      {
+        "family": "binary_count",
+        "passed": 12,
+        "total": 12,
+        "functional_checks": 0,
+        "max_coefficient_relative_deviation": 1.33e-07,
+        "max_standard_error_relative_deviation": 8.42e-08,
+        "covered_commands": [
+          "logit",
+          "probit",
+          "poisson",
+          "ppmlhdfe"
+        ]
+      },
+      {
+        "family": "did",
+        "passed": 2,
+        "total": 2,
+        "functional_checks": 1,
+        "max_coefficient_relative_deviation": 8.13e-08,
+        "max_standard_error_relative_deviation": 5.13e-08,
+        "covered_commands": [
+          "did_imputation",
+          "csdid",
+          "eventstudyinteract"
+        ]
+      },
+      {
+        "family": "rd",
+        "passed": 3,
+        "total": 3,
+        "functional_checks": 0,
+        "max_coefficient_relative_deviation": 9.23e-08,
+        "max_standard_error_relative_deviation": 2.96e-08,
+        "covered_commands": [
+          "rdrobust"
+        ]
+      }
+    ]
+  },
   "strict_alignment_standard": "field_level_strict",
   "target_stata_version": "17",
   "command_count": 14,
@@ -317,9 +410,9 @@
       "title": "rdrobust senate election data",
       "source": "Official rdrobust Stata package",
       "source_url": "https://github.com/rdpackages/rdrobust",
-      "local_path": "research/vendor/stata_community/rdrobust/rdrobust-master/stata/rdrobust_senate.dta",
-      "license_note": "Mirrored as part of the vendor research archive.",
-      "distributable": "research_mirror",
+      "local_path": "tests/data/rdrobust_senate.dta",
+      "license_note": "Public copy distributed with the test suite.",
+      "distributable": "yes",
       "commands": [
         "rdrobust"
       ],
@@ -352,10 +445,7 @@
         "f_stat"
       ],
       "status": "done",
-      "known_differences": "None.",
-      "evidence_files": [
-        "tests/golden/test_p1_ols_basic.py"
-      ]
+      "known_differences": "None."
     },
     {
       "case_id": "v1_regress_real_grunfeld",
@@ -379,10 +469,7 @@
         "f_stat"
       ],
       "status": "done",
-      "known_differences": "None.",
-      "evidence_files": [
-        "tests/golden/test_v1_regress_real_grunfeld.py"
-      ]
+      "known_differences": "None."
     },
     {
       "case_id": "p2_fe_basic",
@@ -405,10 +492,7 @@
         "f_stat"
       ],
       "status": "done",
-      "known_differences": "Synthetic test uses core estimator with explicit constant reporting to mirror Stata output.",
-      "evidence_files": [
-        "tests/golden/test_p2_fe_basic.py"
-      ]
+      "known_differences": "Synthetic test uses core estimator with explicit constant reporting to mirror Stata output."
     },
     {
       "case_id": "v1_xtreg_fe_real_grunfeld",
@@ -431,10 +515,7 @@
         "standard_errors"
       ],
       "status": "done",
-      "known_differences": "Wrapper evidence tracks slope coefficients and within-model statistics; Stata's reported FE constant is outside the wrapper's public surface.",
-      "evidence_files": [
-        "tests/golden/test_v1_xtreg_fe_real_grunfeld.py"
-      ]
+      "known_differences": "Wrapper evidence tracks slope coefficients and within-model statistics; Stata's reported FE constant is outside the wrapper's public surface."
     },
     {
       "case_id": "p3_areg_basic",
@@ -455,10 +536,7 @@
         "df_a"
       ],
       "status": "done",
-      "known_differences": "None.",
-      "evidence_files": [
-        "tests/golden/test_p3_areg_basic.py"
-      ]
+      "known_differences": "None."
     },
     {
       "case_id": "p3_areg_real_panel",
@@ -479,10 +557,7 @@
         "df_a"
       ],
       "status": "done",
-      "known_differences": "None.",
-      "evidence_files": [
-        "tests/golden/test_p3_areg_real_panel.py"
-      ]
+      "known_differences": "None."
     },
     {
       "case_id": "p3_reghdfe_real_panel",
@@ -503,10 +578,7 @@
         "standard_errors"
       ],
       "status": "done",
-      "known_differences": "Validated subset only: 1-2 categorical FEs, single cluster, high-frequency predict semantics.",
-      "evidence_files": [
-        "tests/golden/test_p3_reghdfe_real_panel.py"
-      ]
+      "known_differences": "Validated subset only: 1-2 categorical FEs, single cluster, high-frequency predict semantics."
     },
     {
       "case_id": "p3_reghdfe_basic",
@@ -524,10 +596,7 @@
         "standard_errors"
       ],
       "status": "done",
-      "known_differences": "None for the implemented subset.",
-      "evidence_files": [
-        "tests/golden/test_p3_reghdfe_basic.py"
-      ]
+      "known_differences": "None for the implemented subset."
     },
     {
       "case_id": "w2_ivregress_basic",
@@ -544,10 +613,7 @@
         "standard_errors"
       ],
       "status": "done",
-      "known_differences": "None.",
-      "evidence_files": [
-        "tests/golden/test_w2_ivregress_basic.py"
-      ]
+      "known_differences": "None."
     },
     {
       "case_id": "w2_ivregress_real_card",
@@ -568,10 +634,7 @@
         "f_stat"
       ],
       "status": "done",
-      "known_differences": "None for validated subset.",
-      "evidence_files": [
-        "tests/golden/test_w2_ivregress_real_card.py"
-      ]
+      "known_differences": "None for validated subset."
     },
     {
       "case_id": "w2_ivreghdfe_basic",
@@ -589,10 +652,7 @@
         "standard_errors"
       ],
       "status": "done",
-      "known_differences": "Validated subset only.",
-      "evidence_files": [
-        "tests/golden/test_w2_ivreghdfe_basic.py"
-      ]
+      "known_differences": "Validated subset only."
     },
     {
       "case_id": "w2_ivreghdfe_real_panel",
@@ -613,10 +673,7 @@
         "standard_errors"
       ],
       "status": "done",
-      "known_differences": "Validated subset only: no first-stage diagnostics in evidence surface.",
-      "evidence_files": [
-        "tests/golden/test_w2_ivreghdfe_real_panel.py"
-      ]
+      "known_differences": "Validated subset only: no first-stage diagnostics in evidence surface."
     },
     {
       "case_id": "w3_logit_real",
@@ -639,10 +696,7 @@
         "confidence_intervals"
       ],
       "status": "done",
-      "known_differences": "None.",
-      "evidence_files": [
-        "tests/golden/test_w3_logit_real.py"
-      ]
+      "known_differences": "None."
     },
     {
       "case_id": "w3_logit_basic",
@@ -663,10 +717,7 @@
         "confidence_intervals"
       ],
       "status": "done",
-      "known_differences": "None.",
-      "evidence_files": [
-        "tests/golden/test_w3_logit_basic.py"
-      ]
+      "known_differences": "None."
     },
     {
       "case_id": "w3_probit_basic",
@@ -687,10 +738,7 @@
         "confidence_intervals"
       ],
       "status": "done",
-      "known_differences": "None.",
-      "evidence_files": [
-        "tests/golden/test_w3_probit_basic.py"
-      ]
+      "known_differences": "None."
     },
     {
       "case_id": "w3_probit_real",
@@ -713,10 +761,7 @@
         "confidence_intervals"
       ],
       "status": "done",
-      "known_differences": "None.",
-      "evidence_files": [
-        "tests/golden/test_w3_probit_real.py"
-      ]
+      "known_differences": "None."
     },
     {
       "case_id": "w3_poisson_basic",
@@ -738,10 +783,7 @@
         "confidence_intervals"
       ],
       "status": "done",
-      "known_differences": "None.",
-      "evidence_files": [
-        "tests/golden/test_w3_poisson_basic.py"
-      ]
+      "known_differences": "None."
     },
     {
       "case_id": "w3_poisson_real",
@@ -765,10 +807,7 @@
         "confidence_intervals"
       ],
       "status": "done",
-      "known_differences": "None.",
-      "evidence_files": [
-        "tests/golden/test_w3_poisson_real.py"
-      ]
+      "known_differences": "None."
     },
     {
       "case_id": "w3_ppmlhdfe_real_gravity",
@@ -791,11 +830,7 @@
         "confidence_intervals"
       ],
       "status": "done",
-      "known_differences": "Validated subset only: support matrix still marks the command Alpha because separation and richer option surfaces are not fully reproduced.",
-      "evidence_files": [
-        "tests/golden/test_w3_ppmlhdfe_real_gravity.py",
-        "tests/golden/test_p3_ppmlhdfe_fit_stats.py"
-      ]
+      "known_differences": "Validated subset only: support matrix still marks the command Alpha because separation and richer option surfaces are not fully reproduced."
     },
     {
       "case_id": "w3_ppmlhdfe_basic",
@@ -815,10 +850,7 @@
         "confidence_intervals"
       ],
       "status": "done",
-      "known_differences": "Validated subset only.",
-      "evidence_files": [
-        "tests/golden/test_w3_ppmlhdfe_basic.py"
-      ]
+      "known_differences": "Validated subset only."
     },
     {
       "case_id": "w4_did_imputation_basic",
@@ -835,10 +867,7 @@
         "standard_errors"
       ],
       "status": "done",
-      "known_differences": "Validated subset only.",
-      "evidence_files": [
-        "tests/golden/test_w4_did_imputation_basic.py"
-      ]
+      "known_differences": "Validated subset only."
     },
     {
       "case_id": "w4_did_imputation_real_ezunem",
@@ -856,10 +885,7 @@
         "standard_errors"
       ],
       "status": "done",
-      "known_differences": "Validated subset only: evidence tracks implemented allhorizons/autosample path.",
-      "evidence_files": [
-        "tests/golden/test_w4_did_imputation_real_ezunem.py"
-      ]
+      "known_differences": "Validated subset only: evidence tracks implemented allhorizons/autosample path."
     },
     {
       "case_id": "w4_eventstudyinteract_real_ezunem",
@@ -877,10 +903,7 @@
         "standard_errors"
       ],
       "status": "done",
-      "known_differences": "Validated subset only: automatic event-dummy generation limited to implemented grammar.",
-      "evidence_files": [
-        "tests/golden/test_w4_eventstudyinteract_real_ezunem.py"
-      ]
+      "known_differences": "Validated subset only: automatic event-dummy generation limited to implemented grammar."
     },
     {
       "case_id": "w4_eventstudyinteract_basic",
@@ -897,10 +920,7 @@
         "standard_errors"
       ],
       "status": "done",
-      "known_differences": "Validated subset only.",
-      "evidence_files": [
-        "tests/golden/test_w4_eventstudyinteract_basic.py"
-      ]
+      "known_differences": "Validated subset only."
     },
     {
       "case_id": "w4_csdid_basic",
@@ -917,10 +937,7 @@
         "standard_errors"
       ],
       "status": "done",
-      "known_differences": "Validated subset only.",
-      "evidence_files": [
-        "tests/golden/test_w4_csdid_basic.py"
-      ]
+      "known_differences": "Validated subset only."
     },
     {
       "case_id": "w4_csdid_real_ezunem",
@@ -937,10 +954,7 @@
         "standard_errors"
       ],
       "status": "done",
-      "known_differences": "Validated subset only: method='reg' path and implemented aggregation outputs.",
-      "evidence_files": [
-        "tests/golden/test_w4_csdid_real_ezunem.py"
-      ]
+      "known_differences": "Validated subset only: method='reg' path and implemented aggregation outputs."
     },
     {
       "case_id": "a1_rdrobust_senate",
@@ -958,10 +972,7 @@
         "confidence_intervals"
       ],
       "status": "done",
-      "known_differences": "Automatic bandwidth paths use explicitly documented looser tolerance because selector iterations are numerically sensitive.",
-      "evidence_files": [
-        "tests/test_rdrobust.py"
-      ]
+      "known_differences": "Automatic bandwidth paths use explicitly documented looser tolerance because selector iterations are numerically sensitive."
     },
     {
       "case_id": "a1_rdrobust_basic",
@@ -979,10 +990,7 @@
         "confidence_intervals"
       ],
       "status": "done",
-      "known_differences": "None.",
-      "evidence_files": [
-        "tests/test_rdrobust.py"
-      ]
+      "known_differences": "None."
     }
   ]
 }

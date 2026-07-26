@@ -603,7 +603,7 @@ class OLS:
             Prediction vector.
         """
         if not self._is_fitted:
-            raise ValueError("Model has not been fitted yet. Call fit() first.")
+            raise ValueError("Model has not been fitted. Call fit() first.")
         if type not in ("xb", "residuals"):
             raise ValueError(f"type='{type}' not supported for OLS. Use 'xb' or 'residuals'.")
 
@@ -645,7 +645,7 @@ class OLS:
             Margins result object.
         """
         if not self._is_fitted:
-            raise ValueError("Model has not been fitted yet. Call fit() first.")
+            raise ValueError("Model has not been fitted. Call fit() first.")
         from stataflow.postestimation import margins_ame_linear, _build_margins_result
 
         effects = margins_ame_linear(self._beta)

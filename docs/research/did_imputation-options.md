@@ -5,7 +5,7 @@
 - 命令族：`DID / Event Study Extensions`
 - 类型：`did_imputation` 的辅助选项子系统
 - 规则来源：`did_imputation.ado` v2023-11-22 + Borusyak, Jaravel & Spiess (2023)
-- 关联文件：`research/vendor/stata_community/did_imputation/did_imputation-main/did_imputation.ado`
+- 规则来源：公开发布的 `did_imputation.ado`
 
 ## 0. 版本边界：`window()`
 
@@ -265,16 +265,16 @@ replace `resid' = `effect' - `avgtau' if (`touse') & (`D'==1)
 
 ## 实现优先级建议
 
-| 选项 | 复杂度 | 用户价值 | Wave 9 建议 |
+| 选项 | 复杂度 | 用户价值 | 实现状态 |
 |------|--------|---------|------------|
-| `wtr` | LOW | MEDIUM | Round 2 实现 |
-| `sum` | LOW | LOW | Round 2 或推迟 |
-| `hbalance` | LOW | LOW | Round 2 或推迟 |
-| `hetby` | LOW-MEDIUM | MEDIUM | Round 2 实现 |
-| `project` | MEDIUM | LOW | Round 3 或推迟 |
-| `saveestimates` | LOW | HIGH | Round 2 实现 |
-| `saveweights` | LOW | MEDIUM | Round 2 实现 |
-| `saveresid` | LOW | LOW | Round 3 或推迟 |
+| `wtr` | LOW | MEDIUM | 已实现 |
+| `sum` | LOW | LOW | 已实现 |
+| `hbalance` | LOW | LOW | 尚未实现 |
+| `hetby` | LOW-MEDIUM | MEDIUM | 已实现 |
+| `project` | MEDIUM | LOW | 尚未实现 |
+| `saveestimates` | LOW | HIGH | 已实现 |
+| `saveweights` | LOW | MEDIUM | 已实现 |
+| `saveresid` | LOW | LOW | 已实现 |
 
 ## Synthetic 样例设计
 

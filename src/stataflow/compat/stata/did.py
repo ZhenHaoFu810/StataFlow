@@ -120,8 +120,10 @@ def eventstudyinteract(
     time, first_treat, horizons, omit
         Alternative auto-generation mode. The wrapper creates dummy
         variables ``Dm{h}`` (for ``h < 0``), ``D0``, or ``Dp{h}``
-        (for ``h > 0``) on a copy of ``data``. The horizon ``omit``
-        is excluded as the reference category.
+        (for ``h > 0``) on a copy of ``data``. Event times outside the
+        requested horizon range are binned into the nearest endpoint;
+        never-treated observations remain zero in every event dummy.
+        The horizon ``omit`` is excluded as the reference category.
     """
     if kwargs:
         raise ValueError(f"Unsupported arguments: {list(kwargs.keys())}")
@@ -141,6 +143,7 @@ def eventstudyinteract(
         used_event_dummies = []
         rel_time = df[time] - df[first_treat]
         rel_time = rel_time.where(df[first_treat] > 0, np.nan)
+        rel_time = rel_time.clip(lower=min(horizons), upper=max(horizons))
 
         for h in horizons:
             if h == omit:
@@ -198,9 +201,13 @@ def csdid(
 
     Maps to :class:`stataflow.estimators.CSDID`.
 
-    Returns the fitted :class:`CSDID` model object.  Use ``model.estat()``
-    for post-estimation aggregation (``event``, ``simple``, ``group``,
-    ``calendar``, ``pretrend``).
+    Returns the fitted :class:`CSDID` model object.  The default result
+    contract (ADR-0005) is: ``model.result`` returns the default (event)
+    aggregation as a :class:`ResultSchema`, and ``model.summary()`` /
+    ``model.display()`` delegate to it.  Use ``model.estat()`` for explicit
+    post-estimation aggregation (``event``, ``simple``, ``group``,
+    ``calendar``, ``pretrend``); ``aggtype`` is an argument of
+    :meth:`CSDID.estat`, not of this wrapper.
     """
     for option, value in (
         ("window", window),

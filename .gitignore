@@ -54,8 +54,7 @@ workspace/qwencode-current/review-*.md
 workspace/current-task/*
 !workspace/current-task/README.md
 
-# Agent / session state (internal, never public)
-.claude/
+# Session state (internal, never public)
 session_restore/
 
 # Internal scripts and their outputs

@@ -1,5 +1,7 @@
 # StataFlow 中文使用手册
 
+[English](./cookbook.md)
+
 > **面向 Stata 用户的 Python 计量经济学工具包**
 >
 > 本文档假设你已经熟悉 Stata 的计量命令，但刚接触 Python / pandas。
@@ -609,14 +611,11 @@ result = poisson(df, y="count_y", x=["x1"], noconstant=True)
 
 **注意**：`offset` 和 `exposure` 在 `ppmlhdfe` 中已支持（见下文 5.5），`poisson` wrapper 暂未支持。
 
-### 5.2a 比值比 / 发生率比（`or_`、`eform`、`irr`）
+### 5.2a Logit 比值比与 Poisson 发生率比（`or_`、`irr`）
 
 ```python
 # Logit：比值比（odds ratios）
 result = logit(df, y="y_binary", x=["x1", "x2"], vce="robust", or_=True)
-
-# Probit：eform 输出 exp(beta)
-result = probit(df, y="y_binary", x=["x1", "x2"], vce="robust", eform=True)
 
 # Poisson：发生率比（IRR）
 result = poisson(df, y="count_y", x=["x1", "x2"], vce="robust", irr=True)
@@ -625,11 +624,11 @@ result = poisson(df, y="count_y", x=["x1", "x2"], vce="robust", irr=True)
 **Stata 对应**：
 ```stata
 logit y_binary x1 x2, robust or
-probit y_binary x1 x2, robust eform
 poisson count_y x1 x2, robust irr
 ```
 
-> `eform`、`irr`、`or_` 为别名。z 统计量和 p 值仍基于原始系数尺度计算，与 Stata 输出一致。
+> Logit 使用 `or_` 输出比值比，Poisson 使用 `irr` 输出发生率比。
+> Probit 系数保留在潜变量指数尺度。z 统计量和 p 值仍基于原始系数尺度计算。
 
 ### 5.3 PPML + 高维固定效应 — `ppmlhdfe`
 
@@ -1116,7 +1115,8 @@ result = regress(df, y="y", x=["x1##x2"])   # 裸变量在 # 内被视为连续
 
 - `ib.group`（未指定基组层级）
 - `L.x` / `F.x`（时间序列算子）
-- 三向或更高阶交互（如 `i.g1#i.g2#c.x3`）
+
+三向或更高阶交互（如 `i.g1#i.g2#c.x3`）受支持。
 
 ---
 
@@ -1224,7 +1224,9 @@ coef_df.to_stata("regression_results.dta", write_index=False)
 
 ## 10. 结果对象详解
 
-所有 `compat.stata` 命令都返回一个 **ResultSchema** 对象，包含以下主要字段：
+大多数 `compat.stata` 估计命令返回 **ResultSchema** 对象，包含以下主要字段。
+`csdid()` 返回拟合好的 `CSDID` 模型，其 `.result` 提供默认 event
+aggregation 的 `ResultSchema`：
 
 ### 10.1 模型信息 (`result.model`)
 
@@ -1327,4 +1329,5 @@ ic = estat_ic(result)
 
 ---
 
-*本文档最后更新于 2026-04-30。有关各命令的详细支持参数和已知限制，请参阅 `command-support-matrix/`。*
+*本文档最后更新于 2026 年 7 月。各命令的详细支持参数和已知限制见
+[`command-support-matrix/`](./command-support-matrix/README.md)。*

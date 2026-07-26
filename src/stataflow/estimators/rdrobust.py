@@ -91,37 +91,74 @@ def _wls_poly(y: np.ndarray, x: np.ndarray, c: float, w: np.ndarray, order: int)
     return beta, inv_gram
 
 
-def _nn_residuals(x: np.ndarray, y: np.ndarray, matches: int = 3) -> np.ndarray:
+def _compute_dups(x: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """
-    Nearest-neighbor variance estimator residuals.
+    Stata-style mass-point counters for a sorted running variable.
 
-    For each observation, find the nearest matches in x (excluding self),
-    average their y values, and compute the leave-neighborhood residual.
+    Mirrors ``by x: gen dups = _N`` / ``by x: gen dupsid = _n`` used by
+    community ``rdrobust`` when ``vce(nn)`` (and mass-points modes) is active.
+    ``dupsid`` is 1-based within each equal-x block.
+    """
+    n = len(x)
+    dups = np.ones(n, dtype=int)
+    dupsid = np.ones(n, dtype=int)
+    i = 0
+    while i < n:
+        j = i + 1
+        while j < n and x[j] == x[i]:
+            j += 1
+        count = j - i
+        for k in range(i, j):
+            dups[k] = count
+            dupsid[k] = k - i + 1
+        i = j
+    return dups, dupsid
+
+
+def _nn_residuals(
+    x: np.ndarray,
+    y: np.ndarray,
+    matches: int = 3,
+    dups: np.ndarray | None = None,
+    dupsid: np.ndarray | None = None,
+) -> np.ndarray:
+    """
+    Nearest-neighbor variance estimator residuals (CCT / rdrobust Mata).
+
+    Aligns with Mata ``rdrobust_res()`` for ``vce=="nn"``: expand left/right
+    neighborhoods in whole mass-point blocks using ``dups`` / ``dupsid``, then
+    form leave-neighborhood residuals
+    ``sqrt(J/(J+1)) * (y_i - mean_{j in J, j!=i} y_j)``.
+
+    ``x`` must be sorted ascending (stable sort of the estimation sample).
     """
     n = len(y)
+    if n == 0:
+        return np.empty(0, dtype=float)
+    if dups is None or dupsid is None:
+        dups, dupsid = _compute_dups(x)
     res = np.empty(n, dtype=float)
-    # For efficiency on moderate n, use sorting and linear scan.
-    # x is assumed already sorted.
-    for i in range(n):
-        # search left and right for neighbors
-        left = i - 1
-        right = i + 1
-        collected = []
-        while len(collected) < matches and (left >= 0 or right < n):
-            dl = x[i] - x[left] if left >= 0 else np.inf
-            dr = x[right] - x[i] if right < n else np.inf
-            if dl <= dr:
-                if left >= 0:
-                    collected.append(left)
-                    left -= 1
+    for pos in range(n):
+        rpos = int(dups[pos] - dupsid[pos])
+        lpos = int(dupsid[pos] - 1)
+        while lpos + rpos < min(matches, n - 1):
+            if pos - lpos - 1 < 0:
+                rpos += int(dups[pos + rpos + 1])
+            elif pos + rpos + 1 >= n:
+                lpos += int(dups[pos - lpos - 1])
+            elif (x[pos] - x[pos - lpos - 1]) > (x[pos + rpos + 1] - x[pos]):
+                rpos += int(dups[pos + rpos + 1])
+            elif (x[pos] - x[pos - lpos - 1]) < (x[pos + rpos + 1] - x[pos]):
+                lpos += int(dups[pos - lpos - 1])
             else:
-                if right < n:
-                    collected.append(right)
-                    right += 1
-        inds = collected[:matches]
-        y_bar = np.mean(y[inds])
-        Ji = len(inds)
-        res[i] = math.sqrt(Ji / (Ji + 1)) * (y[i] - y_bar)
+                # Equal distance: expand both sides (Stata / official Python).
+                rpos += int(dups[pos + rpos + 1])
+                lpos += int(dups[pos - lpos - 1])
+        lo = pos - lpos
+        hi = pos + rpos
+        y_J = float(y[lo : hi + 1].sum() - y[pos])
+        ji = hi - lo  # length(ind_J) - 1
+        res[pos] = math.sqrt(ji / (ji + 1)) * (y[pos] - y_J / ji)
     return res
 
 

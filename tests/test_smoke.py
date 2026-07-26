@@ -2,9 +2,16 @@
 
 
 def test_import_stataflow():
-    """Verify stataflow package is importable."""
+    """Verify stataflow package is importable and version matches pyproject."""
+    import re
+    from pathlib import Path
+
     import stataflow
-    assert stataflow.__version__ == "1.1.0"
+
+    pyproject = Path(__file__).resolve().parent.parent / "pyproject.toml"
+    match = re.search(r'^version = "([^"]+)"', pyproject.read_text(encoding="utf-8"), re.M)
+    assert match is not None, "version not found in pyproject.toml"
+    assert stataflow.__version__ == match.group(1)
 
 
 def test_import_results_module():

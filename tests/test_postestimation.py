@@ -1,4 +1,4 @@
-"""Unit tests for postestimation helpers (non-golden)."""
+"""Unit tests for postestimation helpers."""
 
 import numpy as np
 import pandas as pd

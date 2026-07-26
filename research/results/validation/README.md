@@ -1,17 +1,18 @@
-# Validation Artifacts
+# Validation Evidence
 
-本目录保存“开源证据册”生成的结构化摘要。
+This directory contains the reviewed, public record of StataFlow's Stata 17
+validation.
 
-当前规范：
+- `evidence-summary.md` provides the human-readable command, dataset, and
+  evidence overview.
+- `evidence-summary.json` provides the same evidence in machine-readable form,
+  including the frozen Stata 1.2.0 release-validation aggregate.
 
-- `evidence-summary.json`
-  - 命令覆盖、数据登记、证据条目总表
-- `evidence-summary.md`
-  - 人可读的汇总摘要
-- `<family>-runner.json`
-  - 单个命令族 runner 的最近一次执行摘要
+The public repository also ships ten self-contained comparison cases under
+`tests/stata_validation/`. They generate deterministic synthetic data, run
+Stata 17 and Python locally, and compare coefficients and standard errors.
+They require a licensed local Stata 17 installation; Stata itself is not
+distributed with this project.
 
-说明：
-
-- 这些产物用于支撑 `docs/validation/` 下的对外证据册
-- 详细统计证据仍以 golden dual-run 测试和 support matrix 为准
+The larger development-time validation archive is intentionally not published.
+Only reviewed aggregate results and reproducible public cases are included.

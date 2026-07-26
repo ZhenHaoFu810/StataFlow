@@ -356,7 +356,7 @@ def test_ivreghdfe_card_cluster_f_stat_matches_stata_small_cluster_path():
     # deficient cluster-robust covariance uses a pseudo-inverse whose details
     # vary across BLAS/LAPACK implementations and even across one-way vs.
     # fallback two-way paths. Stata 17 reports ~0.36 on the reference Windows
-    # machine; exact alignment is covered by golden dual-run tests. Here we
+    # machine; exact alignment is covered by Stata comparison tests. Here we
     # only verify that both VCE paths produce a finite, positive F-stat.
     assert np.isfinite(one_way.fit.f_stat)
     assert np.isfinite(two_way.fit.f_stat)
@@ -460,3 +460,66 @@ def test_ivreg2_liml_adjusted_r2_is_independent_of_rmse_denominator():
 
     assert result.fit.rmse == pytest.approx(1.0348506, rel=1e-6)
     assert result.fit.r2_adj == pytest.approx(0.75834074, rel=1e-6)
+
+
+def _w14_iv_panel(seed: int = 20260719) -> pd.DataFrame:
+    rng = np.random.default_rng(seed)
+    n_entities, n_periods = 40, 6
+    n = n_entities * n_periods
+    panel_id = np.repeat(np.arange(1, n_entities + 1), n_periods)
+    time_id = np.tile(np.arange(1, n_periods + 1), n_entities)
+    cluster_nested = ((panel_id - 1) // 4) + 1
+    cluster_nonnested = (panel_id + time_id) % 5 + 1
+    x1 = rng.normal(size=n)
+    z1 = rng.normal(size=n)
+    entity_fe = np.repeat(rng.normal(scale=1.5, size=n_entities), n_periods)
+    u = rng.normal(size=n)
+    x_endog = 0.6 * z1 + 0.4 * u + rng.normal(scale=0.5, size=n)
+    y = 1.0 + 0.8 * x1 + 1.2 * x_endog + entity_fe + u
+    return pd.DataFrame(
+        {
+            "y": y,
+            "x1": x1,
+            "x_endog": x_endog,
+            "z1": z1,
+            "panel_id": panel_id.astype(int),
+            "cluster_nested": cluster_nested.astype(int),
+            "cluster_nonnested": cluster_nonnested.astype(int),
+        }
+    )
+
+
+@pytest.mark.parametrize(
+    "cluster",
+    ["panel_id", "cluster_nested", "cluster_nonnested"],
+)
+def test_ivreghdfe_cluster_structures_finite_vce(cluster):
+    """ivreghdfe cluster VCE for equal / nested / nonnested FE–cluster designs."""
+    df = _w14_iv_panel()
+    res = ivreghdfe(
+        df,
+        y="y",
+        x_exog=["x1"],
+        x_endog=["x_endog"],
+        instruments=["z1"],
+        absorb="panel_id",
+        vce="cluster",
+        cluster=cluster,
+    )
+    assert res.fit.df_resid == df[cluster].nunique() - 1
+    V = np.asarray(res.variance.values)
+    assert V.shape[0] >= 2
+    assert np.all(np.isfinite(V))
+    # Nested FE must write off absorb DoF (historically inflated SE by ~9%).
+    if cluster == "cluster_nested":
+        model = IVAbsorbingOLS(
+            df,
+            y="y",
+            x_exog=["x1"],
+            x_endog=["x_endog"],
+            instruments=["z1"],
+            absorb=["panel_id"],
+            add_constant=True,
+        )
+        model.fit(vce="cluster", cluster=cluster)
+        assert model._df_a == 0.0

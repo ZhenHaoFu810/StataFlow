@@ -8,7 +8,6 @@ from pathlib import Path
 # Project root
 PROJECT_ROOT = Path(__file__).parent.parent
 TEST_DATA_DIR = PROJECT_ROOT / "tests" / "data"
-GOLDEN_DIR = PROJECT_ROOT / "tests" / "golden"
 STATA_CASES_DIR = PROJECT_ROOT / "stata" / "cases"
 STATA_OUTPUT_DIR = PROJECT_ROOT / "stata" / "output"
 
