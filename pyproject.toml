@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "StataFlow"
-version = "1.1.0"
+version = "1.2.0"
 description = "StataFlow: A Python econometrics toolkit aligned with Stata 17"
 readme = "README.md"
 license = {text = "MIT"}
@@ -55,12 +55,15 @@ where = ["src"]
 [tool.setuptools]
 license-files = ["LICENSE"]
 
+[tool.setuptools.package-data]
+stataflow = ["py.typed"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-v --tb=short"
 markers = [
     "slow: tests that are slow or computationally expensive",
-    "golden: Stata-Python dual-run golden tests requiring local Stata 17",
+    "stata_validation: Stata-Python comparison tests requiring local Stata 17",
     "stata: tests that require a local Stata 17 installation",
     "benchmark: performance benchmark tests",
 ]

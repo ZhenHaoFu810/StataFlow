@@ -6,6 +6,7 @@ import pytest
 
 from stataflow.compat.stata import did_imputation, eventstudyinteract, csdid
 from stataflow.estimators import DIDImputation, EventStudyInteract, CSDID
+from stataflow.results.result import ResultSchema
 
 
 def _make_did_data(n_units=50, n_periods=5, seed=42):
@@ -60,12 +61,149 @@ def _make_eventstudy_data(n_units=50, n_periods=5, seed=42):
     return df
 
 
+def _make_calendar_did_data(n_units=40, n_periods=9, seed=7):
+    """Calendar-year panel with calendar first_treat (Wave 14 valid path)."""
+    rng = np.random.default_rng(seed)
+    years = np.arange(2000, 2000 + n_periods)
+    units = np.repeat(np.arange(n_units), n_periods)
+    time = np.tile(years, n_units)
+    # Half never-treated (missing), half treated in 2004
+    unit_ft = np.full(n_units, np.nan)
+    unit_ft[n_units // 2 :] = 2004.0
+    first_treat = np.repeat(unit_ft, n_periods)
+    treat = pd.notna(first_treat) & (time >= first_treat)
+    y = 1.0 + 1.5 * treat.astype(float) + rng.normal(size=n_units * n_periods)
+    return pd.DataFrame(
+        {"id": units, "time": time, "y": y, "first_treat": first_treat}
+    )
+
+
+def _make_relative_cohort_calendar_time(n_units=20, seed=0):
+    """AUDIT-015 pattern: relative first_treat with calendar year."""
+    rng = np.random.default_rng(seed)
+    years = np.arange(2000, 2009)
+    n_periods = len(years)
+    units = np.repeat(np.arange(n_units), n_periods)
+    time = np.tile(years, n_units)
+    unit_ft = np.full(n_units, np.nan)
+    unit_ft[n_units // 2 :] = 5.0  # relative event time, not calendar year
+    first_treat = np.repeat(unit_ft, n_periods)
+    y = rng.normal(size=n_units * n_periods)
+    return pd.DataFrame(
+        {"id": units, "time": time, "y": y, "first_treat": first_treat}
+    )
+
+
 def test_did_imputation_delegation():
     df = _make_did_data()
     res = did_imputation(df, y="y", id="id", time="time", first_treat="first_treat")
     direct = DIDImputation(df, y="y", id="id", time="time", first_treat="first_treat").fit()
     assert res.model.command == "did_imputation"
     assert len(res.coefficients) == len(direct.coefficients)
+
+
+def test_did_imputation_accepts_integer_periods_with_object_missing_cohort():
+    df = _make_csdid_data(n_units=80, n_periods=6)
+    df["first_treat"] = df["first_treat"].replace(0, pd.NA)
+
+    result = did_imputation(
+        df,
+        y="y",
+        id="id",
+        time="time",
+        first_treat="first_treat",
+        allhorizons=True,
+        autosample=True,
+    )
+
+    assert result.sample.nobs > 0
+    assert result.coefficients
+    assert all(np.isfinite(row.beta) for row in result.coefficients)
+
+
+def test_did_imputation_rejects_relative_cohort_with_calendar_time():
+    df = _make_relative_cohort_calendar_time()
+    with pytest.raises(ValueError, match="same units as time"):
+        did_imputation(
+            df,
+            y="y",
+            id="id",
+            time="time",
+            first_treat="first_treat",
+            allhorizons=True,
+            autosample=True,
+        )
+
+
+def test_csdid_rejects_relative_cohort_with_calendar_time():
+    df = _make_relative_cohort_calendar_time()
+    df = df.assign(first_treat=df["first_treat"].fillna(0.0))
+    with pytest.raises(ValueError, match="same units as time"):
+        csdid(df, y="y", id="id", time="time", first_treat="first_treat")
+
+
+def test_did_imputation_calendar_cohort_nonzero():
+    """Valid calendar coding yields nonzero ATT/event horizons."""
+    df = _make_calendar_did_data()
+    res = did_imputation(
+        df,
+        y="y",
+        id="id",
+        time="time",
+        first_treat="first_treat",
+        allhorizons=True,
+        autosample=True,
+    )
+    assert res.sample.nobs > 0
+    assert res.coefficients
+    assert any(np.isfinite(c.beta) and abs(c.beta) > 0.1 for c in res.coefficients)
+
+
+def test_did_imputation_allows_future_cohort_beyond_max_time():
+    """Future first_treat after max observed time is not a unit-scale error."""
+    df = _make_calendar_did_data()
+    # Shift treated cohort past the sample; units stay never-treated effectively.
+    df = df.copy()
+    treated = df["first_treat"].notna()
+    df.loc[treated, "first_treat"] = 2015.0
+    # All treated units are not-yet-treated throughout; may error for no post cells
+    # but must NOT be the "same units as time" scale error.
+    try:
+        did_imputation(
+            df, y="y", id="id", time="time", first_treat="first_treat", autosample=True
+        )
+    except ValueError as exc:
+        assert "same units as time" not in str(exc)
+
+
+def test_did_imputation_allows_skipped_calendar_period_in_cohort():
+    """Cohort year need not appear as an observed time row (skipped periods OK)."""
+    rng = np.random.default_rng(3)
+    # Observed years skip 2003; cohort is 2003.
+    years = np.array([2000, 2001, 2002, 2004, 2005, 2006])
+    n_units = 30
+    units = np.repeat(np.arange(n_units), len(years))
+    time = np.tile(years, n_units)
+    unit_ft = np.full(n_units, np.nan)
+    unit_ft[n_units // 2 :] = 2003.0
+    first_treat = np.repeat(unit_ft, len(years))
+    treat = pd.notna(first_treat) & (time >= first_treat)
+    y = 1.0 + 1.2 * treat.astype(float) + rng.normal(size=len(units))
+    df = pd.DataFrame({"id": units, "time": time, "y": y, "first_treat": first_treat})
+    res = did_imputation(
+        df, y="y", id="id", time="time", first_treat="first_treat", allhorizons=True
+    )
+    assert res.sample.nobs > 0
+    assert any(np.isfinite(c.beta) for c in res.coefficients)
+
+
+def test_csdid_calendar_cohort_nonzero_att():
+    df = _make_calendar_did_data()
+    df = df.assign(first_treat=df["first_treat"].fillna(0.0))
+    model = csdid(df, y="y", id="id", time="time", first_treat="first_treat")
+    assert model._group_time_att
+    res = model.estat("simple")
+    assert any(np.isfinite(c.beta) and abs(c.beta) > 0.05 for c in res.coefficients)
 
 
 def test_did_imputation_unsupported_kwargs():
@@ -107,6 +245,39 @@ def test_csdid_delegation():
     assert len(res.coefficients) == len(direct.coefficients)
 
 
+def test_csdid_float_period_labels_match_integer_periods():
+    integer_data = _make_csdid_data(n_units=80, n_periods=6)
+    float_data = integer_data.assign(
+        time=integer_data["time"].astype(float),
+        first_treat=integer_data["first_treat"].astype(float),
+    )
+
+    integer_result = csdid(
+        integer_data,
+        y="y",
+        id="id",
+        time="time",
+        first_treat="first_treat",
+    ).estat("event")
+    float_result = csdid(
+        float_data,
+        y="y",
+        id="id",
+        time="time",
+        first_treat="first_treat",
+    ).estat("event")
+
+    assert [row.name for row in float_result.coefficients] == [
+        row.name for row in integer_result.coefficients
+    ]
+    np.testing.assert_allclose(
+        [row.beta for row in float_result.coefficients],
+        [row.beta for row in integer_result.coefficients],
+        rtol=1e-12,
+        atol=1e-12,
+    )
+
+
 def test_csdid_default_returns_fitted_model_for_chained_estat():
     """Default csdid should return a fitted model so users can call multiple estat outputs."""
     df = _make_csdid_data(n_units=100, n_periods=5)
@@ -118,6 +289,51 @@ def test_csdid_default_returns_fitted_model_for_chained_estat():
     assert event.model.command == "csdid"
     assert simple.model.command == "csdid"
     assert pretrend.model.command == "csdid"
+
+
+def test_csdid_default_result_is_displayable():
+    """ADR-0005: the fitted CSDID model exposes a default ResultSchema and display."""
+    df = _make_csdid_data()
+    model = csdid(df, y="y", id="id", time="time", first_treat="first_treat")
+    assert isinstance(model.result, ResultSchema)
+    assert "csdid" in model.summary().lower()
+
+
+def test_csdid_result_equals_estat_event_field_by_field():
+    """ADR-0005: model.result must equal model.estat("event") field by field."""
+    df = _make_csdid_data()
+    model = csdid(df, y="y", id="id", time="time", first_treat="first_treat")
+    assert model.result.to_dict() == model.estat("event").to_dict()
+
+
+def test_csdid_display_delegates_to_default_result(capsys):
+    """ADR-0005: model.display() prints the default (event) aggregation table."""
+    df = _make_csdid_data()
+    model = csdid(df, y="y", id="id", time="time", first_treat="first_treat")
+    model.display()
+    text = capsys.readouterr().out
+    assert "csdid" in text.lower()
+    assert "Coef." in text
+    assert text == model.result.summary() + "\n"
+
+
+def test_csdid_unfitted_model_result_raises_clear_error():
+    """ADR-0005: unfitted core models raise a clear error instead of AttributeError."""
+    df = _make_csdid_data()
+    model = CSDID(df, y="y", id="id", time="time", first_treat="first_treat")
+    message = "Model has not been fitted. Call fit() first."
+    with pytest.raises(ValueError) as exc_info:
+        model.result
+    assert str(exc_info.value) == message
+    with pytest.raises(ValueError) as exc_info:
+        model.summary()
+    assert str(exc_info.value) == message
+    with pytest.raises(ValueError) as exc_info:
+        model.estat("event")
+    assert str(exc_info.value) == message
+    with pytest.raises(ValueError) as exc_info:
+        model.estat("pretrend")
+    assert str(exc_info.value) == message
 
 
 def test_csdid_unsupported_kwargs():
@@ -176,12 +392,13 @@ def test_csdid_rejects_unsupported_method():
 
 
 def test_eventstudyinteract_auto_generation():
-    """Auto-generation mode should produce same IW coefficients as legacy mode with matching dummies."""
+    """Auto-generation bins endpoint horizons and matches explicit dummies."""
     df = _make_eventstudy_data()
-    # Manually create dummies matching the auto-generation naming convention
-    df["Dm2"] = df["dm2"]
-    df["D0"] = df["d0"]
-    df["Dp1"] = df["dp1"]
+    rel_time = (df["time"] - df["first_treat"]).where(df["first_treat"] > 0)
+    rel_time = rel_time.clip(lower=-2, upper=1)
+    df["Dm2"] = (rel_time == -2).astype(float)
+    df["D0"] = (rel_time == 0).astype(float)
+    df["Dp1"] = (rel_time == 1).astype(float)
     # Legacy mode with explicit dummies (same set as auto-generation, omitting -1)
     res_legacy = eventstudyinteract(
         df, y="y", event_dummies=["Dm2", "D0", "Dp1"],
@@ -199,6 +416,41 @@ def test_eventstudyinteract_auto_generation():
     for c_auto, c_legacy in zip(res_auto.coefficients, res_legacy.coefficients):
         assert c_auto.name == c_legacy.name
         assert pytest.approx(c_auto.beta, abs=1e-10) == c_legacy.beta
+
+
+def test_eventstudyinteract_auto_generation_bins_never_treated_safely():
+    df = _make_eventstudy_data(n_units=80, n_periods=8)
+    rel_time = (df["time"] - df["first_treat"]).where(df["first_treat"] > 0)
+    binned = rel_time.clip(lower=-2, upper=2)
+    for horizon, name in [(-2, "Dm2"), (0, "D0"), (1, "Dp1"), (2, "Dp2")]:
+        df[name] = (binned == horizon).astype(float)
+    explicit = eventstudyinteract(
+        df,
+        y="y",
+        event_dummies=["Dm2", "D0", "Dp1", "Dp2"],
+        cohort="first_treat",
+        control_cohort="never_treat",
+        absorb=["id", "time"],
+    )
+    automatic = eventstudyinteract(
+        df,
+        y="y",
+        time="time",
+        first_treat="first_treat",
+        horizons=[-2, -1, 0, 1, 2],
+        omit=-1,
+        cohort="first_treat",
+        control_cohort="never_treat",
+        absorb=["id", "time"],
+    )
+
+    np.testing.assert_allclose(
+        [row.beta for row in automatic.coefficients],
+        [row.beta for row in explicit.coefficients],
+        rtol=1e-10,
+        atol=1e-10,
+    )
+    assert not df.loc[df["never_treat"] == 1, ["Dm2", "D0", "Dp1", "Dp2"]].any().any()
 
 
 def test_eventstudyinteract_auto_generation_cluster():
@@ -426,7 +678,7 @@ def test_csdid_missing_data_drops():
 
 
 def test_csdid_unbalanced_panel_skips_empty_group_time_cells():
-    """CSDID should not silently propagate NaN ATT(g,t) on unbalanced panels."""
+    """CSDID must not return a successful empty fit when no ATT(g,t) is estimable."""
     df = pd.DataFrame({
         "id": [1, 1, 2, 2, 3, 3],
         "time": [1, 2, 1, 2, 1, 2],
@@ -434,13 +686,38 @@ def test_csdid_unbalanced_panel_skips_empty_group_time_cells():
         "y": [1.0, np.nan, 3.0, 4.0, 5.0, 6.0],
     })
 
-    model = csdid(df, y="y", id="id", time="time", first_treat="first_treat")
-    res = model.estat("event")
+    # Treated unit has missing y in post period → no estimable ATT cells.
+    with pytest.raises(ValueError, match="no group-time ATT|N=0|not estimable"):
+        csdid(df, y="y", id="id", time="time", first_treat="first_treat")
 
-    assert len(res.coefficients) == 0 or all(
-        np.isfinite(c.beta) and np.isfinite(c.std_err)
-        for c in res.coefficients
-    )
+
+def test_csdid_rejects_single_period_empty_fit():
+    """Single-period panel cannot produce estimable ATT; must not look fitted."""
+    df = pd.DataFrame({
+        "id": [1, 2],
+        "time": [2000, 2000],
+        "first_treat": [0, 2000],
+        "y": [1.0, 2.0],
+    })
+    with pytest.raises(ValueError, match="no group-time ATT|N=0|not estimable|post-treatment"):
+        csdid(df, y="y", id="id", time="time", first_treat="first_treat")
+
+
+def test_did_imputation_rejects_empty_coefficient_surface():
+    """Successful did_imputation cannot return N>0 with an empty coefficient list."""
+    # One treated unit at last period only, no pre periods for imputation → empty surface
+    # after screening is rare; force via minn that drops every horizon.
+    df = _make_did_data(n_units=20, n_periods=4, seed=11)
+    with pytest.raises(ValueError, match="no coefficients|N=0"):
+        did_imputation(
+            df,
+            y="y",
+            id="id",
+            time="time",
+            first_treat="first_treat",
+            allhorizons=True,
+            minn=10_000,
+        )
 
 
 def test_csdid_single_cohort():
@@ -573,18 +850,25 @@ def test_did_imputation_window_with_allhorizons():
 def test_did_imputation_minn_skips_small_horizons():
     """minn should skip horizons with fewer imputable observations than threshold."""
     df = _make_did_data(n_units=50, n_periods=5)
-    # Default call (no minn) should produce more horizons than minn=50
     res_default = did_imputation(
         df, y="y", id="id", time="time", first_treat="first_treat",
         allhorizons=True,
     )
+    # Moderate minn reduces horizons but still leaves a nonempty surface.
     res_minn = did_imputation(
         df, y="y", id="id", time="time", first_treat="first_treat",
-        allhorizons=True, minn=50,
+        allhorizons=True, minn=5,
     )
     assert len(res_minn.coefficients) <= len(res_default.coefficients), (
         "minn should reduce or equal the number of reported horizons"
     )
+    assert len(res_minn.coefficients) > 0
+    # Extreme minn that would empty the surface must fail closed (not a silent empty fit).
+    with pytest.raises(ValueError, match="no coefficients"):
+        did_imputation(
+            df, y="y", id="id", time="time", first_treat="first_treat",
+            allhorizons=True, minn=10_000,
+        )
 
 
 def test_did_imputation_window_invalid_length():

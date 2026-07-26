@@ -613,6 +613,27 @@ class IVAbsorbingOLS:
 
     # _compute_cluster_meat, _fix_psd, _fix_psd_reghdfe: imported from _vce_utils (ADR-0004).
 
+    def _fe_nested_in_any_cluster(self, fe_var: str) -> bool:
+        """Return True if each FE level maps to a single cluster value (nested).
+
+        Matches Stata ivreghdfe/reghdfe nesting write-off of absorbed DoF when
+        the FE dimension is coarser-cluster nested (or equal via exact name match
+        handled separately).
+        """
+        if not self._cluster_vars or not hasattr(self, "_df") or self._df is None:
+            return False
+        if fe_var not in self._df.columns:
+            return False
+        for cluster_var in self._cluster_vars:
+            if cluster_var not in self._df.columns:
+                continue
+            nesting = self._df.groupby(fe_var, sort=False)[cluster_var].nunique(
+                dropna=False
+            )
+            if bool((nesting <= 1).all()):
+                return True
+        return False
+
     def _compute_multiway_cluster_vce(
         self,
         X_proj: np.ndarray,
@@ -683,6 +704,8 @@ class IVAbsorbingOLS:
             self._cluster_vars.append(cv)
         # Backward compat
         self._cluster_arr = self._cluster_arrs[0] if self._cluster_arrs else None
+        # Needed before df_a nesting checks during the same prepare pass.
+        self._df = df
 
         # Build x_exog columns
         x_exog_cols = []
@@ -821,7 +844,11 @@ class IVAbsorbingOLS:
 
         effective_levels = []
         for i, var in enumerate(self.absorb_vars):
+            # Stata ivreghdfe/reghdfe: absorbed FE that equals or nests inside a
+            # cluster dimension is excluded from e(df_a) (probe: nested → df_a=0).
             if self._cluster_vars and var in self._cluster_vars:
+                continue
+            if self._fe_nested_in_any_cluster(var):
                 continue
             if i < len(fe_levels_for_df_a):
                 effective_levels.append(fe_levels_for_df_a[i])
@@ -1749,7 +1776,13 @@ class IVAbsorbingOLS:
             df_resid = float(n - k_x_full)
         else:
             df_resid = float(n - k_x_full)
-        k_eff = k_x_reported + df_a
+        # ivreghdfe residualizes absorb FE then runs ivreg2-style 2SLS. When
+        # df_a is written off (FE nested/equal to cluster), Stata still counts a
+        # structural constant in the finite-sample factor if add_constant.
+        const_penalty = (
+            1 if self.add_constant and df_a == 0 and self._has_effective_fe else 0
+        )
+        k_eff = k_x_reported + int(df_a) + const_penalty
 
         # Estimator-specific coefficient and VCE
         extra_stats: dict = {}
@@ -2060,7 +2093,7 @@ class IVAbsorbingOLS:
             df_model=df_model,
             df_resid=df_resid,
             df_a=df_a,
-            rank=k_x_full,
+            rank=int(np.linalg.matrix_rank(cov_reported)),
             rss=rss_struct,
             tss=tss_resid,
             mss=tss_resid - rss_struct,
@@ -2144,7 +2177,7 @@ class IVAbsorbingOLS:
     def predict(self, type: str = "xb") -> np.ndarray:
         """Generate predictions after fitting."""
         if not self._is_fitted:
-            raise ValueError("Model has not been fitted yet. Call fit() first.")
+            raise ValueError("Model has not been fitted. Call fit() first.")
         if type not in ("xb", "residuals", "d", "xbd", "dresiduals", "stdp"):
             raise ValueError(
                 f"type='{type}' not supported for IVAbsorbingOLS. "

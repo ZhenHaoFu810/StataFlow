@@ -610,7 +610,7 @@ class PPMLHDFE:
     def predict(self, type: str = "xb", newdata: Optional[pd.DataFrame] = None) -> np.ndarray:
         """Generate predictions after fitting."""
         if not self._is_fitted:
-            raise ValueError("Model has not been fitted yet. Call fit() first.")
+            raise ValueError("Model has not been fitted. Call fit() first.")
         if type not in ("xb", "mu", "residuals", "pearson", "deviance", "working"):
             raise ValueError(f"type='{type}' not supported for PPMLHDFE. Use 'xb', 'mu', 'residuals', 'pearson', 'deviance', or 'working'.")
         if newdata is not None:
@@ -650,7 +650,7 @@ class PPMLHDFE:
     def margins(self, type: str = "dydx") -> SimpleNamespace:
         """Compute marginal effects."""
         if not self._is_fitted:
-            raise ValueError("Model has not been fitted yet. Call fit() first.")
+            raise ValueError("Model has not been fitted. Call fit() first.")
         from stataflow.postestimation import (
             margins_ame_poisson, margins_mem_poisson, _build_margins_result,
         )

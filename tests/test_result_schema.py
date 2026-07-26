@@ -1,7 +1,11 @@
 """Tests for ResultSchema serialization and deserialization."""
 
+import io
 import json
+from contextlib import redirect_stdout
 
+import numpy as np
+import pandas as pd
 import pytest
 
 from stataflow.results.result import (
@@ -270,3 +274,87 @@ def test_result_schema_validate():
         invalid = mutate(base)
         with pytest.raises(ValueError):
             ResultSchema.from_dict(invalid)
+
+
+def _capture_display(obj) -> str:
+    """Capture the complete display() text of a result or fitted model."""
+    buf = io.StringIO()
+    with redirect_stdout(buf):
+        obj.display()
+    return buf.getvalue()
+
+
+def test_cross_command_display_has_coef_header():
+    """Complete display() text of regress, reghdfe, logit, and csdid shares the
+    coefficient-table header (ADR-0005)."""
+    from stataflow.compat.stata import csdid, logit, regress, reghdfe
+
+    rng = np.random.default_rng(42)
+    n = 200
+    df = pd.DataFrame({
+        "y": rng.normal(size=n),
+        "x1": rng.normal(size=n),
+        "x2": rng.normal(size=n),
+    })
+    df["y"] = df["y"] + 0.5 * df["x1"] - 0.3 * df["x2"]
+
+    texts = {"regress": _capture_display(regress(df, y="y", x=["x1", "x2"]))}
+
+    panel = pd.DataFrame({
+        "y": rng.normal(size=n),
+        "x1": rng.normal(size=n),
+        "unit_id": np.repeat(np.arange(40), 5),
+        "period": np.tile(np.arange(5), 40),
+    })
+    texts["reghdfe"] = _capture_display(
+        reghdfe(panel, y="y", x=["x1"], absorb=["unit_id", "period"])
+    )
+
+    binary = df.copy()
+    binary["y_bin"] = (binary["y"] > 0).astype(float)
+    texts["logit"] = _capture_display(logit(binary, y="y_bin", x=["x1", "x2"]))
+
+    n_units, n_periods = 50, 5
+    units = np.repeat(np.arange(n_units), n_periods)
+    times = np.tile(np.arange(n_periods), n_units)
+    first_treat = np.repeat(rng.choice([0, 2, 3], size=n_units), n_periods)
+    treat = (times >= first_treat).astype(float)
+    treat[first_treat == 0] = 0
+    did = pd.DataFrame({
+        "id": units,
+        "time": times,
+        "y": 1.0 + 2.0 * treat + rng.normal(size=n_units * n_periods),
+        "first_treat": first_treat,
+    })
+    texts["csdid"] = _capture_display(csdid(did, y="y", id="id", time="time", first_treat="first_treat"))
+
+    for label, text in texts.items():
+        assert "Coef." in text, f"{label} display() is missing the coefficient-table header"
+
+
+def test_summary_avoids_fake_formula_and_inapplicable_r2():
+    glm = ResultSchema(
+        model=ModelInfo(command="logit", estimator_family="glm"),
+        sample=SampleInfo(nobs=20, n_input_rows=20, sample_mask=[True] * 20),
+        fit=FitInfo(df_model=1, df_resid=18, pseudo_r2=0.25),
+        coefficients=[CoefficientRow(name="income", beta=0.2, std_err=0.1)],
+        variance=VarianceInfo(row_names=["income"], values=[[0.01]]),
+    )
+    did = ResultSchema(
+        model=ModelInfo(command="csdid", estimator_family="csdid"),
+        sample=SampleInfo(nobs=20, n_input_rows=20, sample_mask=[True] * 20),
+        fit=FitInfo(df_model=1, df_resid=18),
+        coefficients=[CoefficientRow(name="Tp0", beta=1.0, std_err=0.2)],
+        variance=VarianceInfo(row_names=["Tp0"], values=[[0.04]]),
+    )
+
+    glm_text = glm.summary()
+    did_text = did.summary()
+
+    assert "Terms: income" in glm_text
+    assert "y ~" not in glm_text
+    assert "Pseudo R2 = 0.2500" in glm_text
+    assert "\nR2 =" not in glm_text
+    assert "Terms:" not in did_text
+    assert "y ~" not in did_text
+    assert "\nR2 =" not in did_text

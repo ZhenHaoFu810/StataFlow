@@ -63,6 +63,7 @@ provenance:
 
 - 数值字段默认使用双精度浮点序列化
 - 所有系数与协方差矩阵必须保留变量名顺序
+- `fit.rank` 表示最终报告协方差/系数空间的数值秩，不是吸收前设计矩阵的原始列数
 - Stata-compatible factor-variable wrappers must retain Stata-style base/omitted rows in `coefficients` and matching zero rows/columns in `variance`; those rows are marked by `is_base` and `is_omitted`
 - `sample_mask` 必须可逆推出保留样本，不能只给计数
 - 缺失或不适用字段使用 `null`，不允许混用字符串 `"NA"`

@@ -512,7 +512,7 @@ class GLMBase:
     def predict(self, type: str = "xb", newdata: Optional[pd.DataFrame] = None) -> np.ndarray:
         """Generate predictions after fitting."""
         if not self._is_fitted:
-            raise ValueError("Model has not been fitted yet. Call fit() first.")
+            raise ValueError("Model has not been fitted. Call fit() first.")
         if type not in ("xb", "pr", "mu"):
             raise ValueError(f"type='{type}' not supported for {self.__class__.__name__}. Use 'xb', 'pr', or 'mu'.")
 
@@ -536,7 +536,7 @@ class GLMBase:
     def margins(self, type: str = "dydx") -> SimpleNamespace:
         """Compute marginal effects."""
         if not self._is_fitted:
-            raise ValueError("Model has not been fitted yet. Call fit() first.")
+            raise ValueError("Model has not been fitted. Call fit() first.")
         if type not in ("dydx", "atmeans"):
             raise ValueError("margins type must be 'dydx' or 'atmeans'")
         if self._unsupported_factor_margins:

@@ -2,6 +2,8 @@
 
 **一个以 Stata 17 字段级对齐为目标的 Python 计量经济学工具包。**
 
+[English](README.md)
+
 [![PyPI version](https://img.shields.io/pypi/v/stataflow)](https://pypi.org/project/stataflow/)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
@@ -25,20 +27,20 @@ result.display()
 
 ## 项目定位
 
-StataFlow 面向希望在 Python 中复现 Stata 实证工作流的研究者。它不是泛化的统计库；公开能力必须通过合成样例、公开真实数据样例，以及可运行的 Stata/Python 双跑证据来验证。
+StataFlow 面向希望在 Python 中复现 Stata 实证工作流的研究者。它不是泛化的统计库；公开能力以合成样例、公开真实数据样例和字段级 Stata 17 对照为证据。
 
-当前公开版本线是 **1.1.0 Stable**。截至 2026-07-09，项目已经完成一轮 **v1.2.0+ correctness hardening release-candidate sync**，重点是正确性加固、文档同步和开源可维护性。
+当前版本是 **1.2.0**，覆盖 14 个 Stata 风格命令。
 
 ## 功能概览
 
-- **14 个 Stata 风格命令**：`regress`、`xtreg_fe`、`areg`、`reghdfe`、`ivregress_2sls`、`ivreghdfe`、`logit`、`probit`、`poisson`、`ppmlhdfe`、`did_imputation`、`eventstudyinteract`、`csdid`、`rdrobust`。
+- **14 个估计命令**：`regress`、`xtreg_fe`、`areg`、`reghdfe`、`ivregress_2sls`、`ivreghdfe`、`logit`、`probit`、`poisson`、`ppmlhdfe`、`did_imputation`、`eventstudyinteract`、`csdid`、`rdrobust`。另行导出的 `rdplot` 是辅助工具，不计入估计命令数。
 - **双层 API**：Stata 兼容命令层（`stataflow.compat.stata`）和 Python 原生估计器层（`stataflow.estimators`）。
 - **Stata 风格输出**：`result.display()` 输出系数、标准误、检验统计量、p 值和拟合统计量。
 - **高维固定效应**：支持多固定效应吸收、singleton 处理、个体斜率、聚类 VCE 和大规模 FE 场景。
 - **工具变量模型**：支持 2SLS、GMM2S、LIML、Fuller/k-class、一阶段诊断、弱工具变量检验和过度识别检验。
 - **二元、计数和 PPML 模型**：支持 Logit、Probit、Poisson、PPML-HDFE 及常用稳健/聚类协方差估计。
 - **因果推断**：支持 BJS DID imputation、Sun-Abraham event study、Callaway-Sant'Anna DID 和 sharp/fuzzy RD。
-- **Stata 语法子集**：支持 factor variables、analytic weights、多固定效应和常用 VCE；不支持的参数会显式报错，不会静默忽略。
+- **Stata 语法子集**：支持 factor variables、按命令列明的 analytic weights、多固定效应和常用 VCE；不支持的参数会显式报错，不会静默忽略。
 - **验证优先**：每个公开能力都围绕 Stata 17 进行字段级验证。
 
 ## 安装
@@ -120,45 +122,57 @@ print(f"R2 = {result.fit.r2:.4f}, N = {result.sample.nobs}")
 
 | 类型 | 命令 | 估计器与 VCE |
 |------|------|--------------|
-| 线性模型 | `regress`、`areg`、`xtreg_fe`、`reghdfe` | OLS，支持 `ols`、`robust`、`cluster` 和 `dkraay` |
+| 线性模型 | `regress`、`areg`、`xtreg_fe`、`reghdfe` | OLS，支持 `ols`、`robust` 和按命令列明的聚类 VCE；仅 `reghdfe` 支持 `dkraay` |
 | 工具变量 | `ivregress_2sls`、`ivreghdfe` | 2SLS、GMM2S、LIML、Fuller/k-class、一阶段诊断、弱工具变量检验 |
 | 二元/计数模型 | `logit`、`probit`、`poisson` | MLE，支持 `ols`、`robust` 和 `cluster` VCE |
 | PPML + HDFE | `ppmlhdfe` | IRLS、固定效应、offset/exposure、separation 检测、`eform` 和常用预测类型 |
 | DID | `did_imputation`、`csdid`、`eventstudyinteract` | BJS imputation、Callaway-Sant'Anna、Sun-Abraham IW |
 | RD | `rdrobust` | Sharp/fuzzy RD、MSE/CER 带宽选择、协变量、权重、mass points、cluster/nncluster VCE |
 
-完整支持边界见 [Open-Source Status](docs/release/open-source-status.md) 和 [Known Issues](docs/release/known-issues.md)。
+完整支持边界见[命令支持矩阵](docs/command-support-matrix/README.md)和[已知问题](docs/release/known-issues.md)。
 
 ## 验证状态
 
-最近一次本地 release-candidate 检查（2026-07-09）：
+下表冻结于 2026 年 7 月的发布范围。相对偏差定义为
+`|Python - Stata| / max(|Stata|, 1e-15)`。
 
-- 公开单元/集成测试：`405 passed`
-- 内部 modular audit：`95 passed`
-- golden 双跑收集检查：`839 tests collected`
-- 四个公开 demo 脚本全部通过
-- wheel 构建成功：`stataflow-1.1.0-py3-none-any.whl`
-- 开源导出 dry-run：选择 150 个文件，0 个 orphan 删除
+| 命令族 | 覆盖命令 | Stata 17 对照 | 最大系数偏差 | 最大标准误偏差 |
+|---|---|---:|---:|---:|
+| 线性 / 固定效应 | `regress`、`areg`、`xtreg_fe`、`reghdfe` | 18/18 | 2.48e-7 | 2.25e-7 |
+| 工具变量 | `ivregress_2sls`、`ivreghdfe` | 5/5 | 1.16e-8 | 3.74e-8 |
+| 二元 / 计数 | `logit`、`probit`、`poisson`、`ppmlhdfe` | 12/12 | 1.33e-7 | 8.42e-8 |
+| DID | `did_imputation`、`csdid`、`eventstudyinteract` | 2/2 + 1 项功能检查 | 8.13e-8 | 5.13e-8 |
+| RD | `rdrobust` | 3/3 | 9.23e-8 | 2.96e-8 |
+| **合计** | **14 个公开估计命令** | **40/40** | **2.48e-7** | **2.25e-7** |
 
-Golden Stata 双跑测试需要本地 Stata 17，不属于公开 CI gate。
+完整本地 Stata 验证检查结果为 `856 passed, 12 skipped`；公开、自包含的
+验证套件在 Stata 17 上通过 `10/10` 个可复现验证用例。以上数值存储在
+[`evidence-summary.json`](research/results/validation/evidence-summary.json) 中。
 
 ## 文档
 
 - [User Guide](docs/USER_GUIDE.md)（[中文](docs/USER_GUIDE.zh-CN.md)）
 - [Cookbook](docs/cookbook.md)（[中文](docs/cookbook.zh-CN.md)）
-- [Examples](examples/)
-- [Validation Evidence](research/results/validation/README.md)
+- [Examples](examples/) — 九个确定性 demo 脚本，覆盖全部 14 个公开命令；无需网络或本地 Stata
+- [验证证据（JSON）](research/results/validation/evidence-summary.json)
+- [验证证据（可读版）](research/results/validation/evidence-summary.md)
 - [Changelog](CHANGELOG.md)
 
 ## 运行测试
 
 ```bash
 # 单元和集成测试
-pytest tests/ -v --ignore=tests/golden/ --ignore=tests/audit_v1_3
+pytest tests/ -v
 
-# Golden 双跑测试（需要本地 Stata 17）
-pytest tests/golden/ -v
+# 可复现 Stata 验证用例（需要本地 Stata 17）
+pytest tests/stata_validation/ -v -s
 ```
+
+## 社区
+
+- [贡献指南](CONTRIBUTING.md) — 开发流程、测试要求与 PR 检查
+- [安全政策](SECURITY.md) — 支持的版本与私密漏洞报告渠道
+- [行为准则](CODE_OF_CONDUCT.md)
 
 ## 许可证
 

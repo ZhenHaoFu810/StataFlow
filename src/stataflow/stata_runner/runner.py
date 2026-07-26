@@ -23,13 +23,19 @@ from dataclasses import dataclass
 from typing import Optional
 
 
-# Default Stata 17 executable path
-DEFAULT_STATA_PATH = r"D:\Software\Stata17\StataMP-64.exe"
+# An empty default keeps the public package independent of a maintainer's
+# machine. Set STATA_PATH or pass custom_path for nonstandard installations.
+DEFAULT_STATA_PATH = ""
 
-# Common installation directories to search
-FALLBACK_STATA_DIRS = [
-    r"D:\Software\Stata17",
-]
+
+def _common_stata_directories() -> list[str]:
+    """Return conventional Windows Stata installation directories."""
+    roots = {
+        os.environ.get("ProgramFiles", ""),
+        os.environ.get("ProgramFiles(x86)", ""),
+    }
+    versions = ("Stata17",)
+    return [os.path.join(root, version) for root in roots if root for version in versions]
 
 # Fallback paths to try if default is not found
 FALLBACK_STATA_NAMES = [
@@ -106,13 +112,19 @@ def find_stata_executable(custom_path: Optional[str] = None) -> str:
     if custom_path and os.path.isfile(custom_path):
         return custom_path
     
-    # Try default path
-    if os.path.isfile(DEFAULT_STATA_PATH):
+    # Try the documented environment override.
+    environment_path = os.environ.get("STATA_PATH")
+    if environment_path and os.path.isfile(environment_path):
+        return environment_path
+
+    # Retain the constant as a compatibility hook for callers that monkeypatch
+    # it, while keeping its public default machine-independent.
+    if DEFAULT_STATA_PATH and os.path.isfile(DEFAULT_STATA_PATH):
         return DEFAULT_STATA_PATH
     
     # Try common Stata installation directories
     searched_dirs = []
-    for stata_base in FALLBACK_STATA_DIRS:
+    for stata_base in _common_stata_directories():
         searched_dirs.append(stata_base)
         if os.path.isdir(stata_base):
             for name in FALLBACK_STATA_NAMES:
@@ -128,7 +140,7 @@ def find_stata_executable(custom_path: Optional[str] = None) -> str:
     
     raise FileNotFoundError(
         f"Cannot find Stata executable. "
-        f"Tried: {DEFAULT_STATA_PATH}, "
+        f"Tried STATA_PATH, custom_path, "
         f"fallbacks in {searched_dirs}, and PATH. "
         f"Please set STATA_PATH environment variable or pass custom_path."
     )
@@ -205,7 +217,7 @@ class StataRunner:
             )
             os.makedirs(output_dir, exist_ok=True)
 
-        # Use unique filenames to avoid OneDrive file locking issues
+        # Use unique filenames to avoid cloud-synced directory locking issues.
         timestamp = int(time.time() * 1000)
         do_file = os.path.join(output_dir, f"run_{timestamp}.do")
         with open(do_file, "w", encoding="utf-8") as f:

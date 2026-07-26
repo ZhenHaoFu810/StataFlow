@@ -2,6 +2,8 @@
 
 **A Python econometrics toolkit designed to reproduce Stata 17 estimation results with field-level validation.**
 
+[简体中文](README.zh-CN.md)
+
 [![PyPI version](https://img.shields.io/pypi/v/stataflow)](https://pypi.org/project/stataflow/)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
@@ -25,20 +27,20 @@ result.display()
 
 ## Why StataFlow
 
-StataFlow is for researchers who want Python workflows without giving up the empirical conventions they rely on in Stata. The project is not a generic statistics library: public capabilities are validated against Stata 17 with synthetic cases, public real-data cases, and Stata/Python dual-run evidence where Stata is available.
+StataFlow is for researchers who want Python workflows without giving up the empirical conventions they rely on in Stata. The project is not a generic statistics library: public capabilities are backed by synthetic cases, public real-data cases, and field-level Stata 17 comparisons.
 
-The current public line is **1.1.0 Stable**, with an additional **v1.2.0+ correctness-hardening release-candidate sync** prepared on July 9, 2026.
+The current release is **1.2.0**, covering 14 Stata-style commands.
 
 ## Features
 
-- **14 Stata-style commands in Python**: `regress`, `xtreg_fe`, `areg`, `reghdfe`, `ivregress_2sls`, `ivreghdfe`, `logit`, `probit`, `poisson`, `ppmlhdfe`, `did_imputation`, `eventstudyinteract`, `csdid`, and `rdrobust`.
+- **14 estimation commands in Python**: `regress`, `xtreg_fe`, `areg`, `reghdfe`, `ivregress_2sls`, `ivreghdfe`, `logit`, `probit`, `poisson`, `ppmlhdfe`, `did_imputation`, `eventstudyinteract`, `csdid`, and `rdrobust`. The exported `rdplot` companion is a helper and is not counted as an estimation command.
 - **Two API layers**: a Stata-compatible command layer (`stataflow.compat.stata`) and a Python-native estimator layer (`stataflow.estimators`).
 - **Stata-style output**: `result.display()` prints compact regression tables with coefficients, standard errors, test statistics, p-values, and fit statistics.
 - **High-dimensional fixed effects**: MAP absorption for large FE designs, multi-FE workflows, singleton handling, individual slopes, and cluster-aware VCE paths.
 - **Instrumental variables**: 2SLS, GMM2S, LIML, Fuller/k-class, first-stage diagnostics, weak-instrument tests, and overidentification tests.
 - **Binary, count, and PPML models**: Logit, Probit, Poisson, and PPML-HDFE with robust and clustered covariance estimators.
 - **Causal inference**: BJS DID imputation, Sun-Abraham event-study interactions, Callaway-Sant'Anna DID, and sharp/fuzzy regression discontinuity.
-- **Stata-compatible syntax subsets**: factor variables, analytic weights, multiple fixed effects, common VCE choices, and hard rejection of unsupported parameters.
+- **Stata-compatible syntax subsets**: factor variables, command-specific analytic-weight support, multiple fixed effects, common VCE choices, and hard rejection of unsupported parameters.
 - **Validation-first development**: public commands are backed by field-level Stata 17 comparison evidence.
 
 ## Installation
@@ -120,45 +122,58 @@ print(f"R2 = {result.fit.r2:.4f}, N = {result.sample.nobs}")
 
 | Family | Available via | Estimators and VCE |
 |--------|---------------|--------------------|
-| Linear | `regress`, `areg`, `xtreg_fe`, `reghdfe` | OLS with `ols`, `robust` (HC1), `cluster` (1-way, 2-way where supported), and `dkraay` panel HAC |
+| Linear | `regress`, `areg`, `xtreg_fe`, `reghdfe` | OLS with `ols`, `robust` (HC1), and command-specific clustering; `reghdfe` also supports `dkraay` panel HAC |
 | IV | `ivregress_2sls`, `ivreghdfe` | 2SLS, GMM2S, LIML, Fuller/k-class, first-stage diagnostics, weak-IV tests |
 | Binary / Count | `logit`, `probit`, `poisson` | MLE with `ols`, `robust`, and `cluster` VCE |
 | PPML + HDFE | `ppmlhdfe` | IRLS with fixed effects, offset/exposure, separation checks, `eform`, and common prediction types |
 | DID | `did_imputation`, `csdid`, `eventstudyinteract` | BJS imputation, Callaway-Sant'Anna, and Sun-Abraham IW estimators |
 | RD | `rdrobust` | Sharp/fuzzy RD, MSE/CER bandwidth selectors, covariates, weights, mass points, and cluster/nncluster VCE |
 
-See [Open-Source Status](docs/release/open-source-status.md) and [Known Issues](docs/release/known-issues.md) for exact support boundaries.
+See the [Command Support Matrix](docs/command-support-matrix/README.md) and [Known Issues](docs/release/known-issues.md) for exact support boundaries.
 
 ## Validation
 
-Recent local release-candidate checks (July 9, 2026):
+The July 2026 release scope is frozen to the cases summarized below. Relative
+deviation is `|Python - Stata| / max(|Stata|, 1e-15)`.
 
-- Public unit/integration suite: `405 passed`
-- Internal modular audit suite: `95 passed`
-- Golden dual-run collection guard: `839 tests collected`
-- Example smoke scripts: all four public demos passed
-- Wheel build: `stataflow-1.1.0-py3-none-any.whl` built successfully
-- Open-source export dry-run: 150 files selected, 0 orphan removals
+| Family | Covered commands | Stata 17 comparisons | Max coefficient deviation | Max SE deviation |
+|---|---|---:|---:|---:|
+| Linear / FE | `regress`, `areg`, `xtreg_fe`, `reghdfe` | 18/18 | 2.48e-7 | 2.25e-7 |
+| IV | `ivregress_2sls`, `ivreghdfe` | 5/5 | 1.16e-8 | 3.74e-8 |
+| Binary / count | `logit`, `probit`, `poisson`, `ppmlhdfe` | 12/12 | 1.33e-7 | 8.42e-8 |
+| DID | `did_imputation`, `csdid`, `eventstudyinteract` | 2/2 + 1 functional check | 8.13e-8 | 5.13e-8 |
+| RD | `rdrobust` | 3/3 | 9.23e-8 | 2.96e-8 |
+| **Total** | **14 public estimation commands** | **40/40** | **2.48e-7** | **2.25e-7** |
 
-Golden Stata dual-run tests require a local Stata 17 installation and are not part of the public CI gate.
+Full local Stata validation checks: `856 passed, 12 skipped`. The public,
+self-contained suite passes `10/10` reproducible validation cases with Stata
+17. The values above are stored in
+[`evidence-summary.json`](research/results/validation/evidence-summary.json).
 
 ## Documentation
 
 - [User Guide](docs/USER_GUIDE.md) ([中文](docs/USER_GUIDE.zh-CN.md))
 - [Cookbook](docs/cookbook.md) ([中文](docs/cookbook.zh-CN.md))
-- [Examples](examples/)
-- [Validation Evidence](research/results/validation/README.md)
+- [Examples](examples/) — nine deterministic demo scripts covering all 14 public commands; no network or local Stata required
+- [Validation Evidence (JSON)](research/results/validation/evidence-summary.json)
+- [Validation Evidence (readable)](research/results/validation/evidence-summary.md)
 - [Changelog](CHANGELOG.md)
 
 ## Running Tests
 
 ```bash
 # Unit and integration tests
-pytest tests/ -v --ignore=tests/golden/ --ignore=tests/audit_v1_3
+pytest tests/ -v
 
-# Golden dual-run tests (require local Stata 17)
-pytest tests/golden/ -v
+# Reproducible Stata validation cases (require local Stata 17)
+pytest tests/stata_validation/ -v -s
 ```
+
+## Community
+
+- [Contributing Guide](CONTRIBUTING.md) — development workflow, testing requirements, and PR checks
+- [Security Policy](SECURITY.md) — supported versions and private vulnerability reporting
+- [Code of Conduct](CODE_OF_CONDUCT.md)
 
 ## License
 

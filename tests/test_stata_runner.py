@@ -10,6 +10,7 @@ from stataflow.stata_runner.runner import (
     find_stata_executable,
     DEFAULT_STATA_PATH,
 )
+from tests.stata_validation.test_utils import parse_stata_major_version, tolerance_close
 
 
 def test_find_stata_executable():
@@ -28,6 +29,42 @@ def test_find_stata_with_custom_path():
     if os.path.isfile(DEFAULT_STATA_PATH):
         path = find_stata_executable(custom_path=DEFAULT_STATA_PATH)
         assert path == DEFAULT_STATA_PATH
+
+
+def test_find_stata_with_environment_variable(monkeypatch, tmp_path):
+    """STATA_PATH must override machine-specific fallback locations."""
+    executable = tmp_path / "StataMP-64.exe"
+    executable.write_bytes(b"")
+    monkeypatch.setenv("STATA_PATH", str(executable))
+
+    assert find_stata_executable() == str(executable)
+
+
+def test_common_stata_directories_target_stata_17(monkeypatch):
+    """Automatic discovery must not silently select a different Stata release."""
+    monkeypatch.setenv("ProgramFiles", "program-files")
+    monkeypatch.delenv("ProgramFiles(x86)", raising=False)
+
+    directories = runner_module._common_stata_directories()
+
+    assert directories
+    assert all(path.endswith("Stata17") for path in directories)
+
+
+def test_parse_stata_major_version():
+    """The public validation probe must parse Stata's reported release."""
+    log = '. display "STATAFLOW_STATA_VERSION " c(stata_version)\nSTATAFLOW_STATA_VERSION 17.0\n'
+
+    assert parse_stata_major_version(log) == 17
+    assert parse_stata_major_version("no version marker") is None
+
+
+def test_validation_relative_deviation_uses_documented_denominator():
+    """Published validation uses max(abs(Stata), 1e-15), not an additive floor."""
+    passed, message = tolerance_close(1.5e-15, 0.5e-15, rtol=0.8, atol=0.0)
+
+    assert passed is False
+    assert "rel_diff=1.00e+00" in message
 
 
 def test_stata_runner_init():
@@ -67,7 +104,7 @@ def test_stata_runner_build_stata_args():
     except FileNotFoundError:
         pytest.skip("Stata executable not found on this machine")
 
-    args = runner._build_stata_args(r"D:\tmp\out\run_123.do")
+    args = runner._build_stata_args("tmp/out/run_123.do")
 
     assert args[0] == runner.resolved_stata_path
     assert args[1:] == ["/e", "do", "run_123.do"]

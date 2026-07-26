@@ -318,12 +318,22 @@ class ResultSchema:
         L.append(f"{cmd}")
         L.append("-" * len(cmd))
 
-        # Model specification line
+        regression_families = {
+            "ols",
+            "fixed_effects",
+            "absorbing_ols",
+            "iv",
+            "glm",
+            "ppml",
+            "ppmlhdfe",
+        }
+
+        # Report terms without inventing a dependent-variable name.
         coef_names = [c.name for c in self.coefficients]
         x_vars = [n for n in coef_names if n != "_cons"]
-        if x_vars:
+        if x_vars and fam in regression_families:
             x_str = " + ".join(x_vars)
-            L.append(f"y ~ {x_str}")
+            L.append(f"Terms: {x_str}")
 
         # Sample and VCE line
         info_parts = [f"N = {self.sample.nobs:,}"]
@@ -381,9 +391,10 @@ class ResultSchema:
 
         # ── Footer ──
         fit_stats = []
-        if self.fit.r2 is not None:
+        r2_families = {"ols", "fixed_effects", "absorbing_ols", "iv"}
+        if fam in r2_families and self.fit.r2 is not None:
             fit_stats.append(f"R2 = {self.fit.r2:.4f}")
-        if self.fit.r2_adj is not None:
+        if fam in r2_families and self.fit.r2_adj is not None:
             fit_stats.append(f"R2-Adj = {self.fit.r2_adj:.4f}")
         if self.fit.rmse is not None and self.fit.rmse > 0:
             fit_stats.append(f"RMSE = {self.fit.rmse:.4f}")
@@ -402,7 +413,7 @@ class ResultSchema:
             L.append(f"Estimator: {est_label}")
 
         # GLM-specific: log-likelihood, pseudo-R2, deviance
-        if fam in ("glm", "ppml"):
+        if fam in ("glm", "ppml", "ppmlhdfe"):
             if self.fit.ll is not None:
                 L.append(f"Log-likelihood = {self.fit.ll:.4f}")
             if self.fit.pseudo_r2 is not None:
@@ -411,7 +422,7 @@ class ResultSchema:
                 L.append(f"Deviance = {self.fit.deviance:.2f}")
 
         # RD-specific
-        if fam == "rdrobust":
+        if fam in ("rd", "rdrobust"):
             L.append(f"Kernel: {getattr(self.model, 'kernel', 'triangular')}")
 
         # Warnings

@@ -1,5 +1,7 @@
 # StataFlow User Guide
 
+[简体中文](./USER_GUIDE.zh-CN.md)
+
 ## 1. What is StataFlow?
 
 StataFlow (`stataflow`) is a Python econometrics toolkit that reproduces **Stata 17** estimation results with high precision. It is designed for researchers, data scientists, and economists who want to run Stata-equivalent regressions in Python.
@@ -9,7 +11,7 @@ StataFlow provides **two usage layers**:
 - **`stataflow.compat.stata`** — Stata-compatible command functions (`regress()`, `reghdfe()`, `logit()`, etc.). Recommended for most users. The syntax closely mirrors Stata.
 - **`stataflow` (core estimators)** — Python-native estimator classes (`OLS`, `Logit`, `PPMLHDFE`, etc.). For advanced users who need programmatic control, post-estimation, and integration with Python data pipelines.
 
-Every public command is validated against Stata 17 through **dual-run testing**: identical synthetic and real datasets are run in both Stata and Python, with field-level comparison of coefficients, standard errors, t-statistics, and fit statistics.
+Every public command is validated through **Stata 17 comparison**: identical synthetic and real datasets are run in Stata and Python, with field-level comparison of coefficients, standard errors, t-statistics, and fit statistics.
 
 ## 2. Installation
 
@@ -31,10 +33,10 @@ pip install -e .
 
 ```python
 import stataflow
-print(stataflow.__version__)  # e.g., "1.1.0"
+print(stataflow.__version__)  # "1.2.0"
 ```
 
-> **Note:** A local Stata 17 installation is only needed if you want to run the golden dual-run tests. The package itself does not require Stata for normal use.
+> **Note:** A local Stata 17 installation is needed only to run the reproducible validation cases. The package itself does not require Stata for normal use.
 
 ## 3. Core Concepts: From Stata to Python
 
@@ -65,11 +67,14 @@ df.describe()     # Summary statistics (like summarize)
 | `reg y x1 x2, cluster(id)` | `regress(df, y="y", x=["x1", "x2"], vce="cluster", cluster="id")` | |
 | `absorb(firm year)` | `absorb="firm year"` or `absorb=["firm", "year"]` | Both forms work |
 | `i.group##c.x` | `x=["i.group##c.x"]` | Factor syntax supported |
-| `[aw=w]` | `aweight="w"` | Analytic weights only |
+| `[aw=w]` | `aweight="w"` | Available only on commands that document `aweight` |
 
 ### 3.3 Reading results
 
-All commands return a `ResultSchema` object. The easiest way to see results:
+Most Stata-compatible estimation wrappers return a `ResultSchema` object.
+`csdid()` is the exception: it returns a fitted `CSDID` model whose `.result`,
+`.summary()`, and `.display()` expose the default event aggregation. The
+easiest way to inspect a `ResultSchema` result is:
 
 ```python
 result = regress(df, y="wage", x=["edu", "exper"], vce="robust")
@@ -274,7 +279,7 @@ A small number of StataFlow outputs are expected to differ from Stata 17 within 
 
 | Area | Residual | Tolerance | Explanation |
 |------|----------|-----------|-------------|
-| 2-way cluster `_cons` SE (`reghdfe`, `ivreghdfe`, `ppmlhdfe`) | ~2–16% | Documented | [ADR-0003](../adr/ADR-0003-lsdv-cons-se-under-multiway-cluster.md): LSDV vs iterative-demeaning structural difference. **Slope SEs remain aligned to `< 1e-6`.** |
+| 2-way cluster `_cons` SE (`reghdfe`, `ivreghdfe`, `ppmlhdfe`) | ~2–16% | Documented | [ADR-0003](./adr/ADR-0003-lsdv-cons-se-under-multiway-cluster.md): LSDV vs iterative-demeaning structural difference. **Slope SEs remain aligned to `< 1e-6`.** |
 | 2-way cluster rank-deficiency fallback | RuntimeWarning | Documented | When the Cameron-Gelbach-Miller meat matrix is not positive semi-definite, a PSD fix is applied. Slope SEs in non-rank-deficient cases remain exact. |
 | `ivreghdfe` cluster `stdp` when cluster nests all FEs | ~0.28% | `rtol=5e-3` | Known small-sample factor difference |
 | `ppmlhdfe` residuals | ~0.35% | `rtol=5e-3` | IRLS/HDFE convergence precision difference |
@@ -295,6 +300,28 @@ ic = estat_ic(result)
 print(f"AIC = {ic['aic']:.2f}, BIC = {ic['bic']:.2f}")
 ```
 
+### 8.5 CSDID result contract
+
+`csdid()` returns a fitted `CSDID` model object rather than a `ResultSchema`.
+The model exposes a default displayable result (ADR-0005):
+
+```python
+from stataflow.compat.stata import csdid
+
+model = csdid(df, y="y", id="id", time="time", first_treat="first_treat")
+
+model.display()          # Stata-style table of the default (event) aggregation
+text = model.summary()   # Same table as a string
+result = model.result    # Default (event) aggregation as a ResultSchema
+
+# Explicit aggregations stay available via estat()
+simple = model.estat("simple")
+pretrend = model.estat("pretrend")
+```
+
+`model.result` is identical to `model.estat("event")`. Note that `aggtype`
+is an argument of `model.estat()`, not of the `csdid()` wrapper.
+
 ## 9. FAQ / Stata Migration Troubleshooting
 
 ### Q1: Where is `_cons`?
@@ -309,10 +336,11 @@ StataFlow never silently ignores options. If a parameter is not explicitly suppo
 ### Q4: How do I get cluster-robust standard errors?
 Pass `vce="cluster"` and `cluster="variable"`. For two-way clustering, pass `cluster=["var1", "var2"]`. Two-way clustering is supported on `regress`, `reghdfe`, `ivreghdfe`, and `ppmlhdfe`.
 
-> **Note:** In 2-way cluster HDFE/IV/PPML models, you may see a `RuntimeWarning` if the moment matrix is rank-deficient (for example, when one cluster dimension is small or nested within fixed effects). This is a documented fallback; slope SEs in non-rank-deficient cases remain aligned to `< 1e-6`. The constant-term SE under 2-way clustering may deviate from Stata by up to ~3% on synthetic data and ~16% on real data; see [ADR-0003](../adr/ADR-0003-lsdv-cons-se-under-multiway-cluster.md).
+> **Note:** In 2-way cluster HDFE/IV/PPML models, you may see a `RuntimeWarning` if the moment matrix is rank-deficient (for example, when one cluster dimension is small or nested within fixed effects). This is a documented fallback; slope SEs in non-rank-deficient cases remain aligned to `< 1e-6`. The constant-term SE under 2-way clustering may deviate from Stata by up to ~3% on synthetic data and ~16% on real data; see [ADR-0003](./adr/ADR-0003-lsdv-cons-se-under-multiway-cluster.md).
 
 ### Q5: What weight types are supported?
-Only `aweight` (analytic weights) is supported. `fweight`, `pweight`, and `iweight` are not yet available.
+Weight support is command-specific. Use `aweight` only where the command
+support matrix lists it; other Stata weight types are not generally available.
 
 ### Q6: Can I use factor variables with HDFE commands?
 Yes. Factor variable syntax works in all commands:
@@ -336,10 +364,10 @@ No. Commands like `reghdfe`, `ivreghdfe`, `ppmlhdfe`, `did_imputation`, `eventst
 
 - **[Cookbook](./cookbook.md)** — Copy-paste recipes for every command with Stata equivalents
 - **[Command Support Matrices](./command-support-matrix/README.md)** — Exact parameter coverage per command
-- **[Examples](../examples/)** — Runnable demo scripts
-- **[Validation Evidence](./validation/)** — Dual-run verification results
+- **[Examples](../examples/)** — Nine runnable demos covering all 14 public commands
+- **[Validation Evidence](../research/results/validation/evidence-summary.json)** — Machine-readable Stata 17 comparison results
 - **[README](../README.md)** — Project overview and installation
 
 ---
 
-*Last updated: 2026-06-04*
+*Last updated: July 2026.*

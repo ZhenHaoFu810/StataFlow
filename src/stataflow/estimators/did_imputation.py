@@ -117,6 +117,18 @@ class DIDImputation:
         mask = df[all_vars].notna().all(axis=1)
         df = df.loc[mask].copy()
 
+        # Wave 14 / AUDIT-015: reject relative first_treat vs calendar time.
+        from stataflow.estimators._did_time_contract import (
+            validate_treatment_time_units,
+        )
+
+        validate_treatment_time_units(
+            df[self.time_var],
+            df[self.first_treat_var],
+            never_is_missing=True,
+            command="did_imputation",
+        )
+
         # Stata's did_imputation ado uses missing for never-treated units.
         # Every finite first_treat value, including zero or a negative period,
         # identifies an ever-treated cohort.
@@ -129,11 +141,9 @@ class DIDImputation:
             df.loc[ever_treated_mask, self.time_var]
             >= df.loc[ever_treated_mask, self.first_treat_var]
         ).astype(int)
-        df["_K"] = np.nan
-        df.loc[ever_treated_mask, "_K"] = (
-            df.loc[ever_treated_mask, self.time_var]
-            - df.loc[ever_treated_mask, self.first_treat_var]
-        )
+        time_numeric = pd.to_numeric(df[self.time_var], errors="coerce")
+        first_treat_numeric = pd.to_numeric(df[self.first_treat_var], errors="coerce")
+        df["_K"] = (time_numeric - first_treat_numeric).astype(float)
 
         # Construct pretreatment dummies for pretrends test
         pretrend_cols = []
@@ -582,6 +592,15 @@ class DIDImputation:
                 f"did_imputation {self.y_var} {self.id_var} {self.time_var} "
                 f"{self.first_treat_var}, {' '.join(options)}"
             ),
+        )
+
+        from stataflow.estimators._did_time_contract import assert_nonempty_did_fit
+
+        assert_nonempty_did_fit(
+            nobs=int(nobs_all),
+            coefficients=coefficients,
+            command="did_imputation",
+            require_effects=True,
         )
 
         return ResultSchema(

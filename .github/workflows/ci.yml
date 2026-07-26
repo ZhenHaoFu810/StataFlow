@@ -37,14 +37,26 @@ jobs:
 
       - name: Run unit and integration tests
         run: |
-          pytest tests/ -v --ignore=tests/golden/ --ignore=tests/audit_v1_3 --cov=stataflow --cov-report=term-missing --timeout=300
+          pytest tests/ -v --ignore=tests/stata_validation --cov=stataflow --cov-report=term-missing --timeout=300
+
+      - name: Collect and compile Stata validation cases (no Stata execution)
+        run: |
+          pytest tests/stata_validation --collect-only -q
+          python -m compileall -q tests/stata_validation
 
       - name: Run example smoke tests
         run: |
+          # All nine demos run with no network and no local Stata dependency.
+          # Each script is deterministic (seeded) and must exit with code zero.
           python examples/demo_regress.py
+          python examples/demo_panel_fe.py
           python examples/demo_reghdfe.py
-          python examples/demo_ppmlhdfe.py
           python examples/demo_ivregress_2sls.py
+          python examples/demo_ivreghdfe.py
+          python examples/demo_glm.py
+          python examples/demo_ppmlhdfe.py
+          python examples/demo_did.py
+          python examples/demo_rdrobust.py
 
       - name: Build sdist and wheel
         run: |

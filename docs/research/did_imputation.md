@@ -4,7 +4,7 @@
 
 - 命令族：`DID / Event Study Extensions`
 - 类型：社区贡献命令
-- 规则来源：作者论文 + SSC 分发版本 + Stata 17 双跑
+- 规则来源：作者论文 + SSC 分发版本 + Stata 17 对照
 - 作者：Kirill Borusyak, Xavier Jaravel, Jann Spiess
 - 论文依据：[Borusyak, Jaravel & Spiess (2021) "Revisiting Event Study Designs"](https://www.nber.org/papers/w29170)
 
@@ -36,6 +36,21 @@ $$
 1. 利用**从未处理单元（never-treated）**和**尚未处理单元（not-yet-treated）**估计一个双向固定效应（TWFE）模型；
 2. 对每个处理单元在每个时期插补其反事实结果 $Y_{i,t}(0)$；
 3. 用实际结果与插补结果的差异估计处理效应。
+
+## Treatment-time contract
+
+`first_treat` must use the **same units as `time`**.
+
+| Case | Rule |
+|---|---|
+| Calendar `time` (e.g. 2000–2008) + relative `first_treat` (e.g. 5) | **Rejected** pre-fit with `ValueError` mentioning “same units as time” |
+| Calendar `first_treat=2004` with calendar `time` | **Allowed** |
+| Cohort year not present as a row (skipped period) | **Allowed** if on the same scale |
+| Future cohort after max observed time | **Not** a unit-scale error (may yield no post cells) |
+| Never-treated | Missing `first_treat` (Stata coding) |
+
+Validation: `stataflow.estimators._did_time_contract.validate_treatment_time_units`.
+Tests: `tests/test_compat_stata_did.py` (`time` / calendar / relative), Stata validation case `w14_did_time_contract`.
 
 ## 数据结构要求
 

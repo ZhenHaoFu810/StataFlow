@@ -1,5 +1,7 @@
 # StataFlow Cookbook
 
+[简体中文](./cookbook.zh-CN.md)
+
 This cookbook provides short, copy-pasteable recipes for common econometric tasks in StataFlow. Each recipe shows the Python code alongside the equivalent Stata command.
 
 > **Status legend:** **Stable** = synthetic + real-data verified against Stata 17; core API unlikely to change. **Beta** = high-frequency paths are verified, most major functional blocks are covered. Unsupported parameters are hard-rejected.
@@ -533,14 +535,11 @@ poisson count_y x1 x2, robust
 
 > `offset` and `exposure` are supported for `ppmlhdfe` (see PPML section below). They are not yet available for the `poisson` wrapper.
 
-### Logit / Probit / Poisson — odds ratios and incidence-rate ratios
+### Logit odds ratios and Poisson incidence-rate ratios
 
 ```python
 # Logit with odds ratios
 result = logit(df, y="y_binary", x=["x1", "x2"], vce="robust", or_=True)
-
-# Probit with eform (same interpretation: exp(beta))
-result = probit(df, y="y_binary", x=["x1", "x2"], vce="robust", eform=True)
 
 # Poisson with incidence-rate ratios
 result = poisson(df, y="count_y", x=["x1", "x2"], vce="robust", irr=True)
@@ -549,11 +548,12 @@ result = poisson(df, y="count_y", x=["x1", "x2"], vce="robust", irr=True)
 **Stata equivalent:**
 ```stata
 logit y_binary x1 x2, robust or
-probit y_binary x1 x2, robust eform
 poisson count_y x1 x2, robust irr
 ```
 
-> `eform`, `irr`, and `or_` are aliases. z-statistics and p-values remain on the original coefficient scale, matching Stata output.
+> Use `or_` for logit odds ratios and `irr` for Poisson incidence-rate ratios.
+> Probit coefficients remain on the latent-index scale. z-statistics and
+> p-values remain on the original coefficient scale.
 
 ### PPML with high-dimensional fixed effects
 
@@ -1298,7 +1298,11 @@ Driscoll-Kraay panel HAC standard errors are available on `reghdfe` via `vce="dk
 
 ### Post-estimation
 
-The `compat.stata` wrappers return a `ResultSchema` with coefficients, standard errors, and fit statistics. For `predict` and `margins`, use the core estimator layer (`stataflow` namespace) directly.
+Most `compat.stata` estimation wrappers return a `ResultSchema` with
+coefficients, standard errors, and fit statistics. `csdid()` returns a fitted
+`CSDID` model; use its `.result` or display methods for the default event
+aggregation. For `predict` and `margins`, use the core estimator layer
+(`stataflow` namespace) directly.
 
 Post-estimation utilities `estat_summarize` and `estat_ic` are available in `stataflow.postestimation` and accept `ResultSchema` from either layer.
 
@@ -1314,4 +1318,5 @@ result = reghdfe(df, y="y", x=["x1"], absorb="firm_id", vce="dkraay", timevar="y
 
 ---
 
-*Last updated: 2026-04-30. For per-command support matrices, see `command-support-matrix/`.*
+*Last updated: July 2026. For per-command support matrices, see
+[`command-support-matrix/`](./command-support-matrix/README.md).*

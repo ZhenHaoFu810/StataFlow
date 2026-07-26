@@ -68,10 +68,10 @@ Event-study horizon coefficients (`tau0`, `tau1`, ...), standard errors, z-stati
 ## Alignment Evidence
 
 
-- Synthetic cases: `tests/golden/test_w4_did_imputation_basic.py` (basic), `tests/golden/test_w9_di_controls_basic.py` (controls), `tests/golden/test_w9_di_pretrends_basic.py` (pretrends), `tests/golden/test_w9_di_controls_pretrends_combo.py` (controls + pretrends)
-- Real-data cases: `tests/golden/test_w4_did_imputation_real_ezunem.py`
-- Local source mirror: `research/vendor/stata_community/did_imputation/`
-- Stata 17 dual-run verified for TWFE-imputation event-study coefficients with cluster-robust SEs, controls, and pretrends.
+- Synthetic cases: Stata validation case `w4_did_imputation_basic` (basic), Stata validation case `w9_di_controls_basic` (controls), Stata validation case `w9_di_pretrends_basic` (pretrends), Stata validation case `w9_di_controls_pretrends_combo` (controls + pretrends)
+- Real-data cases: Stata validation case `w4_did_imputation_real_ezunem`
+- Source basis: public `did_imputation` release and BJS methodology
+- Validated by Stata 17 comparison for TWFE-imputation event-study coefficients with cluster-robust SEs, controls, and pretrends.
 - `M07-DID-006` documents that `window()` is not accepted by the current target ado; S2 validation therefore covers `allhorizons` without `window()`.
 
 ## Core Implementation
