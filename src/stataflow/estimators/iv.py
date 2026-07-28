@@ -24,6 +24,7 @@ from stataflow.results.result import (
     CoefficientRow,
     VarianceInfo,
     DiagnosticsInfo,
+    IVInfo,
     ProvenanceInfo,
 )
 
@@ -452,6 +453,9 @@ class IV2SLS:
         result.model = ModelInfo(
             command="ivregress 2sls",
             estimator_family="iv_2sls",
+            dependent_variable=self.y,
+            regressors=list(self.x_endog) + list(self.x_exog),
+            estimator_name="Two-stage least squares",
             vcetype=vce,
             has_constant=self.add_constant,
             cluster_var=cluster if vce == "cluster" else None,
@@ -473,6 +477,11 @@ class IV2SLS:
             r2_adj=r2_adj,
             f_stat=f_stat,
             f_pvalue=f_pvalue,
+            model_test="F",
+            model_stat=f_stat,
+            model_df_num=df_model,
+            model_df_den=df_resid,
+            model_pvalue=f_pvalue,
         )
         result.coefficients = [
             CoefficientRow(
@@ -493,9 +502,55 @@ class IV2SLS:
         result.diagnostics = DiagnosticsInfo(
             residual_df_correction=None,
             cluster_count=cluster_count,
+            hansen_j=(
+                float(extra_stats["hansen_j"])
+                if "hansen_j" in extra_stats
+                and np.isfinite(extra_stats["hansen_j"])
+                else None
+            ),
+            hansen_j_df=(
+                float(extra_stats["hansen_j_df"])
+                if "hansen_j_df" in extra_stats
+                and np.isfinite(extra_stats["hansen_j_df"])
+                else None
+            ),
+            hansen_j_pvalue=(
+                float(extra_stats["hansen_j_p"])
+                if "hansen_j_p" in extra_stats
+                and np.isfinite(extra_stats["hansen_j_p"])
+                else None
+            ),
             warnings=[
                 f"Collinear variables dropped: {', '.join(self._collinear_dropped)}"
             ] if self._collinear_dropped else [],
+        )
+        over_stat = extra_stats.get("hansen_j", extra_stats.get("sargan"))
+        over_df = extra_stats.get("hansen_j_df", extra_stats.get("sargan_df"))
+        over_p = extra_stats.get("hansen_j_p", extra_stats.get("sargan_p"))
+        result.iv = IVInfo(
+            estimator="2SLS",
+            endogenous=list(self.x_endog),
+            instruments=list(self.instruments),
+            excluded_instruments=list(self.instruments),
+            overidentification_stat=(
+                float(over_stat)
+                if over_stat is not None and np.isfinite(over_stat)
+                else None
+            ),
+            overidentification_df=(
+                float(over_df)
+                if over_df is not None and np.isfinite(over_df)
+                else None
+            ),
+            overidentification_pvalue=(
+                float(over_p)
+                if over_p is not None and np.isfinite(over_p)
+                else None
+            ),
+            first_stage=[
+                {"name": name, **statistics}
+                for name, statistics in first_stage.items()
+            ],
         )
         result.provenance = ProvenanceInfo(
             source="python",
@@ -2078,6 +2133,9 @@ class IVAbsorbingOLS:
         result.model = ModelInfo(
             command="ivreghdfe",
             estimator_family=estimator_family,
+            dependent_variable=self.y,
+            regressors=list(self.x_endog) + list(self.x_exog),
+            estimator_name=estimator.upper(),
             vcetype=vce,
             absorb_var=absorb_var,
             absorb_vars=self.absorb_vars,
@@ -2102,6 +2160,11 @@ class IVAbsorbingOLS:
             r2_adj=r2_adj,
             f_stat=f_stat,
             f_pvalue=f_pvalue,
+            model_test="F",
+            model_stat=f_stat,
+            model_df_num=df_model,
+            model_df_den=df_resid,
+            model_pvalue=f_pvalue,
         )
         result.coefficients = [
             CoefficientRow(
@@ -2143,6 +2206,27 @@ class IVAbsorbingOLS:
             hansen_j_df=None if np.isnan(extra_stats.get("hansen_j_df", np.nan)) else float(extra_stats["hansen_j_df"]),
             hansen_j_pvalue=None if np.isnan(extra_stats.get("hansen_j_p", np.nan)) else float(extra_stats["hansen_j_p"]),
             warnings=warnings,
+        )
+        result.iv = IVInfo(
+            estimator=estimator.upper(),
+            endogenous=list(self.x_endog),
+            instruments=list(self.instruments),
+            excluded_instruments=list(self.instruments),
+            underidentification_stat=result.diagnostics.idstat,
+            underidentification_df=result.diagnostics.iddf,
+            underidentification_pvalue=result.diagnostics.idp,
+            weak_identification_stat=result.diagnostics.widstat,
+            weak_identification_label="Kleibergen-Paap rk Wald F",
+            weak_identification_critical_value=(
+                None if np.isnan(sy_10pct) else float(sy_10pct)
+            ),
+            overidentification_stat=result.diagnostics.hansen_j,
+            overidentification_df=result.diagnostics.hansen_j_df,
+            overidentification_pvalue=result.diagnostics.hansen_j_pvalue,
+            first_stage=[
+                {"name": name, **statistics}
+                for name, statistics in first_stage.items()
+            ],
         )
         cmd_name = "ivreghdfe"
         endog_str = ' '.join(self.x_endog)

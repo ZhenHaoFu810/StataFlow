@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-from scipy.stats import norm as norm_dist
+from scipy.stats import chi2 as chi2_dist, norm as norm_dist
 from typing import Optional
 from types import SimpleNamespace
 from stataflow.results.result import (
@@ -173,7 +173,7 @@ class PPMLHDFE:
         ll_old = -np.inf
         converged = False
 
-        for _ in range(self.max_iter):
+        for iteration in range(1, self.max_iter + 1):
             eta = X @ gamma
             if offset is not None:
                 eta = eta + offset
@@ -239,6 +239,7 @@ class PPMLHDFE:
             eta = eta + offset
         mu = np.exp(np.clip(eta, -700, 700))
         mu = np.clip(mu, 1e-15, 1e12)
+        self._last_iterations = iteration
         return gamma, mu, converged
 
     def _build_t_matrix(self, mu: np.ndarray) -> np.ndarray:
@@ -520,6 +521,25 @@ class PPMLHDFE:
         ci_low = beta_reported - z_crit * se
         ci_high = beta_reported + z_crit * se
 
+        slope_indices = [
+            index
+            for index, name in enumerate(self._abs_ols._coef_names)
+            if name != "_cons"
+        ]
+        if slope_indices:
+            beta_slopes = beta_reported[slope_indices]
+            cov_slopes = cov_reported[np.ix_(slope_indices, slope_indices)]
+            model_stat = float(
+                beta_slopes @ np.linalg.pinv(cov_slopes) @ beta_slopes
+            )
+            model_stat = max(model_stat, 0.0)
+            model_pvalue = float(
+                chi2_dist.sf(model_stat, df=len(slope_indices))
+            )
+        else:
+            model_stat = None
+            model_pvalue = None
+
         if eform:
             # Delta-method transform: g(b) = exp(b), g'(b) = exp(b)
             D = np.diag(np.exp(beta_reported))
@@ -539,6 +559,9 @@ class PPMLHDFE:
         result.model = ModelInfo(
             command="ppmlhdfe",
             estimator_family="ppmlhdfe",
+            dependent_variable=self.y,
+            regressors=list(self.x),
+            estimator_name="Poisson pseudo-maximum likelihood",
             vcetype=vce,
             absorb_vars=self.absorb_vars,
             cluster_var=cluster if vce == "cluster" else None,
@@ -557,6 +580,12 @@ class PPMLHDFE:
             ll=ll_model,
             deviance=deviance,
             pseudo_r2=pseudo_r2,
+            model_test="Wald chi2",
+            model_stat=model_stat,
+            model_df_num=df_model,
+            model_pvalue=model_pvalue,
+            iterations=self._last_iterations,
+            converged=converged,
         )
         result.coefficients = [
             CoefficientRow(

@@ -211,7 +211,7 @@ class GLMBase:
         ll_old = -np.inf
         converged = False
 
-        for _ in range(self.max_iter):
+        for iteration in range(1, self.max_iter + 1):
             eta = X @ beta
             mu = self._link_inv(eta)
 
@@ -255,6 +255,7 @@ class GLMBase:
 
         eta = X @ beta
         mu = self._link_inv(eta)
+        self._last_iterations = iteration
         return beta, mu, eta, converged
 
     @staticmethod
@@ -447,6 +448,9 @@ class GLMBase:
         result.model = ModelInfo(
             command=self._stata_command,
             estimator_family=self._estimator_family,
+            dependent_variable=self.y,
+            regressors=list(self.x),
+            estimator_name="Maximum likelihood",
             vcetype=vce,
             has_constant=self.add_constant,
             cluster_var=cluster if vce == "cluster" else None,
@@ -465,6 +469,12 @@ class GLMBase:
             f_stat=chi2,
             f_pvalue=chi2_pvalue,
             deviance=deviance,
+            model_test="Wald chi2",
+            model_stat=chi2,
+            model_df_num=df_model,
+            model_pvalue=chi2_pvalue,
+            iterations=self._last_iterations,
+            converged=converged,
         )
         result.coefficients = [
             CoefficientRow(

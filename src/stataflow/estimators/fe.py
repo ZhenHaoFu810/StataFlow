@@ -439,6 +439,9 @@ class FixedEffectsOLS:
         result.model = ModelInfo(
             command="xtreg",
             estimator_family="fe",
+            dependent_variable=self.y,
+            regressors=list(self.x),
+            estimator_name="Within estimator",
             # Report user-facing VCE label: robust stays "robust" even though
             # the sandwich is panel-clustered (Stata xtreg, fe robust contract).
             vcetype=vce,
@@ -451,6 +454,7 @@ class FixedEffectsOLS:
             nobs=n,
             n_input_rows=self._n_input_rows,
             sample_mask=sample_mask,
+            group_count=self._n_entities,
         )
         result.fit = FitInfo(
             df_model=df_model_fe,
@@ -464,6 +468,11 @@ class FixedEffectsOLS:
             r2_adj=r2_adj,
             f_stat=f_stat,
             f_pvalue=f_pvalue,
+            model_test="F",
+            model_stat=f_stat,
+            model_df_num=df_model_fe,
+            model_df_den=df_resid_fe,
+            model_pvalue=f_pvalue,
         )
         result.coefficients = coef_rows
         result.variance = VarianceInfo(

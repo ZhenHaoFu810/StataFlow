@@ -1,9 +1,10 @@
 # Examples
 
-This directory contains the nine self-contained demos for StataFlow 1.2.0.
+This directory contains the nine self-contained demos for StataFlow 1.3.0.
 Each script creates synthetic data, runs one or more commands, and prints the
 results. Together they exercise all 14 public Stata-compatible commands. The
 demos are deterministic, require no network access, and do not require Stata.
+`demo_regress.py` also demonstrates full, compact, no-CI, and HTML rendering.
 
 ## Running the examples
 

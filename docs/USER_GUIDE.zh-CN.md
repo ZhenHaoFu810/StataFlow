@@ -33,7 +33,7 @@ pip install -e .
 
 ```python
 import stataflow
-print(stataflow.__version__)  # "1.2.0"
+print(stataflow.__version__)  # "1.3.0"
 ```
 
 > 仅当需要本地运行可复现验证用例时才需安装 Stata 17。包本身在正常使用中不依赖 Stata。
@@ -74,14 +74,16 @@ df.describe()    # 描述统计（类似 summarize）
 ```python
 result = regress(df, y="wage", x=["edu", "exper"], vce="robust")
 
-# 一键输出 Stata 风格回归表
+# 一键输出命令感知的完整结果表，默认含 95% 置信区间
 result.display()
 
-# 含 95% 置信区间
-result.display(show_ci=True)
+# 精简输出或隐藏置信区间
+result.display(detail="compact")
+result.display(show_ci=False)
 
-# 获取字符串（用于日志、保存等）
-text = result.summary()
+# 获取纯文本或 HTML
+text = result.summary(width=100)
+html = result.to_html()
 ```
 
 程序化访问：
@@ -168,20 +170,21 @@ result = ivregress_2sls(df, y="lwage", x_exog=["edu"],
 
 返回 `ResultSchema`，包含 `.coefficients`、`.fit`、`.sample`、`.summary()`。
 
-IV 命令可通过 `first=True` 请求一阶段诊断。结果对象的 `first_stage` 字段为结构化字典：
+IV 命令可通过 `first=True` 请求一阶段诊断，结果保存在类型化的
+`result.iv.first_stage` 列表中，完整展示模式也会自动输出：
 
 ```python
 result = ivregress_2sls(
     df, y="lwage", x_exog=["edu"], x_endog=["exper"],
     instruments=["age", "kidslt6"], vce="robust", first=True
 )
-for endog_var, stats in result.first_stage.items():
-    print(f"{endog_var}: R2={stats['r2']:.4f}, "
-          f"partial R2={stats['partial_r2']:.4f}, "
-          f"F={stats['f_stat']:.2f}")
+result.display()
+for stage in result.iv.first_stage:
+    print(f"{stage['name']}: partial R2={stage['partial_r2']:.4f}, "
+          f"F={stage['f_stat']:.2f}")
 ```
 
-弱工具变量诊断（`idstat`、`widstat`、`widstat_cv`）和过度识别检验（`hansen_j` / Sargan）在适用时也会自动附加到结果对象。
+弱识别和过度识别诊断在适用时通过 `result.iv` 提供。
 
 ### 6.2 核心 estimator 层（进阶）
 

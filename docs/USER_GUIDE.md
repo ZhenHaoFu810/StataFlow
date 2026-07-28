@@ -33,7 +33,7 @@ pip install -e .
 
 ```python
 import stataflow
-print(stataflow.__version__)  # "1.2.0"
+print(stataflow.__version__)  # "1.3.0"
 ```
 
 > **Note:** A local Stata 17 installation is needed only to run the reproducible validation cases. The package itself does not require Stata for normal use.
@@ -79,14 +79,16 @@ easiest way to inspect a `ResultSchema` result is:
 ```python
 result = regress(df, y="wage", x=["edu", "exper"], vce="robust")
 
-# Stata-style regression table
+# Complete, command-aware table with 95% confidence intervals
 result.display()
 
-# With confidence intervals
-result.display(show_ci=True)
+# Compact output or no confidence intervals
+result.display(detail="compact")
+result.display(show_ci=False)
 
-# Get as string
-text = result.summary()
+# Text and HTML return values
+text = result.summary(width=100)
+html = result.to_html()
 ```
 
 For programmatic access:
@@ -98,8 +100,8 @@ for c in result.coefficients:
 print(f"R2 = {result.fit.r2:.4f}")
 print(f"N = {result.sample.nobs}")
 
-# In Jupyter/IPython, just type the variable name
-result  # calls __repr__ -> shows summary table
+# In Jupyter/IPython, evaluating the result renders the HTML table.
+result
 ```
 
 ## 4. Your First Model (5-Minute Walkthrough)
@@ -179,20 +181,22 @@ result = ivregress_2sls(df, y="lwage", x_exog=["edu"],
 
 Returns a `ResultSchema` with `.coefficients`, `.fit`, `.sample`, `.summary()`.
 
-For IV commands, you can request first-stage diagnostics with `first=True`. The result object exposes a `first_stage` dict structured like this:
+For IV commands, request first-stage diagnostics with `first=True`. They are
+stored in the typed `result.iv.first_stage` list and included in full display:
 
 ```python
 result = ivregress_2sls(
     df, y="lwage", x_exog=["edu"], x_endog=["exper"],
     instruments=["age", "kidslt6"], vce="robust", first=True
 )
-for endog_var, stats in result.first_stage.items():
-    print(f"{endog_var}: R2={stats['r2']:.4f}, "
-          f"partial R2={stats['partial_r2']:.4f}, "
-          f"F={stats['f_stat']:.2f}")
+result.display()
+for stage in result.iv.first_stage:
+    print(f"{stage['name']}: partial R2={stage['partial_r2']:.4f}, "
+          f"F={stage['f_stat']:.2f}")
 ```
 
-Weak-instrument diagnostics (`idstat`, `widstat`, `widstat_cv`) and overidentification tests (`hansen_j` / Sargan) are also attached automatically when applicable.
+Weak-identification and overidentification diagnostics are available through
+`result.iv` when applicable.
 
 ### 6.2 Core estimator layer (advanced)
 

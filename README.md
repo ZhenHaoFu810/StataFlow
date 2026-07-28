@@ -29,13 +29,15 @@ result.display()
 
 StataFlow is for researchers who want Python workflows without giving up the empirical conventions they rely on in Stata. The project is not a generic statistics library: public capabilities are backed by synthetic cases, public real-data cases, and field-level Stata 17 comparisons.
 
-The current release is **1.2.0**, covering 14 Stata-style commands.
+The current development version is **1.3.0**, covering 14 Stata-style commands.
 
 ## Features
 
 - **14 estimation commands in Python**: `regress`, `xtreg_fe`, `areg`, `reghdfe`, `ivregress_2sls`, `ivreghdfe`, `logit`, `probit`, `poisson`, `ppmlhdfe`, `did_imputation`, `eventstudyinteract`, `csdid`, and `rdrobust`. The exported `rdplot` companion is a helper and is not counted as an estimation command.
 - **Two API layers**: a Stata-compatible command layer (`stataflow.compat.stata`) and a Python-native estimator layer (`stataflow.estimators`).
-- **Stata-style output**: `result.display()` prints compact regression tables with coefficients, standard errors, test statistics, p-values, and fit statistics.
+- **Command-aware Stata-style output**: `result.display()` prints a complete,
+  adaptive result table with the statistics and diagnostics relevant to each
+  command; notebooks receive the same content as escaped HTML.
 - **High-dimensional fixed effects**: MAP absorption for large FE designs, multi-FE workflows, singleton handling, individual slopes, and cluster-aware VCE paths.
 - **Instrumental variables**: 2SLS, GMM2S, LIML, Fuller/k-class, first-stage diagnostics, weak-instrument tests, and overidentification tests.
 - **Binary, count, and PPML models**: Logit, Probit, Poisson, and PPML-HDFE with robust and clustered covariance estimators.
@@ -107,15 +109,14 @@ result = model.fit(vce="robust")
 result.display()
 ```
 
-### Programmatic Results
+### Working with Results
 
 ```python
-result.display(show_ci=True)
-
-for coef in result.coefficients:
-    print(f"{coef.name}: b={coef.beta:.6f}, se={coef.std_err:.6f}, t={coef.t_stat:.2f}")
-
-print(f"R2 = {result.fit.r2:.4f}, N = {result.sample.nobs}")
+result.display()                         # Full output with 95% CI
+result.display(detail="compact")        # Header, coefficients, core fit
+result.display(show_ci=False)           # Hide confidence intervals
+text = result.summary(width=100)        # Return the same table as text
+html = result.to_html()                 # Escaped HTML for reports/notebooks
 ```
 
 ## Supported Models
