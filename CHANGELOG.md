@@ -2,7 +2,7 @@
 
 All notable public changes to StataFlow are documented here.
 
-## 1.3.0 - Unreleased
+## 1.3.0 - 2026-07-28
 
 ### Added
 
