@@ -29,13 +29,14 @@ result.display()
 
 StataFlow 面向希望在 Python 中复现 Stata 实证工作流的研究者。它不是泛化的统计库；公开能力以合成样例、公开真实数据样例和字段级 Stata 17 对照为证据。
 
-当前版本是 **1.2.0**，覆盖 14 个 Stata 风格命令。
+当前开发版本是 **1.3.0**，覆盖 14 个 Stata 风格命令。
 
 ## 功能概览
 
 - **14 个估计命令**：`regress`、`xtreg_fe`、`areg`、`reghdfe`、`ivregress_2sls`、`ivreghdfe`、`logit`、`probit`、`poisson`、`ppmlhdfe`、`did_imputation`、`eventstudyinteract`、`csdid`、`rdrobust`。另行导出的 `rdplot` 是辅助工具，不计入估计命令数。
 - **双层 API**：Stata 兼容命令层（`stataflow.compat.stata`）和 Python 原生估计器层（`stataflow.estimators`）。
-- **Stata 风格输出**：`result.display()` 输出系数、标准误、检验统计量、p 值和拟合统计量。
+- **命令感知的 Stata 风格输出**：`result.display()` 自动展示当前命令适用的
+  完整结果、拟合统计量和诊断信息；Notebook 使用同一份数据生成安全 HTML。
 - **高维固定效应**：支持多固定效应吸收、singleton 处理、个体斜率、聚类 VCE 和大规模 FE 场景。
 - **工具变量模型**：支持 2SLS、GMM2S、LIML、Fuller/k-class、一阶段诊断、弱工具变量检验和过度识别检验。
 - **二元、计数和 PPML 模型**：支持 Logit、Probit、Poisson、PPML-HDFE 及常用稳健/聚类协方差估计。
@@ -107,15 +108,14 @@ result = model.fit(vce="robust")
 result.display()
 ```
 
-### 结果访问
+### 查看结果
 
 ```python
-result.display(show_ci=True)
-
-for coef in result.coefficients:
-    print(f"{coef.name}: b={coef.beta:.6f}, se={coef.std_err:.6f}, t={coef.t_stat:.2f}")
-
-print(f"R2 = {result.fit.r2:.4f}, N = {result.sample.nobs}")
+result.display()                         # 完整输出，默认含 95% 置信区间
+result.display(detail="compact")        # 精简模式
+result.display(show_ci=False)           # 隐藏置信区间
+text = result.summary(width=100)        # 返回同一张纯文本结果表
+html = result.to_html()                 # 用于报告或 Notebook 的安全 HTML
 ```
 
 ## 支持的模型

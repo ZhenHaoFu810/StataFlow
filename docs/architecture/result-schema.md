@@ -12,6 +12,9 @@
 model:
   command: string
   estimator_family: string
+  dependent_variable: string | null
+  regressors: list[string]
+  estimator_name: string | null
   vcetype: string
   weight_type: string | null
   fe_vars: list[string]
@@ -20,6 +23,7 @@ model:
 sample:
   nobs: int
   n_input_rows: int
+  group_count: int | null
   sample_mask: list[bool] | encoded mask
   dropped_rows_reason: list[string] | null
 fit:
@@ -34,6 +38,13 @@ fit:
   r2_adj: float
   f_stat: float | null
   f_pvalue: float | null
+  model_test: string | null
+  model_stat: float | null
+  model_df_num: float | null
+  model_df_den: float | null
+  model_pvalue: float | null
+  iterations: int | null
+  converged: bool | null
 coefficients:
   rows:
     - name: string
@@ -53,6 +64,24 @@ diagnostics:
   residual_df_correction: string | null
   cluster_count: int | null
   warnings: list[string]
+iv:
+  estimator: string | null
+  endogenous: list[string]
+  instruments: list[string]
+  first_stage: list[object]
+did:
+  aggregation: string | null
+  id_variable: string | null
+  time_variable: string | null
+  cohort_variable: string | null
+  event_window: list[number] | null
+rd:
+  cutoff: float | null
+  running_variable: string | null
+  kernel: string | null
+  bwselect: string | null
+  p: int | null
+  q: int | null
 provenance:
   source: "python" | "stata"
   stata_version_target: string | null

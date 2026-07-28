@@ -13,6 +13,7 @@ from stataflow.results.result import (
     CoefficientRow,
     VarianceInfo,
     DiagnosticsInfo,
+    DIDInfo,
     ProvenanceInfo,
 )
 
@@ -86,6 +87,40 @@ class CSDID:
                 if 0 <= orig_idx < self._n_input_rows:
                     mask[orig_idx] = True
         return mask
+
+    def _did_info(
+        self,
+        aggregation: str,
+        *,
+        pretrend_stat: float | None = None,
+        pretrend_df: float | None = None,
+        pretrend_pvalue: float | None = None,
+    ) -> DIDInfo:
+        """Build shared CSDID design metadata for result aggregations."""
+        numeric_events = [
+            float(key)
+            for key in self._event_est
+            if not isinstance(key, str)
+        ]
+        return DIDInfo(
+            aggregation=aggregation,
+            id_variable=self.id_name,
+            time_variable=self.time_name,
+            cohort_variable=self.first_treat_name,
+            control_group=(
+                "not yet treated"
+                if getattr(self, "_notyet", False)
+                else "never treated"
+            ),
+            event_window=(
+                [min(numeric_events), max(numeric_events)]
+                if numeric_events
+                else None
+            ),
+            pretrend_stat=pretrend_stat,
+            pretrend_df=pretrend_df,
+            pretrend_pvalue=pretrend_pvalue,
+        )
 
     def _set_inference_units(self, df: pd.DataFrame, units) -> None:
         """Cache the fitted unit order and its inference-cluster mapping."""
@@ -776,6 +811,9 @@ class CSDID:
             model=ModelInfo(
                 command="csdid",
                 estimator_family="csdid",
+                dependent_variable=self.y_name,
+                regressors=list(self.xvars or []),
+                estimator_name="Callaway-Sant'Anna",
                 vcetype="cluster",
                 cluster_var=getattr(self, "_cluster_var", None),
             ),
@@ -783,6 +821,7 @@ class CSDID:
                 nobs=self._nobs,
                 n_input_rows=self._n_input_rows,
                 sample_mask=self._build_sample_mask(),
+                group_count=len(self._units),
             ),
             fit=FitInfo(
                 df_model=df_model,
@@ -796,8 +835,13 @@ class CSDID:
             diagnostics=DiagnosticsInfo(
                 cluster_count=self._n_clust,
             ),
+            did=self._did_info("event"),
             provenance=ProvenanceInfo(
-                stata_command=f"csdid y, ivar(id) time(time) gvar(first_treat) method({getattr(self, '_method', 'reg')})",
+                stata_command=(
+                    f"csdid {self.y_name}, ivar({self.id_name}) "
+                    f"time({self.time_name}) gvar({self.first_treat_name}) "
+                    f"method({getattr(self, '_method', 'reg')})"
+                ),
             ),
         )
         result.validate()
@@ -852,21 +896,65 @@ class CSDID:
         """
         return self.estat("event")
 
-    def summary(self, width: int = 80, show_ci: bool = False) -> str:
+    def summary(
+        self,
+        width: int = 80,
+        show_ci: bool = True,
+        *,
+        style: str = "stata",
+        detail: str = "full",
+    ) -> str:
         """Return the display text of the default (event) aggregation.
 
         Delegates to ``self.result.summary()``; no result construction is
         duplicated here (ADR-0005).
         """
-        return self.result.summary(width=width, show_ci=show_ci)
+        return self.result.summary(
+            width=width,
+            show_ci=show_ci,
+            style=style,
+            detail=detail,
+        )
 
-    def display(self, width: int = 80, show_ci: bool = False) -> None:
+    def display(
+        self,
+        width: int = 80,
+        show_ci: bool = True,
+        *,
+        style: str = "stata",
+        detail: str = "full",
+    ) -> None:
         """Print the default (event) aggregation table to stdout.
 
         Delegates to ``self.result.display()``; no result construction is
         duplicated here (ADR-0005).
         """
-        self.result.display(width=width, show_ci=show_ci)
+        self.result.display(
+            width=width,
+            show_ci=show_ci,
+            style=style,
+            detail=detail,
+        )
+
+    def to_html(
+        self,
+        width: int = 80,
+        show_ci: bool = True,
+        *,
+        style: str = "stata",
+        detail: str = "full",
+    ) -> str:
+        """Return HTML for the default event aggregation."""
+        return self.result.to_html(
+            width=width,
+            show_ci=show_ci,
+            style=style,
+            detail=detail,
+        )
+
+    def _repr_html_(self) -> str:
+        """Return the default rich notebook representation."""
+        return self.to_html()
 
     def estat_simple(self):
         """Simple average of all ATT(g,t)."""
@@ -998,6 +1086,9 @@ class CSDID:
             model=ModelInfo(
                 command="csdid",
                 estimator_family="csdid",
+                dependent_variable=self.y_name,
+                regressors=list(self.xvars or []),
+                estimator_name="Callaway-Sant'Anna",
                 vcetype="cluster",
                 cluster_var=getattr(self, "_cluster_var", None),
             ),
@@ -1005,6 +1096,7 @@ class CSDID:
                 nobs=self._nobs,
                 n_input_rows=self._n_input_rows,
                 sample_mask=self._build_sample_mask(),
+                group_count=len(self._units),
             ),
             fit=FitInfo(
                 df_model=float(df),
@@ -1017,6 +1109,12 @@ class CSDID:
             diagnostics=DiagnosticsInfo(
                 cluster_count=self._n_clust,
                 warnings=[f"Pretrend joint Wald test with df={df}"],
+            ),
+            did=self._did_info(
+                "pretrend",
+                pretrend_stat=float(stat),
+                pretrend_df=float(df),
+                pretrend_pvalue=float(p_value),
             ),
             provenance=ProvenanceInfo(
                 stata_command="csdid_estat pretrend",
@@ -1051,6 +1149,9 @@ class CSDID:
             model=ModelInfo(
                 command="csdid",
                 estimator_family="csdid",
+                dependent_variable=self.y_name,
+                regressors=list(self.xvars or []),
+                estimator_name="Callaway-Sant'Anna",
                 vcetype="cluster",
                 cluster_var=getattr(self, "_cluster_var", None),
             ),
@@ -1058,6 +1159,7 @@ class CSDID:
                 nobs=self._nobs,
                 n_input_rows=self._n_input_rows,
                 sample_mask=self._build_sample_mask(),
+                group_count=len(self._units),
             ),
             fit=FitInfo(
                 df_model=df_model,
@@ -1071,6 +1173,7 @@ class CSDID:
             diagnostics=DiagnosticsInfo(
                 cluster_count=self._n_clust,
             ),
+            did=self._did_info(command.rsplit(" ", 1)[-1]),
             provenance=ProvenanceInfo(
                 stata_command=command,
             ),

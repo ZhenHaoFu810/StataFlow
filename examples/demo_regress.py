@@ -20,6 +20,12 @@ print("regress, vce(robust)")
 result = regress(df, y="y", x=["x1", "x2"], vce="robust")
 result.display()
 
+# The same result can be rendered compactly or returned as escaped HTML.
+print("\nregress, compact output without confidence intervals")
+result.display(detail="compact", show_ci=False)
+html = result.to_html()
+assert 'class="stataflow-result"' in html
+
 # OLS with cluster SE
 print("\nregress, vce(cluster cluster_id)")
 result_cluster = regress(df, y="y", x=["x1", "x2"], vce="cluster", cluster="cluster_id")

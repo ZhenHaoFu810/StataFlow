@@ -2,6 +2,32 @@
 
 All notable public changes to StataFlow are documented here.
 
+## 1.3.0 - 2026-07-28
+
+### Added
+
+- Command-aware full and compact Stata-style displays for all 14 public
+  estimation commands.
+- Escaped HTML output through `to_html()` and automatic Jupyter rich display.
+- Typed `IVInfo`, `DIDInfo`, and `RDInfo` result sections, plus model, panel,
+  test, convergence, and iteration metadata.
+
+### Changed
+
+- `display()` and `summary()` now default to complete adaptive output with 95%
+  confidence intervals. Existing positional `width` and `show_ci` calls remain
+  valid.
+- Text and HTML renderers consume one renderer-neutral `DisplayDocument`.
+- IV diagnostics and command-specific result metadata now survive JSON
+  serialization.
+
+### Fixed
+
+- Fixed-effects and IV family identifiers now select their command-aware
+  displays.
+- `rdrobust` reports the fitted kernel instead of falling back to
+  `triangular`.
+
 ## 1.2.0 - 2026-07
 
 ### Added

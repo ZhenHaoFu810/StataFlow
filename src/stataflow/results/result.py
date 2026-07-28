@@ -19,6 +19,10 @@ class ModelInfo:
     """Model metadata."""
     command: str = ""
     estimator_family: str = ""
+    dependent_variable: Optional[str] = None
+    regressors: list[str] = field(default_factory=list)
+    estimator_name: Optional[str] = None
+    family_metadata: dict[str, Any] = field(default_factory=dict)
     vcetype: str = "ols"
     weight_type: Optional[str] = None
     fe_vars: list[str] = field(default_factory=list)
@@ -35,6 +39,7 @@ class SampleInfo:
     n_input_rows: int = 0
     sample_mask: list[bool] = field(default_factory=list)
     dropped_rows_reason: Optional[list[str]] = None
+    group_count: Optional[int] = None
 
 
 @dataclass
@@ -55,6 +60,13 @@ class FitInfo:
     ll: Optional[float] = None
     deviance: Optional[float] = None
     pseudo_r2: Optional[float] = None
+    model_test: Optional[str] = None
+    model_stat: Optional[float] = None
+    model_df_num: Optional[float] = None
+    model_df_den: Optional[float] = None
+    model_pvalue: Optional[float] = None
+    iterations: Optional[int] = None
+    converged: Optional[bool] = None
 
 
 @dataclass
@@ -94,6 +106,62 @@ class DiagnosticsInfo:
 
 
 @dataclass
+class IVInfo:
+    """Instrumental-variable model and diagnostic information."""
+
+    estimator: Optional[str] = None
+    endogenous: list[str] = field(default_factory=list)
+    instruments: list[str] = field(default_factory=list)
+    excluded_instruments: list[str] = field(default_factory=list)
+    underidentification_stat: Optional[float] = None
+    underidentification_df: Optional[float] = None
+    underidentification_pvalue: Optional[float] = None
+    weak_identification_stat: Optional[float] = None
+    weak_identification_label: Optional[str] = None
+    weak_identification_critical_value: Optional[float] = None
+    overidentification_stat: Optional[float] = None
+    overidentification_df: Optional[float] = None
+    overidentification_pvalue: Optional[float] = None
+    first_stage: list[dict[str, Any]] = field(default_factory=list)
+
+
+@dataclass
+class DIDInfo:
+    """Difference-in-differences display metadata."""
+
+    aggregation: Optional[str] = None
+    id_variable: Optional[str] = None
+    time_variable: Optional[str] = None
+    cohort_variable: Optional[str] = None
+    control_group: Optional[str] = None
+    event_window: Optional[list[float]] = None
+    pretrend_stat: Optional[float] = None
+    pretrend_df: Optional[float] = None
+    pretrend_pvalue: Optional[float] = None
+
+
+@dataclass
+class RDInfo:
+    """Regression-discontinuity display metadata."""
+
+    cutoff: Optional[float] = None
+    running_variable: Optional[str] = None
+    outcome_variable: Optional[str] = None
+    kernel: Optional[str] = None
+    bwselect: Optional[str] = None
+    p: Optional[int] = None
+    q: Optional[int] = None
+    n_left: Optional[int] = None
+    n_right: Optional[int] = None
+    n_eff_left: Optional[int] = None
+    n_eff_right: Optional[int] = None
+    h_left: Optional[float] = None
+    h_right: Optional[float] = None
+    b_left: Optional[float] = None
+    b_right: Optional[float] = None
+
+
+@dataclass
 class ProvenanceInfo:
     """Source tracking."""
     source: str = "python"  # "python" or "stata"
@@ -121,6 +189,9 @@ class ResultSchema:
     coefficients: list[CoefficientRow] = field(default_factory=list)
     variance: VarianceInfo = field(default_factory=VarianceInfo)
     diagnostics: DiagnosticsInfo = field(default_factory=DiagnosticsInfo)
+    iv: IVInfo = field(default_factory=IVInfo)
+    did: DIDInfo = field(default_factory=DIDInfo)
+    rd: RDInfo = field(default_factory=RDInfo)
     provenance: ProvenanceInfo = field(default_factory=ProvenanceInfo)
     _model: Any = field(default=None, repr=False, compare=False)
 
@@ -202,6 +273,10 @@ class ResultSchema:
             "model": {
                 "command": self.model.command,
                 "estimator_family": self.model.estimator_family,
+                "dependent_variable": self.model.dependent_variable,
+                "regressors": self.model.regressors,
+                "estimator_name": self.model.estimator_name,
+                "family_metadata": self.model.family_metadata,
                 "vcetype": self.model.vcetype,
                 "weight_type": self.model.weight_type,
                 "fe_vars": self.model.fe_vars,
@@ -215,6 +290,7 @@ class ResultSchema:
                 "n_input_rows": self.sample.n_input_rows,
                 "sample_mask": self.sample.sample_mask,
                 "dropped_rows_reason": self.sample.dropped_rows_reason,
+                "group_count": self.sample.group_count,
             },
             "fit": {
                 "df_model": self.fit.df_model,
@@ -232,6 +308,13 @@ class ResultSchema:
                 "ll": self.fit.ll,
                 "deviance": self.fit.deviance,
                 "pseudo_r2": self.fit.pseudo_r2,
+                "model_test": self.fit.model_test,
+                "model_stat": self.fit.model_stat,
+                "model_df_num": self.fit.model_df_num,
+                "model_df_den": self.fit.model_df_den,
+                "model_pvalue": self.fit.model_pvalue,
+                "iterations": self.fit.iterations,
+                "converged": self.fit.converged,
             },
             "coefficients": [
                 {
@@ -254,7 +337,60 @@ class ResultSchema:
             "diagnostics": {
                 "residual_df_correction": self.diagnostics.residual_df_correction,
                 "cluster_count": self.diagnostics.cluster_count,
+                "widstat": self.diagnostics.widstat,
+                "idstat": self.diagnostics.idstat,
+                "iddf": self.diagnostics.iddf,
+                "idp": self.diagnostics.idp,
+                "hansen_j": self.diagnostics.hansen_j,
+                "hansen_j_df": self.diagnostics.hansen_j_df,
+                "hansen_j_pvalue": self.diagnostics.hansen_j_pvalue,
                 "warnings": self.diagnostics.warnings,
+            },
+            "iv": {
+                "estimator": self.iv.estimator,
+                "endogenous": self.iv.endogenous,
+                "instruments": self.iv.instruments,
+                "excluded_instruments": self.iv.excluded_instruments,
+                "underidentification_stat": self.iv.underidentification_stat,
+                "underidentification_df": self.iv.underidentification_df,
+                "underidentification_pvalue": self.iv.underidentification_pvalue,
+                "weak_identification_stat": self.iv.weak_identification_stat,
+                "weak_identification_label": self.iv.weak_identification_label,
+                "weak_identification_critical_value": (
+                    self.iv.weak_identification_critical_value
+                ),
+                "overidentification_stat": self.iv.overidentification_stat,
+                "overidentification_df": self.iv.overidentification_df,
+                "overidentification_pvalue": self.iv.overidentification_pvalue,
+                "first_stage": self.iv.first_stage,
+            },
+            "did": {
+                "aggregation": self.did.aggregation,
+                "id_variable": self.did.id_variable,
+                "time_variable": self.did.time_variable,
+                "cohort_variable": self.did.cohort_variable,
+                "control_group": self.did.control_group,
+                "event_window": self.did.event_window,
+                "pretrend_stat": self.did.pretrend_stat,
+                "pretrend_df": self.did.pretrend_df,
+                "pretrend_pvalue": self.did.pretrend_pvalue,
+            },
+            "rd": {
+                "cutoff": self.rd.cutoff,
+                "running_variable": self.rd.running_variable,
+                "outcome_variable": self.rd.outcome_variable,
+                "kernel": self.rd.kernel,
+                "bwselect": self.rd.bwselect,
+                "p": self.rd.p,
+                "q": self.rd.q,
+                "n_left": self.rd.n_left,
+                "n_right": self.rd.n_right,
+                "n_eff_left": self.rd.n_eff_left,
+                "n_eff_right": self.rd.n_eff_right,
+                "h_left": self.rd.h_left,
+                "h_right": self.rd.h_right,
+                "b_left": self.rd.b_left,
+                "b_right": self.rd.b_right,
             },
             "provenance": {
                 "source": self.provenance.source,
@@ -286,6 +422,12 @@ class ResultSchema:
             result.variance = VarianceInfo(**data["variance"])
         if "diagnostics" in data:
             result.diagnostics = DiagnosticsInfo(**data["diagnostics"])
+        if "iv" in data:
+            result.iv = IVInfo(**data["iv"])
+        if "did" in data:
+            result.did = DIDInfo(**data["did"])
+        if "rd" in data:
+            result.rd = RDInfo(**data["rd"])
         if "provenance" in data:
             result.provenance = ProvenanceInfo(**data["provenance"])
 
@@ -299,144 +441,59 @@ class ResultSchema:
 
     # ── Display ────────────────────────────────────────────────────────
 
-    def summary(self, width: int = 80, show_ci: bool = False) -> str:
-        """Return a Stata-style regression table as a formatted string.
+    def summary(
+        self,
+        width: int = 80,
+        show_ci: bool = True,
+        *,
+        style: str = "stata",
+        detail: str = "full",
+    ) -> str:
+        """Return a command-aware Stata-style result table."""
+        from stataflow.display import build_document, render_text
 
-        Parameters
-        ----------
-        width : int
-            Maximum line width (default 80).
-        show_ci : bool
-            If True, include 95% confidence interval columns (default False).
-        """
-        L = []
-        sep = "-" * width
+        document = build_document(
+            self, style=style, detail=detail, show_ci=show_ci
+        )
+        return render_text(document, width=width)
 
-        # ── Header ──
-        fam = self.model.estimator_family
-        cmd = self.model.command or fam
-        L.append(f"{cmd}")
-        L.append("-" * len(cmd))
+    def display(
+        self,
+        width: int = 80,
+        show_ci: bool = True,
+        *,
+        style: str = "stata",
+        detail: str = "full",
+    ) -> None:
+        """Print the command-aware result table to standard output."""
+        print(
+            self.summary(
+                width=width,
+                show_ci=show_ci,
+                style=style,
+                detail=detail,
+            )
+        )
 
-        regression_families = {
-            "ols",
-            "fixed_effects",
-            "absorbing_ols",
-            "iv",
-            "glm",
-            "ppml",
-            "ppmlhdfe",
-        }
+    def to_html(
+        self,
+        width: int = 80,
+        show_ci: bool = True,
+        *,
+        style: str = "stata",
+        detail: str = "full",
+    ) -> str:
+        """Return an escaped HTML representation for notebook frontends."""
+        from stataflow.display import build_document, render_html
 
-        # Report terms without inventing a dependent-variable name.
-        coef_names = [c.name for c in self.coefficients]
-        x_vars = [n for n in coef_names if n != "_cons"]
-        if x_vars and fam in regression_families:
-            x_str = " + ".join(x_vars)
-            L.append(f"Terms: {x_str}")
+        document = build_document(
+            self, style=style, detail=detail, show_ci=show_ci
+        )
+        return render_html(document)
 
-        # Sample and VCE line
-        info_parts = [f"N = {self.sample.nobs:,}"]
-        vce_label = self.model.vcetype.upper() if self.model.vcetype != "ols" else "OLS"
-        info_parts.append(f"VCE = {vce_label}")
-        if self.fit.df_a is not None and self.fit.df_a > 0:
-            info_parts.append(f"df_a = {int(self.fit.df_a)}")
-        if self.model.absorb_vars:
-            fe_str = ", ".join(self.model.absorb_vars)
-            info_parts.insert(0, f"FE: {fe_str}")
-        L.append("    ".join(info_parts))
-
-        if self.model.cluster_var:
-            cv = self.model.cluster_var
-            cv_str = cv if isinstance(cv, str) else ", ".join(cv)
-            L.append(f"Cluster: {cv_str}")
-
-        L.append(sep)
-
-        # ── Coefficient table ──
-        if self.coefficients:
-            # Determine column widths from actual data
-            name_w = max(max(len(c.name) for c in self.coefficients), 6)
-            name_w = min(name_w, 18)  # cap very long names
-
-            # GLM families report z-stats, not t-stats
-            if fam in ("glm", "ppml", "logit", "probit", "poisson"):
-                z_label = "z"
-                p_label = "P>|z|"
-            else:
-                z_label = "t"
-                p_label = "P>|t|"
-            if show_ci:
-                header = (f"{'':>{name_w}}  {'Coef.':>10}  {'Std.Err.':>10}"
-                          f"  {z_label:>6}  {p_label:>6}  {'[95% CI]':>20}")
-            else:
-                header = (f"{'':>{name_w}}  {'Coef.':>10}  {'Std.Err.':>10}"
-                          f"  {z_label:>6}  {p_label:>6}")
-            L.append(header)
-            L.append("-" * len(header))
-
-            for c in self.coefficients:
-                beta_str = f"{c.beta:>10.6f}"
-                se_str = f"{c.std_err:>10.6f}"
-                t_str = f"{c.t_stat:>6.2f}"
-                p_str = f"{c.p_value:>6.3f}"
-                row = (f"{c.name:>{name_w}}  {beta_str}  {se_str}"
-                       f"  {t_str}  {p_str}")
-                if show_ci:
-                    ci_str = f"[{c.ci_low:.6f}, {c.ci_high:.6f}]"
-                    row += f"  {ci_str:>20}"
-                L.append(row)
-
-        L.append(sep)
-
-        # ── Footer ──
-        fit_stats = []
-        r2_families = {"ols", "fixed_effects", "absorbing_ols", "iv"}
-        if fam in r2_families and self.fit.r2 is not None:
-            fit_stats.append(f"R2 = {self.fit.r2:.4f}")
-        if fam in r2_families and self.fit.r2_adj is not None:
-            fit_stats.append(f"R2-Adj = {self.fit.r2_adj:.4f}")
-        if self.fit.rmse is not None and self.fit.rmse > 0:
-            fit_stats.append(f"RMSE = {self.fit.rmse:.4f}")
-        if fit_stats:
-            L.append("    ".join(fit_stats))
-
-        # F-statistic (OLS, FE, absorbing_ols)
-        if fam in ("ols", "fixed_effects", "absorbing_ols") and self.fit.f_stat is not None:
-            L.append(f"F({int(self.fit.df_model)}, {int(self.fit.df_resid)})"
-                     f" = {self.fit.f_stat:.2f}"
-                     f"    Prob > F = {self.fit.f_pvalue:.4f}")
-
-        # IV-specific: estimator type, Hansen J
-        if fam == "iv":
-            est_label = self.model.command.upper() if self.model.command else "IV"
-            L.append(f"Estimator: {est_label}")
-
-        # GLM-specific: log-likelihood, pseudo-R2, deviance
-        if fam in ("glm", "ppml", "ppmlhdfe"):
-            if self.fit.ll is not None:
-                L.append(f"Log-likelihood = {self.fit.ll:.4f}")
-            if self.fit.pseudo_r2 is not None:
-                L.append(f"Pseudo R2 = {self.fit.pseudo_r2:.4f}")
-            if self.fit.deviance is not None:
-                L.append(f"Deviance = {self.fit.deviance:.2f}")
-
-        # RD-specific
-        if fam in ("rd", "rdrobust"):
-            L.append(f"Kernel: {getattr(self.model, 'kernel', 'triangular')}")
-
-        # Warnings
-        if self.diagnostics.warnings:
-            L.append("")
-            L.append("Warnings:")
-            for w in self.diagnostics.warnings:
-                L.append(f"  * {w}")
-
-        return "\n".join(L)
-
-    def display(self, width: int = 80, show_ci: bool = False) -> None:
-        """Print the summary table to stdout."""
-        print(self.summary(width=width, show_ci=show_ci))
+    def _repr_html_(self) -> str:
+        """Return the default rich notebook representation."""
+        return self.to_html()
 
     def __repr__(self) -> str:
         return self.summary()

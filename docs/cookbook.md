@@ -300,12 +300,11 @@ result = ivregress_2sls(
     instruments=["z1", "z2"], vce="robust", first=True,
 )
 
-first = result.first_stage
-for endog_var, stats in first.items():
-    print(f"{endog_var}: R2={stats['r2']:.4f}, "
-          f"partial R2={stats['partial_r2']:.4f}, "
-          f"Shea R2={stats['shea_r2']:.4f}, "
-          f"F={stats['f_stat']:.2f}")
+for stage in result.iv.first_stage:
+    print(f"{stage['name']}: R2={stage['r2']:.4f}, "
+          f"partial R2={stage['partial_r2']:.4f}, "
+          f"Shea R2={stage['shea_r2']:.4f}, "
+          f"F={stage['f_stat']:.2f}")
 ```
 
 **Stata equivalent:**
@@ -321,9 +320,7 @@ result = ivregress_2sls(
     instruments=["z1", "z2"], vce="robust",
 )
 
-print(f"Kleibergen-Paap LM: {result.idstat:.3f}")
-print(f"Cragg-Donald Wald F: {result.widstat:.3f}")
-print(f"Stock-Yogo 10% critical: {result.widstat_cv:.1f}")
+result.display()
 ```
 
 **Stata equivalent:**
@@ -339,7 +336,7 @@ result = ivregress_2sls(
     df, y="y", x_exog=["x1"], x_endog=["x2"],
     instruments=["z1", "z2", "z3"], vce="robust",
 )
-print(f"Sargan statistic: {result.hansen_j:.3f}")
+print(f"Sargan statistic: {result.iv.overidentification_stat:.3f}")
 ```
 
 **Stata equivalent:**
@@ -387,7 +384,7 @@ result = ivreghdfe(
     estimator="gmm2s",
     vce="robust",
 )
-print(f"Hansen J statistic: {result.hansen_j:.3f}")
+print(f"Hansen J statistic: {result.iv.overidentification_stat:.3f}")
 ```
 
 **Stata equivalent:**
@@ -395,7 +392,8 @@ print(f"Hansen J statistic: {result.hansen_j:.3f}")
 ivreghdfe y x1 (x2 = z1 z2), absorb(firm_id) gmm2s robust
 ```
 
-> GMM2S reports the Hansen J statistic for overidentification testing. Access it via `result.hansen_j`.
+> GMM2S reports the Hansen J statistic for overidentification testing through
+> `result.iv.overidentification_stat`.
 
 ### IV with LIML estimator and Fuller adjustment
 
@@ -437,12 +435,11 @@ result = ivreghdfe(
     first=True, vce="robust",
 )
 
-first = result.first_stage
-for endog_var, stats in first.items():
-    print(f"{endog_var}: R2={stats['r2']:.4f}, "
-          f"Partial R2={stats['partial_r2']:.4f}, "
-          f"Shea R2={stats['shea_r2']:.4f}, "
-          f"F={stats['f_stat']:.2f}")
+for stage in result.iv.first_stage:
+    print(f"{stage['name']}: R2={stage['r2']:.4f}, "
+          f"Partial R2={stage['partial_r2']:.4f}, "
+          f"Shea R2={stage['shea_r2']:.4f}, "
+          f"F={stage['f_stat']:.2f}")
 ```
 
 **Stata equivalent:**
@@ -459,9 +456,8 @@ result = ivreghdfe(
     vce="robust",
 )
 
-print(f"Kleibergen-Paap LM: {result.idstat:.3f}")
-print(f"Cragg-Donald Wald F: {result.widstat:.3f}")
-print(f"Stock-Yogo 10% critical: {result.widstat_cv:.1f}")
+print(f"Kleibergen-Paap LM: {result.iv.underidentification_stat:.3f}")
+print(f"Kleibergen-Paap Wald F: {result.iv.weak_identification_stat:.3f}")
 ```
 
 **Stata equivalent:**
@@ -842,7 +838,8 @@ result = did_imputation(
     pretrends=3,                  # Test pre-treatment trend significance
     cluster="state",
 )
-# result._event_horizons includes pre-trend F-test p-value
+result.display()
+print(result.did.pretrend_pvalue)
 ```
 
 **Stata equivalent:**
@@ -1131,14 +1128,16 @@ result = regress(df, y="y", x=["x1##x2"])
 ```python
 result = regress(df, y="y", x=["x1", "x2"], vce="robust")
 
-# Stata-style regression table
+# Complete command-aware table with 95% confidence intervals
 result.display()
 
-# With confidence intervals
-result.display(show_ci=True)
+# Compact output or no confidence intervals
+result.display(detail="compact")
+result.display(show_ci=False)
 
-# Get as string (for logging, saving)
-text = result.summary()
+# Text and HTML return values
+text = result.summary(width=100)
+html = result.to_html()
 ```
 
 For programmatic access:
@@ -1193,23 +1192,22 @@ coef_df.to_csv("regression_results.csv", index=False)
 coef_df.to_stata("regression_results.dta", write_index=False)
 ```
 
-### Access RD-specific extras
+### Access RD design information
 
 ```python
 result = rdrobust(df, y="vote", x="margin", c=0.0, bwselect="mserd")
 
-extra = result._rd_extras
-print(f"Bandwidth h = {extra['h_l']:.3f}")
-print(f"Bias bandwidth b = {extra['b_l']:.3f}")
-print(f"Effective sample left = {extra['N_h_l']}")
-print(f"Effective sample right = {extra['N_h_r']}")
+print(f"Bandwidth h = {result.rd.h_left:.3f}")
+print(f"Bias bandwidth b = {result.rd.b_left:.3f}")
+print(f"Effective sample left = {result.rd.n_eff_left}")
+print(f"Effective sample right = {result.rd.n_eff_right}")
 ```
 
 ### Access event-study horizons
 
 ```python
 result = did_imputation(...)
-print(result._event_horizons)
+print(result.did.event_window)
 ```
 
 ### Access fixed effects estimates
@@ -1226,25 +1224,26 @@ for absorb_var in fe_df["absorb_var"].unique():
 
 ```python
 result = ivreghdfe(..., first=True)
-first = result.first_stage  # dict keyed by endogenous variable name
-for var, stats in first.items():
-    print(f"{var}: R2={stats['r2']:.4f}, Partial R2={stats['partial_r2']:.4f}")
+for stage in result.iv.first_stage:
+    print(
+        f"{stage['name']}: R2={stage['r2']:.4f}, "
+        f"Partial R2={stage['partial_r2']:.4f}"
+    )
 ```
 
 ### Access weak instrument diagnostics
 
 ```python
 result = ivreghdfe(..., vce="robust")
-print(f"KP LM stat:    {result.idstat:.3f}")   # Kleibergen-Paap underidentification
-print(f"CD Wald F:     {result.widstat:.3f}")  # Cragg-Donald weak identification
-print(f"Stock-Yogo 10%: {result.widstat_cv:.1f}")  # Critical value at 10%
+print(f"KP LM stat: {result.iv.underidentification_stat:.3f}")
+print(f"KP Wald F:  {result.iv.weak_identification_stat:.3f}")
 ```
 
 ### Access Hansen J overidentification test (GMM2S)
 
 ```python
 result = ivreghdfe(..., estimator="gmm2s")
-print(f"Hansen J: {result.hansen_j:.3f}")
+print(f"Hansen J: {result.iv.overidentification_stat:.3f}")
 ```
 
 ### Use estat_summarize and estat_ic

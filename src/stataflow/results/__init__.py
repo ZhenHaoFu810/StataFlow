@@ -1,5 +1,29 @@
-"""Result schema module - defines unified result object schema."""
+"""Unified result schema and command-specific metadata."""
 
-from .result import ResultSchema
+from stataflow.results.result import (
+    CoefficientRow,
+    DiagnosticsInfo,
+    DIDInfo,
+    FitInfo,
+    IVInfo,
+    ModelInfo,
+    ProvenanceInfo,
+    RDInfo,
+    ResultSchema,
+    SampleInfo,
+    VarianceInfo,
+)
 
-__all__ = ["ResultSchema"]
+__all__ = [
+    "CoefficientRow",
+    "DIDInfo",
+    "DiagnosticsInfo",
+    "FitInfo",
+    "IVInfo",
+    "ModelInfo",
+    "ProvenanceInfo",
+    "RDInfo",
+    "ResultSchema",
+    "SampleInfo",
+    "VarianceInfo",
+]

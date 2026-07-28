@@ -12,6 +12,7 @@ from stataflow.results.result import (
     CoefficientRow,
     VarianceInfo,
     DiagnosticsInfo,
+    DIDInfo,
     ProvenanceInfo,
 )
 
@@ -469,6 +470,9 @@ class DIDImputation:
 
         # Extract pretrends coefficients and compute joint F test
         pretrend_warnings = []
+        pretrend_stat = None
+        pretrend_df = None
+        pretrend_pvalue = None
         if pretrends > 0 and cov_matrix is not None and col_names is not None:
             pre_names = [f"_pre_{h}" for h in range(1, pretrends + 1)]
             try:
@@ -516,6 +520,9 @@ class DIDImputation:
                 pretrend_warnings.append(
                     f"Pretrend joint F-test: F={f_stat:.6f}, p={p_value_f:.6f}, df=({pretrends}, {df_resid_ctrl or 'na'})"
                 )
+                pretrend_stat = float(f_stat)
+                pretrend_df = float(pretrends)
+                pretrend_pvalue = float(p_value_f)
 
         # Save estimates and weights if requested
         if saveestimates is not None:
@@ -537,6 +544,8 @@ class DIDImputation:
         model_info = ModelInfo(
             command="did_imputation",
             estimator_family="did_imputation",
+            dependent_variable=self.y_var,
+            estimator_name="Borusyak-Jaravel-Spiess imputation",
             vcetype="cluster" if cluster else "ols",
             cluster_var=cluster if cluster else None,
         )
@@ -545,6 +554,7 @@ class DIDImputation:
             nobs=nobs_all,
             n_input_rows=n_input_rows,
             sample_mask=final_sample_mask,
+            group_count=int(df[self.id_var].nunique()),
         )
 
         fit_info = FitInfo(
@@ -565,6 +575,22 @@ class DIDImputation:
         )
 
         diagnostics = DiagnosticsInfo(warnings=pretrend_warnings)
+        numeric_horizons = [float(h) for h in horizons if h is not None]
+        did_info = DIDInfo(
+            aggregation="event" if allhorizons else "simple",
+            id_variable=self.id_var,
+            time_variable=self.time_var,
+            cohort_variable=self.first_treat_var,
+            control_group="never treated",
+            event_window=(
+                [min(numeric_horizons), max(numeric_horizons)]
+                if numeric_horizons
+                else None
+            ),
+            pretrend_stat=pretrend_stat,
+            pretrend_df=pretrend_df,
+            pretrend_pvalue=pretrend_pvalue,
+        )
 
         options = [f"cluster({cluster})"]
         if allhorizons:
@@ -610,6 +636,7 @@ class DIDImputation:
             coefficients=coefficients,
             variance=variance_info,
             diagnostics=diagnostics,
+            did=did_info,
             provenance=provenance,
         )
 

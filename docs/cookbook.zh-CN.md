@@ -95,8 +95,9 @@ result = regress(df, y="y", x=["x1", "x2"], vce="robust")
 # 一键输出 Stata 风格回归表
 result.display()
 
-# 含置信区间
-result.display(show_ci=True)
+# 精简输出或隐藏置信区间
+result.display(detail="compact")
+result.display(show_ci=False)
 
 # 获取字符串（用于日志/保存）
 text = result.summary()
@@ -416,11 +417,10 @@ result = ivregress_2sls(
     instruments=["z1", "z2"], vce="robust", first=True,
 )
 
-first = result.first_stage
-for var, s in first.items():
-    print(f"{var}: R2={s['r2']:.4f}, "
-          f"partial R2={s['partial_r2']:.4f}, "
-          f"Shea R2={s['shea_r2']:.4f}, F={s['f_stat']:.2f}")
+for stage in result.iv.first_stage:
+    print(f"{stage['name']}: R2={stage['r2']:.4f}, "
+          f"partial R2={stage['partial_r2']:.4f}, "
+          f"Shea R2={stage['shea_r2']:.4f}, F={stage['f_stat']:.2f}")
 ```
 
 **Stata 对应**：
@@ -436,9 +436,7 @@ result = ivregress_2sls(
     instruments=["z1", "z2"], vce="robust",
 )
 
-print(f"KP LM = {result.idstat:.3f}")
-print(f"CD Wald F = {result.widstat:.3f}")
-print(f"Stock-Yogo 10% = {result.widstat_cv:.1f}")
+result.display()
 ```
 
 **Stata 对应**：
@@ -454,7 +452,7 @@ result = ivregress_2sls(
     df, y="y", x_exog=["x1"], x_endog=["x2"],
     instruments=["z1", "z2", "z3"], vce="robust",
 )
-print(f"Sargan = {result.hansen_j:.3f}")
+print(f"Sargan = {result.iv.overidentification_stat:.3f}")
 ```
 
 **Stata 对应**：
@@ -496,7 +494,7 @@ result = ivreghdfe(
     instruments=["z1", "z2"], absorb="firm_id",
     estimator="gmm2s", vce="robust",
 )
-print(f"Hansen J = {result.hansen_j:.3f}")
+print(f"Hansen J = {result.iv.overidentification_stat:.3f}")
 
 # LIML（含 Fuller 调整）
 result = ivreghdfe(
@@ -528,14 +526,12 @@ result = ivreghdfe(
     instruments=["z1", "z2"], absorb="firm_id",
     first=True, vce="robust",
 )
-first = result.first_stage
-for var, s in first.items():
-    print(f"R2={s['r2']:.4f}, Partial R2={s['partial_r2']:.4f}, F={s['f_stat']:.1f}")
+for stage in result.iv.first_stage:
+    print(f"R2={stage['r2']:.4f}, Partial R2={stage['partial_r2']:.4f}, F={stage['f_stat']:.1f}")
 
 # 弱工具变量检验（任何 IV 估计后自动附加）
-print(f"KP LM = {result.idstat:.3f}")
-print(f"CD Wald F = {result.widstat:.3f}")
-print(f"Stock-Yogo 10% = {result.widstat_cv:.1f}")
+print(f"KP LM = {result.iv.underidentification_stat:.3f}")
+print(f"KP Wald F = {result.iv.weak_identification_stat:.3f}")
 ```
 
 **Stata 对应**：
@@ -1005,12 +1001,11 @@ print("Conventional:", result.coefficients[0].beta)
 print("Bias-Corrected:", result.coefficients[1].beta)
 print("Robust:", result.coefficients[2].beta)
 
-# 带宽和样本信息（存储在 _rd_extras 中）
-extra = result._rd_extras
-print(f"带宽 h = {extra['h_l']:.3f}")
-print(f"偏差带宽 b = {extra['b_l']:.3f}")
-print(f"左侧有效样本 = {extra['N_h_l']}")
-print(f"右侧有效样本 = {extra['N_h_r']}")
+# 带宽和样本信息
+print(f"带宽 h = {result.rd.h_left:.3f}")
+print(f"偏差带宽 b = {result.rd.b_left:.3f}")
+print(f"左侧有效样本 = {result.rd.n_eff_left}")
+print(f"右侧有效样本 = {result.rd.n_eff_right}")
 ```
 
 ### 7.4 完整示例
@@ -1274,8 +1269,9 @@ aggregation 的 `ResultSchema`：
 # 一键输出 Stata 风格回归表
 result.display()
 
-# 含置信区间
-result.display(show_ci=True)
+# 精简输出或隐藏置信区间
+result.display(detail="compact")
+result.display(show_ci=False)
 
 # 程序化访问
 for c in result.coefficients:
@@ -1287,12 +1283,10 @@ for c in result.coefficients:
 
 某些命令有额外的结果字段：
 
-- **DID / Event Study**: `result._event_horizons` 存储各期效应的时间点。
-- **RD**: `result._rd_extras` 存储带宽、有效样本、tau_cl、tau_bc 等。
+- **DID / Event Study**: `result.did` 存储聚合方式、面板变量、事件窗口和 pretrend 信息。
+- **RD**: `result.rd` 存储 kernel、带宽、有效样本和多项式阶数。
 - **reghdfe (savefe=True)**: `result.fixed_effects` 存储固定效应估计值（pd.DataFrame）。
-- **ivreghdfe (first=True)**: `result.first_stage` 存储第一阶段诊断（每个内生变量含 R2、partial R2、Shea R2、F 统计量）。
-- **ivreghdfe (GMM2S)**: `result.hansen_j` 存储 Hansen J 过度识别检验统计量。
-- **ivreghdfe (自动)**: `result.idstat`（KP LM）、`result.widstat`（CD Wald F）、`result.widstat_cv`（Stock-Yogo 临界值）存储弱工具变量检验结果。
+- **ivreghdfe**: `result.iv` 存储变量角色、第一阶段、弱识别和过度识别诊断。
 
 ### 10.6 postestimation 工具
 

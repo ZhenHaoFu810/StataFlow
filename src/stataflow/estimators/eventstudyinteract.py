@@ -12,6 +12,7 @@ from stataflow.results.result import (
     CoefficientRow,
     VarianceInfo,
     DiagnosticsInfo,
+    DIDInfo,
     ProvenanceInfo,
 )
 
@@ -342,11 +343,20 @@ class EventStudyInteract:
         model_info = ModelInfo(
             command="eventstudyinteract",
             estimator_family="eventstudyinteract",
+            dependent_variable=self.y_var,
+            regressors=list(self.event_dummies),
+            estimator_name="Interaction-weighted event study",
             vcetype=vce,
             cluster_var=cluster if cluster else None,
+            absorb_vars=list(self.absorb_vars),
         )
 
-        sample_info = SampleInfo(nobs=nobs_all, n_input_rows=n_input_rows, sample_mask=sample_mask)
+        sample_info = SampleInfo(
+            nobs=nobs_all,
+            n_input_rows=n_input_rows,
+            sample_mask=sample_mask,
+            group_count=int(df[self.absorb_vars[0]].nunique()),
+        )
 
         fit_info = FitInfo(
             df_model=float(n_rel),
@@ -373,6 +383,13 @@ class EventStudyInteract:
             coefficients=coefficients,
             variance=variance_info,
             diagnostics=DiagnosticsInfo(),
+            did=DIDInfo(
+                aggregation="event",
+                id_variable=self.absorb_vars[0],
+                time_variable=self.absorb_vars[1],
+                cohort_variable=self.cohort_var,
+                control_group=self.control_cohort_var,
+            ),
             provenance=provenance,
         )
         result.validate()

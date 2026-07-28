@@ -524,6 +524,9 @@ class OLS:
         result.model = ModelInfo(
             command="regress",
             estimator_family="ols",
+            dependent_variable=self.y,
+            regressors=list(self.x),
+            estimator_name="Ordinary least squares",
             vcetype=vce,
             weight_type=self.weight_type,
             has_constant=self.add_constant,
@@ -546,6 +549,11 @@ class OLS:
             r2_adj=r2_adj,
             f_stat=f_stat,
             f_pvalue=f_pvalue,
+            model_test="F",
+            model_stat=f_stat,
+            model_df_num=df_model,
+            model_df_den=df_resid,
+            model_pvalue=f_pvalue,
         )
         result.coefficients = [
             CoefficientRow(

@@ -1535,6 +1535,9 @@ class AbsorbingOLS:
         result.model = ModelInfo(
             command="reghdfe" if self._reghdfe_mode else "areg",
             estimator_family="absorbing_ols",
+            dependent_variable=self.y,
+            regressors=list(self.x),
+            estimator_name="Absorbing least squares",
             vcetype=vce,
             absorb_var=absorb_var,
             absorb_vars=self.absorb_vars,
@@ -1546,6 +1549,11 @@ class AbsorbingOLS:
             nobs=n,
             n_input_rows=n_input_rows,
             sample_mask=sample_mask,
+            group_count=(
+                int(self._df[self.absorb_vars[0]].nunique())
+                if len(self.absorb_vars) == 1
+                else None
+            ),
         )
         result.fit = FitInfo(
             df_model=df_model,
@@ -1560,6 +1568,11 @@ class AbsorbingOLS:
             r2_adj=r2_adj,
             f_stat=f_stat,
             f_pvalue=f_pvalue,
+            model_test="F",
+            model_stat=f_stat,
+            model_df_num=df_model,
+            model_df_den=df_resid,
+            model_pvalue=f_pvalue,
         )
         result.coefficients = [
             CoefficientRow(
