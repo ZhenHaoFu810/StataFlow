@@ -162,7 +162,7 @@ def _markdown_images(markdown: str) -> list[str]:
         assert normalized in references, f"undefined Markdown image reference: {identifier or alt_text}"
         destinations.append(references[normalized])
 
-    shortcut_pattern = re.compile(r"!\[([^\]\n]+)\](?!\s*[\[(])")
+    shortcut_pattern = re.compile(r"!\[([^\]\n]+)\](?![ \t]*[\[(])")
     for identifier in shortcut_pattern.findall(markdown):
         normalized = re.sub(r"\s+", " ", identifier.strip()).lower()
         assert normalized in references, f"undefined Markdown image reference: {identifier}"
@@ -467,6 +467,11 @@ def _assert_exclusion_directions(text: str, terms: dict[str, str]) -> None:
 
 def test_english_readme_badges_are_exact() -> None:
     _assert_badge_contract("README.md")
+
+
+def test_markdown_images_counts_shortcut_reference() -> None:
+    markdown = "![extra]\n\n[extra]: extra.png\n"
+    assert _markdown_images(markdown) == ["extra.png"]
 
 
 def test_chinese_readme_badges_are_exact() -> None:
