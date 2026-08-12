@@ -48,6 +48,19 @@ EXPECTED_URLS = {
     "Contributing": "https://github.com/ZhenHaoFu810/StataFlow/blob/main/CONTRIBUTING.md",
 }
 
+BUG_NOTICE = (
+    "Use a small synthetic data reproduction. Do not include proprietary or confidential data, credentials, tokens, "
+    "unredacted local paths or usernames, or Stata license information."
+)
+SENSITIVE_DATA_CONFIRMATION = "I confirm that sensitive or private information has been removed."
+PR_SAFETY_CHECKLIST_ITEM = (
+    "- [ ] This pull request contains no private paths, raw logs, proprietary data, credentials, or Stata license "
+    "information."
+)
+VALIDATION_RELEASE_SENTENCE = (
+    "StataFlow 1.3.0 changed result presentation and metadata, not estimator or inference algorithms."
+)
+
 REQUIRED_BUG_IDS = {
     "stataflow_version",
     "python_version",
@@ -148,7 +161,11 @@ def _linked_badges(markdown: str) -> list[tuple[str, str]]:
 
 def _markdown_images(markdown: str) -> list[str]:
     markdown = _without_fenced_code(markdown)
-    images = re.findall(r"!\[[^\]]*\]\((?:<([^>]+)>|([^\s)]+))\)", markdown)
+    inline_pattern = re.compile(
+        r"!\[[^\]]*\]\([ \t]*(?:<([^>]+)>|([^\s)]+))"
+        r"(?:[ \t]+(?:\"[^\"\n]*\"|'[^'\n]*'|\([^()\n]*\)))?[ \t]*\)"
+    )
+    images = inline_pattern.findall(markdown)
     destinations = [angle or bare for angle, bare in images]
 
     reference_pattern = re.compile(r"^\s{0,3}\[([^\]]+)\]:\s*(?:<([^>]+)>|(\S+))", re.MULTILINE)
@@ -446,23 +463,14 @@ def _field_is_required(item: dict[str, object]) -> bool:
     return item.get("validations", {}).get("required") is True
 
 
-def _markdown_notice(form: dict[str, object]) -> str:
+def _markdown_notices(form: dict[str, object]) -> list[str]:
     values = [item["attributes"]["value"] for item in form["body"] if item.get("type") == "markdown"]
-    return re.sub(r"\s+", " ", " ".join(values)).lower()
+    return [re.sub(r"\s+", " ", value).strip() for value in values]
 
 
 def _assert_terms(text: str, terms: dict[str, str]) -> None:
     for name, pattern in terms.items():
         assert re.search(pattern, text, re.IGNORECASE), f"missing required {name} wording"
-
-
-def _assert_exclusion_directions(text: str, terms: dict[str, str]) -> None:
-    direction = r"(?:do not include|don't include|must not include|remove|removed|redact|redacted|contains? no)"
-    items = [item.strip() for item in re.split(r"[\n.;]+", text) if item.strip()]
-    for name, term in terms.items():
-        assert any(
-            re.search(direction, item, re.IGNORECASE) and re.search(term, item, re.IGNORECASE) for item in items
-        ), f"missing removal or exclusion direction for {name}"
 
 
 def test_english_readme_badges_are_exact() -> None:
@@ -472,6 +480,10 @@ def test_english_readme_badges_are_exact() -> None:
 def test_markdown_images_counts_shortcut_reference() -> None:
     markdown = "![extra]\n\n[extra]: extra.png\n"
     assert _markdown_images(markdown) == ["extra.png"]
+
+
+def test_markdown_images_counts_inline_image_with_title() -> None:
+    assert _markdown_images('![extra](extra.png "caption")') == ["extra.png"]
 
 
 def test_chinese_readme_badges_are_exact() -> None:
@@ -519,15 +531,7 @@ def test_validation_distinguishes_snapshot_from_presentation_release() -> None:
     assert "July 2026" in text
     assert "1.2.0 estimator-validation snapshot" in text
     assert "retained for 1.3.0" in text
-    release_paragraphs = [paragraph for paragraph in text.split("##") if "1.3.0" in paragraph]
-    assert any(
-        "presentation" in paragraph.lower()
-        and "metadata" in paragraph.lower()
-        and re.search(r"\bnot\b", paragraph, re.IGNORECASE)
-        and re.search(r"estimat(?:or|ion)", paragraph, re.IGNORECASE)
-        and "inference" in paragraph.lower()
-        for paragraph in release_paragraphs
-    ), "VALIDATION.md must say 1.3.0 changed presentation/metadata, not estimation or inference algorithms"
+    assert VALIDATION_RELEASE_SENTENCE in text
 
 
 def test_security_supports_only_the_1_3_release_line() -> None:
@@ -548,25 +552,9 @@ def test_bug_report_issue_form_contract() -> None:
     assert {field_id for field_id, item in fields.items() if _field_is_required(item)} == REQUIRED_BUG_IDS
     assert fields["sensitive_data"]["type"] == "checkboxes"
     assert all(not _field_is_required(fields[field_id]) for field_id in OPTIONAL_BUG_IDS)
-    notice = _markdown_notice(form)
-    assert re.search(r"\b(?:prefer|use|provide)\b.*\bsynthetic data\b", notice)
-    _assert_exclusion_directions(
-        notice,
-        {
-            "proprietary data": r"\bproprietary\b(?:\s+or\s+confidential|/confidential)?\s+data\b",
-            "confidential data": r"\b(?:confidential|proprietary(?:\s+or\s+|/)confidential)\s+data\b",
-            "credentials": r"\bcredentials?\b",
-            "tokens": r"\btokens?\b",
-            "local paths": r"\blocal paths?\b",
-            "usernames": r"\busernames?\b",
-            "Stata license information": r"\bstata license information\b",
-        },
-    )
+    assert _markdown_notices(form)[0] == BUG_NOTICE
     sensitive_options = fields["sensitive_data"]["attributes"]["options"]
-    assert any(
-        re.search(r"\b(?:sensitive|private)\b.*\binformation\b.*\b(?:has|have) been removed\b", option["label"], re.I)
-        for option in sensitive_options
-    ), "sensitive_data checkbox must confirm sensitive/private information has been removed"
+    assert sensitive_options == [{"label": SENSITIVE_DATA_CONFIRMATION, "required": True}]
 
 
 def test_feature_request_issue_form_contract() -> None:
@@ -578,7 +566,7 @@ def test_feature_request_issue_form_contract() -> None:
     assert {field_id: item["type"] for field_id, item in fields.items()} == FEATURE_FIELD_TYPES
     assert {field_id for field_id, item in fields.items() if _field_is_required(item)} == REQUIRED_FEATURE_IDS
     assert all(not _field_is_required(fields[field_id]) for field_id in OPTIONAL_FEATURE_IDS)
-    notice = _markdown_notice(form)
+    notice = " ".join(_markdown_notices(form)).lower()
     assert "documented" in notice and "subsets" in notice
     assert re.search(r"(?:does not|do not|doesn't|don't)\s+(?:promise|support).*\bevery stata option\b", notice)
 
@@ -612,13 +600,4 @@ def test_pull_request_template_has_required_sections() -> None:
         line for line in template.splitlines() if re.match(r"^\s*[-*+]\s+\[[ xX]\]\s+\S", line)
     )
     assert checklist, "pull request template must include a public-safety checklist"
-    _assert_exclusion_directions(
-        checklist,
-        {
-            "private paths": r"\bprivate paths?\b",
-            "raw logs": r"\braw logs?\b",
-            "proprietary data": r"\bproprietary data\b",
-            "credentials": r"\bcredentials?\b",
-            "Stata license information": r"\bStata license information\b",
-        },
-    )
+    assert PR_SAFETY_CHECKLIST_ITEM in checklist
