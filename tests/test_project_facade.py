@@ -108,17 +108,20 @@ ATTRIBUTE_KEYS = {
 }
 
 
-class _HrefParser(HTMLParser):
+class _HtmlAssetParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__()
         self.destinations: list[str] = []
+        self.images: list[str] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        if tag.lower() != "a":
-            return
-        href = dict(attrs).get("href")
-        if href:
-            self.destinations.append(href)
+        attributes = dict(attrs)
+        if tag.lower() == "a" and attributes.get("href"):
+            self.destinations.append(attributes["href"])
+        elif tag.lower() == "img" and attributes.get("src"):
+            self.images.append(attributes["src"])
+
+    handle_startendtag = handle_starttag
 
 
 def _read(relative_path: str) -> str:
@@ -138,12 +141,37 @@ def _load_yaml(relative_path: str) -> dict[str, object]:
 
 
 def _linked_badges(markdown: str) -> list[tuple[str, str]]:
+    markdown = _without_fenced_code(markdown)
     pattern = re.compile(r"\[!\[[^\]]+\]\(([^\s)]+)\)\]\(([^\s)]+)\)")
     return pattern.findall(markdown)
 
 
 def _markdown_images(markdown: str) -> list[str]:
-    return re.findall(r"!\[[^\]]*\]\(([^\s)]+)\)", markdown)
+    markdown = _without_fenced_code(markdown)
+    images = re.findall(r"!\[[^\]]*\]\((?:<([^>]+)>|([^\s)]+))\)", markdown)
+    destinations = [angle or bare for angle, bare in images]
+
+    reference_pattern = re.compile(r"^\s{0,3}\[([^\]]+)\]:\s*(?:<([^>]+)>|(\S+))", re.MULTILINE)
+    references = {
+        re.sub(r"\s+", " ", label.strip()).lower(): angle or bare
+        for label, angle, bare in reference_pattern.findall(markdown)
+    }
+    full_reference_pattern = re.compile(r"!\[([^\]\n]*)\]\[([^\]\n]*)\]")
+    for alt_text, identifier in full_reference_pattern.findall(markdown):
+        normalized = re.sub(r"\s+", " ", (identifier or alt_text).strip()).lower()
+        assert normalized in references, f"undefined Markdown image reference: {identifier or alt_text}"
+        destinations.append(references[normalized])
+
+    shortcut_pattern = re.compile(r"!\[([^\]\n]+)\](?!\s*[\[(])")
+    for identifier in shortcut_pattern.findall(markdown):
+        normalized = re.sub(r"\s+", " ", identifier.strip()).lower()
+        assert normalized in references, f"undefined Markdown image reference: {identifier}"
+        destinations.append(references[normalized])
+
+    parser = _HtmlAssetParser()
+    parser.feed(markdown)
+    destinations.extend(parser.images)
+    return destinations
 
 
 def _without_fenced_code(markdown: str) -> str:
@@ -228,7 +256,7 @@ def _markdown_link_destinations(markdown: str) -> list[str]:
         if normalized in references:
             destinations.append(references[normalized])
 
-    parser = _HrefParser()
+    parser = _HtmlAssetParser()
     parser.feed(markdown)
     destinations.extend(parser.destinations)
     return destinations
@@ -428,6 +456,15 @@ def _assert_terms(text: str, terms: dict[str, str]) -> None:
         assert re.search(pattern, text, re.IGNORECASE), f"missing required {name} wording"
 
 
+def _assert_exclusion_directions(text: str, terms: dict[str, str]) -> None:
+    direction = r"(?:do not include|don't include|must not include|remove|removed|redact|redacted|contains? no)"
+    items = [item.strip() for item in re.split(r"[\n.;]+", text) if item.strip()]
+    for name, term in terms.items():
+        assert any(
+            re.search(direction, item, re.IGNORECASE) and re.search(term, item, re.IGNORECASE) for item in items
+        ), f"missing removal or exclusion direction for {name}"
+
+
 def test_english_readme_badges_are_exact() -> None:
     _assert_badge_contract("README.md")
 
@@ -506,19 +543,25 @@ def test_bug_report_issue_form_contract() -> None:
     assert {field_id for field_id, item in fields.items() if _field_is_required(item)} == REQUIRED_BUG_IDS
     assert fields["sensitive_data"]["type"] == "checkboxes"
     assert all(not _field_is_required(fields[field_id]) for field_id in OPTIONAL_BUG_IDS)
-    _assert_terms(
-        _markdown_notice(form),
+    notice = _markdown_notice(form)
+    assert re.search(r"\b(?:prefer|use|provide)\b.*\bsynthetic data\b", notice)
+    _assert_exclusion_directions(
+        notice,
         {
-            "synthetic data": r"\bsynthetic data\b",
-            "proprietary data warning": r"\bproprietary\b.*\bdata\b",
-            "confidential data warning": r"\bconfidential\b.*\bdata\b",
-            "credentials warning": r"\bcredentials?\b",
-            "tokens warning": r"\btokens?\b",
-            "local paths warning": r"\blocal paths?\b",
-            "usernames warning": r"\busernames?\b",
-            "Stata license information warning": r"\bStata license information\b",
+            "proprietary data": r"\bproprietary\b(?:\s+or\s+confidential|/confidential)?\s+data\b",
+            "confidential data": r"\b(?:confidential|proprietary(?:\s+or\s+|/)confidential)\s+data\b",
+            "credentials": r"\bcredentials?\b",
+            "tokens": r"\btokens?\b",
+            "local paths": r"\blocal paths?\b",
+            "usernames": r"\busernames?\b",
+            "Stata license information": r"\bstata license information\b",
         },
     )
+    sensitive_options = fields["sensitive_data"]["attributes"]["options"]
+    assert any(
+        re.search(r"\b(?:sensitive|private)\b.*\binformation\b.*\b(?:has|have) been removed\b", option["label"], re.I)
+        for option in sensitive_options
+    ), "sensitive_data checkbox must confirm sensitive/private information has been removed"
 
 
 def test_feature_request_issue_form_contract() -> None:
@@ -564,7 +607,7 @@ def test_pull_request_template_has_required_sections() -> None:
         line for line in template.splitlines() if re.match(r"^\s*[-*+]\s+\[[ xX]\]\s+\S", line)
     )
     assert checklist, "pull request template must include a public-safety checklist"
-    _assert_terms(
+    _assert_exclusion_directions(
         checklist,
         {
             "private paths": r"\bprivate paths?\b",
