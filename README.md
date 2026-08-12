@@ -1,11 +1,18 @@
 # StataFlow
 
-**A Python econometrics toolkit designed to reproduce Stata 17 estimation results with field-level validation.**
+**Stata-aligned econometrics for Python, with field-level validation across the documented support surface.**
 
 [简体中文](README.zh-CN.md)
 
-[![PyPI version](https://img.shields.io/pypi/v/stataflow)](https://pypi.org/project/stataflow/)
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![CI](https://github.com/ZhenHaoFu810/StataFlow/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ZhenHaoFu810/StataFlow/actions/workflows/ci.yml)
+[![PyPI version](https://img.shields.io/pypi/v/stataflow.svg)](https://pypi.org/project/StataFlow/)
+[![Downloads](https://static.pepy.tech/badge/stataflow)](https://pepy.tech/projects/stataflow?timeRange=threeMonths&category=version&includeCIDownloads=true&granularity=weekly&viewType=line&versions=Total%2C1.*%2C0.*)
+[![Python versions](https://img.shields.io/pypi/pyversions/stataflow.svg)](https://pypi.org/project/StataFlow/)
+[![License](https://img.shields.io/pypi/l/stataflow.svg)](LICENSE)
+[![Typing](https://img.shields.io/pypi/types/stataflow.svg)](https://pypi.org/project/StataFlow/)
+[![Stata validation](https://img.shields.io/badge/Stata_validation-documented_support_surface-1f6f5f.svg)](VALIDATION.md)
+
+[Installation](#installation) · [Quick Start](#quick-start) · [Validation](#validation) · [Documentation](#documentation) · [Contributing](CONTRIBUTING.md)
 
 ---
 
@@ -27,9 +34,9 @@ result.display()
 
 ## Why StataFlow
 
-StataFlow is for researchers who want Python workflows without giving up the empirical conventions they rely on in Stata. The project is not a generic statistics library: public capabilities are backed by synthetic cases, public real-data cases, and field-level Stata 17 comparisons.
+StataFlow is for researchers who want Python workflows without giving up the empirical conventions they rely on in Stata. The project is not a generic statistics library: public capabilities have Stata validation across the documented support surface, backed by synthetic cases, public real-data cases, and field-level comparisons.
 
-The current development version is **1.3.0**, covering 14 Stata-style commands.
+The latest release is **1.3.0**, covering 14 Stata-style commands.
 
 ## Features
 
@@ -43,7 +50,7 @@ The current development version is **1.3.0**, covering 14 Stata-style commands.
 - **Binary, count, and PPML models**: Logit, Probit, Poisson, and PPML-HDFE with robust and clustered covariance estimators.
 - **Causal inference**: BJS DID imputation, Sun-Abraham event-study interactions, Callaway-Sant'Anna DID, and sharp/fuzzy regression discontinuity.
 - **Stata-compatible syntax subsets**: factor variables, command-specific analytic-weight support, multiple fixed effects, common VCE choices, and hard rejection of unsupported parameters.
-- **Validation-first development**: public commands are backed by field-level Stata 17 comparison evidence.
+- **Validation-first development**: public commands have field-level Stata validation across the documented support surface.
 
 ## Installation
 

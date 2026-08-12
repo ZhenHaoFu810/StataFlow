@@ -1,11 +1,18 @@
 # StataFlow
 
-**一个以 Stata 17 字段级对齐为目标的 Python 计量经济学工具包。**
+**面向 Python 的 Stata 对齐计量经济学工具包，在已记录的支持范围内提供字段级验证。**
 
 [English](README.md)
 
-[![PyPI version](https://img.shields.io/pypi/v/stataflow)](https://pypi.org/project/stataflow/)
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![CI](https://github.com/ZhenHaoFu810/StataFlow/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ZhenHaoFu810/StataFlow/actions/workflows/ci.yml)
+[![PyPI 版本](https://img.shields.io/pypi/v/stataflow.svg)](https://pypi.org/project/StataFlow/)
+[![下载量](https://static.pepy.tech/badge/stataflow)](https://pepy.tech/projects/stataflow?timeRange=threeMonths&category=version&includeCIDownloads=true&granularity=weekly&viewType=line&versions=Total%2C1.*%2C0.*)
+[![Python 版本](https://img.shields.io/pypi/pyversions/stataflow.svg)](https://pypi.org/project/StataFlow/)
+[![许可证](https://img.shields.io/pypi/l/stataflow.svg)](LICENSE)
+[![类型标记](https://img.shields.io/pypi/types/stataflow.svg)](https://pypi.org/project/StataFlow/)
+[![Stata 验证](https://img.shields.io/badge/Stata_validation-documented_support_surface-1f6f5f.svg)](VALIDATION.md)
+
+[安装](#安装) · [快速开始](#快速开始) · [验证](#验证状态) · [文档](#文档) · [参与贡献](CONTRIBUTING.md)
 
 ---
 
@@ -27,9 +34,9 @@ result.display()
 
 ## 项目定位
 
-StataFlow 面向希望在 Python 中复现 Stata 实证工作流的研究者。它不是泛化的统计库；公开能力以合成样例、公开真实数据样例和字段级 Stata 17 对照为证据。
+StataFlow 面向希望在 Python 中复现 Stata 实证工作流的研究者。它不是泛化的统计库；公开能力在已记录的支持范围内经过 Stata 字段级验证，并以合成样例和公开真实数据样例为证据。
 
-当前开发版本是 **1.3.0**，覆盖 14 个 Stata 风格命令。
+最新稳定版本是 **1.3.0**，覆盖 14 个 Stata 风格命令。
 
 ## 功能概览
 
@@ -42,7 +49,7 @@ StataFlow 面向希望在 Python 中复现 Stata 实证工作流的研究者。�
 - **二元、计数和 PPML 模型**：支持 Logit、Probit、Poisson、PPML-HDFE 及常用稳健/聚类协方差估计。
 - **因果推断**：支持 BJS DID imputation、Sun-Abraham event study、Callaway-Sant'Anna DID 和 sharp/fuzzy RD。
 - **Stata 语法子集**：支持 factor variables、按命令列明的 analytic weights、多固定效应和常用 VCE；不支持的参数会显式报错，不会静默忽略。
-- **验证优先**：每个公开能力都围绕 Stata 17 进行字段级验证。
+- **验证优先**：每个公开能力都在已记录的支持范围内经过 Stata 字段级验证。
 
 ## 安装
 
