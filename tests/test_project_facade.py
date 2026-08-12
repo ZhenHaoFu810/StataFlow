@@ -191,19 +191,28 @@ def _markdown_images(markdown: str) -> list[str]:
     return destinations
 
 
+def _update_fence_state(line: str, fence: tuple[str, int] | None) -> tuple[tuple[str, int] | None, bool]:
+    if fence is None:
+        opener = re.match(r"^ {0,3}(`{3,}|~{3,})(.*)$", line)
+        if not opener or (opener.group(1)[0] == "`" and "`" in opener.group(2)):
+            return None, False
+        marker = opener.group(1)
+        return (marker[0], len(marker)), True
+
+    character, minimum_length = fence
+    closer = re.match(rf"^ {{0,3}}{re.escape(character)}{{{minimum_length},}}[ \t]*$", line)
+    return (None, True) if closer else (fence, False)
+
+
 def _without_fenced_code(markdown: str) -> str:
     lines: list[str] = []
-    fence: str | None = None
+    fence: tuple[str, int] | None = None
     for line in markdown.splitlines():
-        match = re.match(r"^\s*(`{3,}|~{3,})", line)
-        if match:
-            marker = match.group(1)
-            if fence is None:
-                fence = marker[0]
-            elif marker[0] == fence:
-                fence = None
+        was_in_fence = fence is not None
+        fence, is_marker = _update_fence_state(line, fence)
+        if is_marker:
             continue
-        if fence is None:
+        if not was_in_fence:
             lines.append(line)
     text = "\n".join(lines)
     return re.sub(r"(?P<fence>`+).*?(?P=fence)", "", text, flags=re.DOTALL)
@@ -282,13 +291,7 @@ def _markdown_link_destinations(markdown: str) -> list[str]:
 def _heading_slugs(markdown: str) -> set[str]:
     slugs: set[str] = set()
     occurrences: dict[str, int] = {}
-    in_fence = False
-    for line in markdown.splitlines():
-        if line.lstrip().startswith("```"):
-            in_fence = not in_fence
-            continue
-        if in_fence:
-            continue
+    for line in _without_fenced_code(markdown).splitlines():
         match = re.match(r"^#{1,6}\s+(.+?)\s*#*\s*$", line)
         if not match:
             continue
@@ -341,11 +344,8 @@ def _top_level_sections(markdown: str) -> list[tuple[str | None, str]]:
     sections: list[tuple[str | None, str]] = []
     heading: str | None = None
     lines: list[str] = []
-    in_fence = False
-    for line in markdown.splitlines():
-        if line.lstrip().startswith("```"):
-            in_fence = not in_fence
-        match = None if in_fence else re.match(r"^##\s+(.+?)\s*#*\s*$", line)
+    for line in _without_fenced_code(markdown).splitlines():
+        match = re.match(r"^##\s+(.+?)\s*#*\s*$", line)
         if match:
             sections.append((heading, "\n".join(lines)))
             heading = match.group(1).strip()
@@ -484,6 +484,25 @@ def test_markdown_images_counts_shortcut_reference() -> None:
 
 def test_markdown_images_counts_inline_image_with_title() -> None:
     assert _markdown_images('![extra](extra.png "caption")') == ["extra.png"]
+
+
+def test_heading_parsers_handle_backtick_and_tilde_fences() -> None:
+    markdown = """# Visible
+~~~~text
+## Hidden Tilde
+~~~
+~~~~
+````text
+## Hidden Backtick
+```
+````
+## Visible
+"""
+    assert _without_fenced_code(markdown) == "# Visible\n## Visible"
+    assert _heading_slugs(markdown) == {"visible", "visible-1"}
+    sections = _top_level_sections(markdown)
+    assert [heading for heading, _ in sections] == [None, "Visible"]
+    assert all("Hidden" not in body for _, body in sections)
 
 
 def test_chinese_readme_badges_are_exact() -> None:
