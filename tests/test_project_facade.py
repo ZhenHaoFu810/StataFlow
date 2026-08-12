@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 import tomllib
 import unicodedata
+from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
@@ -38,6 +39,15 @@ EXPECTED_KEYWORDS = [
     "causal-inference",
 ]
 
+EXPECTED_URLS = {
+    "Homepage": "https://github.com/ZhenHaoFu810/StataFlow",
+    "Repository": "https://github.com/ZhenHaoFu810/StataFlow",
+    "Issues": "https://github.com/ZhenHaoFu810/StataFlow/issues",
+    "Documentation": "https://github.com/ZhenHaoFu810/StataFlow#documentation",
+    "Changelog": "https://github.com/ZhenHaoFu810/StataFlow/blob/main/CHANGELOG.md",
+    "Contributing": "https://github.com/ZhenHaoFu810/StataFlow/blob/main/CONTRIBUTING.md",
+}
+
 REQUIRED_BUG_IDS = {
     "stataflow_version",
     "python_version",
@@ -58,6 +68,29 @@ OPTIONAL_FEATURE_IDS = {
     "additional_context",
 }
 
+BUG_FIELD_TYPES = {
+    "stataflow_version": "input",
+    "python_version": "input",
+    "operating_system": "input",
+    "command_or_api": "input",
+    "reproduction": "textarea",
+    "observed_behavior": "textarea",
+    "expected_behavior": "textarea",
+    "sensitive_data": "checkboxes",
+    "traceback": "textarea",
+    "stata_comparison": "textarea",
+    "additional_context": "textarea",
+}
+FEATURE_FIELD_TYPES = {
+    "research_workflow": "textarea",
+    "requested_outcome": "textarea",
+    "stata_command": "input",
+    "proposed_api": "textarea",
+    "public_references": "textarea",
+    "comparison_cases": "textarea",
+    "additional_context": "textarea",
+}
+
 ISSUE_FORM_TYPES = {"markdown", "input", "textarea", "dropdown", "checkboxes"}
 ITEM_KEYS = {
     "markdown": {"type", "attributes"},
@@ -73,6 +106,19 @@ ATTRIBUTE_KEYS = {
     "dropdown": {"label", "description", "multiple", "options", "default"},
     "checkboxes": {"label", "description", "options"},
 }
+
+
+class _HrefParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.destinations: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag.lower() != "a":
+            return
+        href = dict(attrs).get("href")
+        if href:
+            self.destinations.append(href)
 
 
 def _read(relative_path: str) -> str:
@@ -100,9 +146,34 @@ def _markdown_images(markdown: str) -> list[str]:
     return re.findall(r"!\[[^\]]*\]\(([^\s)]+)\)", markdown)
 
 
+def _without_fenced_code(markdown: str) -> str:
+    lines: list[str] = []
+    fence: str | None = None
+    for line in markdown.splitlines():
+        match = re.match(r"^\s*(`{3,}|~{3,})", line)
+        if match:
+            marker = match.group(1)
+            if fence is None:
+                fence = marker[0]
+            elif marker[0] == fence:
+                fence = None
+            continue
+        if fence is None:
+            lines.append(line)
+    text = "\n".join(lines)
+    return re.sub(r"(?P<fence>`+).*?(?P=fence)", "", text, flags=re.DOTALL)
+
+
 def _markdown_link_destinations(markdown: str) -> list[str]:
-    """Return ordinary link destinations, including links wrapped around images."""
+    """Return inline, reference-definition, and HTML link destinations."""
+    markdown = _without_fenced_code(markdown)
     destinations: list[str] = []
+    reference_pattern = re.compile(r"^\s{0,3}\[([^\]]+)\]:\s*(?:<([^>]+)>|(\S+))", re.MULTILINE)
+    references = {
+        re.sub(r"\s+", " ", label.strip()).lower(): angle or bare
+        for label, angle, bare in reference_pattern.findall(markdown)
+    }
+
     index = 0
     while index < len(markdown):
         start = markdown.find("[", index)
@@ -144,6 +215,22 @@ def _markdown_link_destinations(markdown: str) -> list[str]:
         if destination:
             destinations.append(destination)
         index = end
+
+    reference_link_pattern = re.compile(r"(?<!!)\[([^\]\n]+)\]\[([^\]\n]*)\]")
+    for label, identifier in reference_link_pattern.findall(markdown):
+        normalized = re.sub(r"\s+", " ", (identifier or label).strip()).lower()
+        assert normalized in references, f"undefined Markdown link reference: {identifier or label}"
+        destinations.append(references[normalized])
+
+    shortcut_pattern = re.compile(r"(?<!!)\[([^\]\n]+)\](?!\s*[\[(])")
+    for label in shortcut_pattern.findall(markdown):
+        normalized = re.sub(r"\s+", " ", label.strip()).lower()
+        if normalized in references:
+            destinations.append(references[normalized])
+
+    parser = _HrefParser()
+    parser.feed(markdown)
+    destinations.extend(parser.destinations)
     return destinations
 
 
@@ -331,6 +418,16 @@ def _field_is_required(item: dict[str, object]) -> bool:
     return item.get("validations", {}).get("required") is True
 
 
+def _markdown_notice(form: dict[str, object]) -> str:
+    values = [item["attributes"]["value"] for item in form["body"] if item.get("type") == "markdown"]
+    return re.sub(r"\s+", " ", " ".join(values)).lower()
+
+
+def _assert_terms(text: str, terms: dict[str, str]) -> None:
+    for name, pattern in terms.items():
+        assert re.search(pattern, text, re.IGNORECASE), f"missing required {name} wording"
+
+
 def test_english_readme_badges_are_exact() -> None:
     _assert_badge_contract("README.md")
 
@@ -372,9 +469,7 @@ def test_pyproject_exposes_complete_public_metadata() -> None:
     assert metadata["version"] == "1.3.0"
     assert metadata["description"] == "Stata-aligned econometrics for Python with field-level validation"
     assert metadata["keywords"] == EXPECTED_KEYWORDS
-    assert metadata["urls"]["Documentation"] == "https://github.com/ZhenHaoFu810/StataFlow#documentation"
-    assert metadata["urls"]["Changelog"] == "https://github.com/ZhenHaoFu810/StataFlow/blob/main/CHANGELOG.md"
-    assert metadata["urls"]["Contributing"] == "https://github.com/ZhenHaoFu810/StataFlow/blob/main/CONTRIBUTING.md"
+    assert metadata["urls"] == EXPECTED_URLS
 
 
 def test_validation_distinguishes_snapshot_from_presentation_release() -> None:
@@ -404,18 +499,40 @@ def test_security_supports_only_the_1_3_release_line() -> None:
 def test_bug_report_issue_form_contract() -> None:
     form = _assert_issue_form_schema(".github/ISSUE_TEMPLATE/bug_report.yml")
     fields = _field_items(form)
+    assert form["title"] == "[Bug]: "
+    assert form["labels"] == ["bug"]
     assert set(fields) == REQUIRED_BUG_IDS | OPTIONAL_BUG_IDS
+    assert {field_id: item["type"] for field_id, item in fields.items()} == BUG_FIELD_TYPES
     assert {field_id for field_id, item in fields.items() if _field_is_required(item)} == REQUIRED_BUG_IDS
     assert fields["sensitive_data"]["type"] == "checkboxes"
     assert all(not _field_is_required(fields[field_id]) for field_id in OPTIONAL_BUG_IDS)
+    _assert_terms(
+        _markdown_notice(form),
+        {
+            "synthetic data": r"\bsynthetic data\b",
+            "proprietary data warning": r"\bproprietary\b.*\bdata\b",
+            "confidential data warning": r"\bconfidential\b.*\bdata\b",
+            "credentials warning": r"\bcredentials?\b",
+            "tokens warning": r"\btokens?\b",
+            "local paths warning": r"\blocal paths?\b",
+            "usernames warning": r"\busernames?\b",
+            "Stata license information warning": r"\bStata license information\b",
+        },
+    )
 
 
 def test_feature_request_issue_form_contract() -> None:
     form = _assert_issue_form_schema(".github/ISSUE_TEMPLATE/feature_request.yml")
     fields = _field_items(form)
+    assert form["title"] == "[Feature]: "
+    assert form["labels"] == ["enhancement"]
     assert set(fields) == REQUIRED_FEATURE_IDS | OPTIONAL_FEATURE_IDS
+    assert {field_id: item["type"] for field_id, item in fields.items()} == FEATURE_FIELD_TYPES
     assert {field_id for field_id, item in fields.items() if _field_is_required(item)} == REQUIRED_FEATURE_IDS
     assert all(not _field_is_required(fields[field_id]) for field_id in OPTIONAL_FEATURE_IDS)
+    notice = _markdown_notice(form)
+    assert "documented" in notice and "subsets" in notice
+    assert re.search(r"(?:does not|do not|doesn't|don't)\s+(?:promise|support).*\bevery stata option\b", notice)
 
 
 def test_issue_template_config_contract() -> None:
@@ -433,7 +550,8 @@ def test_issue_template_config_contract() -> None:
 
 
 def test_pull_request_template_has_required_sections() -> None:
-    headings = {slug.lower() for slug in _heading_slugs(_read(".github/PULL_REQUEST_TEMPLATE.md"))}
+    template = _read(".github/PULL_REQUEST_TEMPLATE.md")
+    headings = {slug.lower() for slug in _heading_slugs(template)}
     assert {
         "summary",
         "linked-issue",
@@ -442,3 +560,17 @@ def test_pull_request_template_has_required_sections() -> None:
         "data-provenance",
         "public-safety",
     } <= headings
+    checklist = "\n".join(
+        line for line in template.splitlines() if re.match(r"^\s*[-*+]\s+\[[ xX]\]\s+\S", line)
+    )
+    assert checklist, "pull request template must include a public-safety checklist"
+    _assert_terms(
+        checklist,
+        {
+            "private paths": r"\bprivate paths?\b",
+            "raw logs": r"\braw logs?\b",
+            "proprietary data": r"\bproprietary data\b",
+            "credentials": r"\bcredentials?\b",
+            "Stata license information": r"\bStata license information\b",
+        },
+    )
