@@ -142,8 +142,9 @@ See the [Command Support Matrix](docs/command-support-matrix/README.md) and [Kno
 ## Validation
 
 The July 2026 table is the 1.2.0 estimator-validation snapshot retained for
-1.3.0; the actual comparison environment was Stata 17. StataFlow 1.3.0 changed
-result presentation and metadata, not estimator or inference algorithms.
+1.3.0; the actual comparison environment was Stata 17.
+The retained snapshot covers the coefficient and standard-error comparisons reported below.
+It does not cover result statistics first added in 1.3.0.
 Relative deviation is `|Python - Stata| / max(|Stata|, 1e-15)`.
 
 | Family | Covered commands | Stata 17 comparisons | Max coefficient deviation | Max SE deviation |

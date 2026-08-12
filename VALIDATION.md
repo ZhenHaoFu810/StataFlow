@@ -8,7 +8,8 @@ exercised on the same data in Stata and Python, then compared field by field.
 Evidence combines controlled synthetic cases with public real-data cases;
 community commands are described only for their implemented subsets.
 
-StataFlow 1.3.0 changed result presentation and metadata, not estimator or inference algorithms.
+The retained snapshot covers the coefficient and standard-error comparisons reported below.
+It does not cover result statistics first added in 1.3.0.
 
 ## July 2026 Snapshot
 

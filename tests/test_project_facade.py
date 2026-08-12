@@ -57,9 +57,10 @@ PR_SAFETY_CHECKLIST_ITEM = (
     "- [ ] This pull request contains no private paths, raw logs, proprietary data, credentials, or Stata license "
     "information."
 )
-VALIDATION_RELEASE_SENTENCE = (
-    "StataFlow 1.3.0 changed result presentation and metadata, not estimator or inference algorithms."
+VALIDATION_COVERAGE_SENTENCE = (
+    "The retained snapshot covers the coefficient and standard-error comparisons reported below."
 )
+VALIDATION_EXCLUSION_SENTENCE = "It does not cover result statistics first added in 1.3.0."
 
 REQUIRED_BUG_IDS = {
     "stataflow_version",
@@ -545,12 +546,31 @@ def test_pyproject_exposes_complete_public_metadata() -> None:
     assert metadata["urls"] == EXPECTED_URLS
 
 
-def test_validation_distinguishes_snapshot_from_presentation_release() -> None:
-    text = re.sub(r"\s+", " ", _read("VALIDATION.md")).strip()
-    assert "July 2026" in text
-    assert "1.2.0 estimator-validation snapshot" in text
-    assert "retained for 1.3.0" in text
-    assert VALIDATION_RELEASE_SENTENCE in text
+def test_english_validation_surfaces_define_the_retained_snapshot_scope() -> None:
+    for relative_path in ("VALIDATION.md", "README.md"):
+        text = re.sub(r"\s+", " ", _read(relative_path)).strip()
+        assert "July 2026" in text
+        assert "1.2.0 estimator-validation snapshot" in text
+        assert "retained for 1.3.0" in text
+        assert "actual comparison environment was Stata 17" in text
+        assert VALIDATION_COVERAGE_SENTENCE in text
+        assert VALIDATION_EXCLUSION_SENTENCE in text
+
+
+def test_chinese_validation_surfaces_define_the_retained_snapshot_scope() -> None:
+    readme = re.sub(r"\s+", " ", _read("README.zh-CN.md")).strip()
+    assert "为 1.3.0 保留的 1.2.0 估计器验证快照" in readme
+    assert "实际对照环境为 Stata 17" in readme
+    assert "适用于下表所报告的系数和标准误对照" in readme
+    assert "不涵盖 1.3.0 首次新增的结果统计量" in readme
+
+    validation = _read("VALIDATION.md")
+    assert "docs/validation/README.zh-CN.md" in _markdown_link_destinations(validation)
+    landing_page = re.sub(r"\s+", " ", _read("docs/validation/README.zh-CN.md")).strip()
+    assert "为 1.3.0 保留的 1.2.0 估计器验证快照" in landing_page
+    assert "实际对照环境为 Stata 17" in landing_page
+    assert "系数和标准误对照" in landing_page
+    assert "不涵盖 1.3.0 首次新增的结果统计量" in landing_page
 
 
 def test_security_supports_only_the_1_3_release_line() -> None:
