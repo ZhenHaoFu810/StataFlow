@@ -2,10 +2,13 @@
 
 [简体中文](docs/validation/README.zh-CN.md)
 
-StataFlow 1.2.0 uses Stata 17 as the comparison standard. Each supported path
-is exercised on the same data in Stata and Python, then compared field by
-field. Evidence combines controlled synthetic cases with public real-data
-cases; community commands are described only for their implemented subsets.
+The July 2026 table is the "1.2.0 estimator-validation snapshot retained for 1.3.0".
+The actual comparison environment was Stata 17. Each supported path is
+exercised on the same data in Stata and Python, then compared field by field.
+Evidence combines controlled synthetic cases with public real-data cases;
+community commands are described only for their implemented subsets.
+
+StataFlow 1.3.0 changed result presentation and metadata, not estimator or inference algorithms.
 
 ## July 2026 Snapshot
 

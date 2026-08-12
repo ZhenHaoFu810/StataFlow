@@ -5,11 +5,11 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "StataFlow"
 version = "1.3.0"
-description = "StataFlow: A Python econometrics toolkit aligned with Stata 17"
+description = "Stata-aligned econometrics for Python with field-level validation"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [{name = "Zhenhao Fu", email = "zhenhaofu2001@gmail.com"}]
-keywords = ["econometrics", "stata", "regression", "fixed-effects", "panel-data"]
+keywords = ["econometrics", "stata", "regression", "fixed-effects", "panel-data", "instrumental-variables", "causal-inference"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Science/Research",
@@ -48,6 +48,9 @@ dev = [
 Homepage = "https://github.com/ZhenHaoFu810/StataFlow"
 Repository = "https://github.com/ZhenHaoFu810/StataFlow"
 Issues = "https://github.com/ZhenHaoFu810/StataFlow/issues"
+Documentation = "https://github.com/ZhenHaoFu810/StataFlow#documentation"
+Changelog = "https://github.com/ZhenHaoFu810/StataFlow/blob/main/CHANGELOG.md"
+Contributing = "https://github.com/ZhenHaoFu810/StataFlow/blob/main/CONTRIBUTING.md"
 
 [tool.setuptools.packages.find]
 where = ["src"]
