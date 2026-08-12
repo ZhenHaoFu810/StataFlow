@@ -1,0 +1,48 @@
+name: Feature request
+description: Propose a research-driven addition to StataFlow
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: StataFlow implements documented high-value subsets and does not promise support for every Stata option.
+  - type: textarea
+    id: research_workflow
+    attributes:
+      label: Research workflow
+      description: Describe the empirical workflow or research problem this feature would support.
+    validations:
+      required: true
+  - type: textarea
+    id: requested_outcome
+    attributes:
+      label: Requested outcome
+      description: Describe the behavior or result you need from StataFlow.
+    validations:
+      required: true
+  - type: input
+    id: stata_command
+    attributes:
+      label: Related Stata command
+      placeholder: "For example: regress or reghdfe"
+  - type: textarea
+    id: proposed_api
+    attributes:
+      label: Proposed API
+      description: Sketch a Python or Stata-compatible API if you have one in mind.
+  - type: textarea
+    id: public_references
+    attributes:
+      label: Public references
+      description: Link to official documentation, public source code, or published methods.
+  - type: textarea
+    id: comparison_cases
+    attributes:
+      label: Comparison cases
+      description: Suggest synthetic and public-data cases for field-level validation.
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional context
+      description: Add any other relevant public context.

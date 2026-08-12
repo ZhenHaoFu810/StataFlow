@@ -1,0 +1,86 @@
+name: Bug report
+description: Report a reproducible problem with StataFlow
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        Use a small synthetic data reproduction. Do not include proprietary or confidential data, credentials, tokens, unredacted local paths or usernames, or Stata license information.
+  - type: input
+    id: stataflow_version
+    attributes:
+      label: StataFlow version
+      placeholder: "For example: 1.3.0"
+    validations:
+      required: true
+  - type: input
+    id: python_version
+    attributes:
+      label: Python version
+      placeholder: "For example: 3.11.7"
+    validations:
+      required: true
+  - type: input
+    id: operating_system
+    attributes:
+      label: Operating system
+      placeholder: "For example: Windows 11 or Ubuntu 24.04"
+    validations:
+      required: true
+  - type: input
+    id: command_or_api
+    attributes:
+      label: Command or API
+      placeholder: "For example: regress() or OLS.fit()"
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Synthetic reproduction
+      description: Provide minimal code and synthetic data that reproduce the problem.
+      placeholder: |-
+        import stataflow
+
+        # Create synthetic data and call the failing API here.
+    validations:
+      required: true
+  - type: textarea
+    id: observed_behavior
+    attributes:
+      label: Observed behavior
+      description: Describe the result you observed.
+    validations:
+      required: true
+  - type: textarea
+    id: expected_behavior
+    attributes:
+      label: Expected behavior
+      description: Describe the result you expected.
+    validations:
+      required: true
+  - type: textarea
+    id: traceback
+    attributes:
+      label: Traceback
+      description: Include a redacted traceback when available.
+      render: shell
+  - type: textarea
+    id: stata_comparison
+    attributes:
+      label: Stata comparison
+      description: Summarize any comparison against Stata and the fields that differ.
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional context
+      description: Add any other relevant public context.
+  - type: checkboxes
+    id: sensitive_data
+    attributes:
+      label: Sensitive data confirmation
+      options:
+        - label: I confirm that sensitive or private information has been removed.
+          required: true
