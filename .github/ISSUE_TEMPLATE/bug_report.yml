@@ -41,6 +41,10 @@ body:
     attributes:
       label: Synthetic reproduction
       description: Provide minimal code and synthetic data that reproduce the problem.
+      placeholder: |-
+        import stataflow
+
+        # Create synthetic data and call the failing API here.
     validations:
       required: true
   - type: textarea

@@ -6,7 +6,7 @@ labels:
 body:
   - type: markdown
     attributes:
-      value: StataFlow supports documented subsets and does not promise support for every Stata option.
+      value: StataFlow implements documented high-value subsets and does not promise support for every Stata option.
   - type: textarea
     id: research_workflow
     attributes:
