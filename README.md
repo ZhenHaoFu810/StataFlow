@@ -7,7 +7,7 @@
 [![CI](https://github.com/ZhenHaoFu810/StataFlow/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ZhenHaoFu810/StataFlow/actions/workflows/ci.yml)
 [![PyPI version](https://img.shields.io/pypi/v/stataflow.svg)](https://pypi.org/project/StataFlow/)
 [![Downloads](https://static.pepy.tech/badge/stataflow)](https://pepy.tech/projects/stataflow?timeRange=threeMonths&category=version&includeCIDownloads=true&granularity=weekly&viewType=line&versions=Total%2C1.*%2C0.*)
-[![Python versions](https://img.shields.io/pypi/pyversions/stataflow.svg)](https://pypi.org/project/StataFlow/)
+[![Python 3.10-3.14](https://img.shields.io/badge/Python-3.10--3.14-3776AB.svg?logo=python&logoColor=white)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/pypi/l/stataflow.svg)](LICENSE)
 [![Typing](https://img.shields.io/pypi/types/stataflow.svg)](https://pypi.org/project/StataFlow/)
 [![Stata validation](https://img.shields.io/badge/Stata_validation-documented_support_surface-1f6f5f.svg)](VALIDATION.md)
@@ -36,7 +36,7 @@ result.display()
 
 StataFlow is for researchers who want Python workflows without giving up the empirical conventions they rely on in Stata. The project is not a generic statistics library: public capabilities have Stata validation across the documented support surface, backed by synthetic cases, public real-data cases, and field-level comparisons.
 
-The latest release is **1.3.0**, covering 14 Stata-style commands.
+The latest release is **1.3.1**, covering 14 Stata-style commands.
 
 ## Features
 
@@ -58,7 +58,7 @@ The latest release is **1.3.0**, covering 14 Stata-style commands.
 pip install StataFlow
 ```
 
-Python 3.10, 3.11, or 3.12 is required. Core dependencies are NumPy, pandas, SciPy, scikit-learn, and PyYAML.
+StataFlow requires Python 3.10 or later. The current release is tested on Python 3.10-3.14. Core dependencies are NumPy, pandas, SciPy, scikit-learn, and PyYAML.
 
 ## Quick Start
 

@@ -4,7 +4,7 @@ The package provides a Stata-compatible command layer and native Python
 estimators, with field-level dual-run verification where Stata 17 is available.
 """
 
-__version__ = "1.3.0"
+__version__ = "1.3.1"
 
 # Core estimators (Python-native API)
 from .estimators import (
