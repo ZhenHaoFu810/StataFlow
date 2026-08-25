@@ -2,6 +2,18 @@
 
 All notable public changes to StataFlow are documented here.
 
+## 1.3.1 - 2026-08-25
+
+### Changed
+
+- Expanded the tested Python compatibility range to Python 3.10-3.14.
+- Updated the NumPy version range for current Python releases.
+
+### Packaging
+
+- Added clean wheel checks for supported Python versions.
+- Added an unpinned PyPI installation check for post-release validation.
+
 ## 1.3.0 - 2026-07-28
 
 ### Added

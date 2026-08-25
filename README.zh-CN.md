@@ -7,7 +7,7 @@
 [![CI](https://github.com/ZhenHaoFu810/StataFlow/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ZhenHaoFu810/StataFlow/actions/workflows/ci.yml)
 [![PyPI 版本](https://img.shields.io/pypi/v/stataflow.svg)](https://pypi.org/project/StataFlow/)
 [![下载量](https://static.pepy.tech/badge/stataflow)](https://pepy.tech/projects/stataflow?timeRange=threeMonths&category=version&includeCIDownloads=true&granularity=weekly&viewType=line&versions=Total%2C1.*%2C0.*)
-[![Python 版本](https://img.shields.io/pypi/pyversions/stataflow.svg)](https://pypi.org/project/StataFlow/)
+[![Python 3.10-3.14](https://img.shields.io/badge/Python-3.10--3.14-3776AB.svg?logo=python&logoColor=white)](https://www.python.org/downloads/)
 [![许可证](https://img.shields.io/pypi/l/stataflow.svg)](LICENSE)
 [![类型标记](https://img.shields.io/pypi/types/stataflow.svg)](https://pypi.org/project/StataFlow/)
 [![Stata 验证](https://img.shields.io/badge/Stata_validation-documented_support_surface-1f6f5f.svg)](VALIDATION.md)
@@ -36,7 +36,7 @@ result.display()
 
 StataFlow 面向希望在 Python 中复现 Stata 实证工作流的研究者。它不是泛化的统计库；公开能力在已记录的支持范围内经过 Stata 字段级验证，并以合成样例和公开真实数据样例为证据。
 
-最新稳定版本是 **1.3.0**，覆盖 14 个 Stata 风格命令。
+最新稳定版本是 **1.3.1**，覆盖 14 个 Stata 风格命令。
 
 ## 功能概览
 
@@ -57,7 +57,7 @@ StataFlow 面向希望在 Python 中复现 Stata 实证工作流的研究者。�
 pip install StataFlow
 ```
 
-需要 Python 3.10、3.11 或 3.12。核心依赖包括 NumPy、pandas、SciPy、scikit-learn 和 PyYAML。
+StataFlow 要求 Python 3.10 或更高版本；当前版本经过 Python 3.10-3.14 测试。核心依赖包括 NumPy、pandas、SciPy、scikit-learn 和 PyYAML。
 
 ## 快速开始
 
