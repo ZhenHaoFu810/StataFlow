@@ -1,7 +1,7 @@
 # Known Issues
 
-This page records the non-blocking limitations of StataFlow 1.2.0. The
-[command support matrix](../command-support-matrix/README.md) is the
+This page records the non-blocking limitations of the current StataFlow
+release. The [command support matrix](../command-support-matrix/README.md) is the
 authoritative option-by-option reference.
 
 ## Community Command Coverage
@@ -33,9 +33,6 @@ display/postestimation paths not represented by the aggregate 40-case table.
 | `rdrobust` fuzzy RD SE | up to 5% synthetic; 0.5% Senate | Completed comparison, outside strict release aggregate |
 | `rdrobust` cluster / nearest-neighbor cluster SE | up to 3% | Completed comparison, outside strict release aggregate |
 | `rdrobust` automatic bandwidth paths | estimates up to 0.5%; bandwidths up to 1% | Completed comparison, outside strict release aggregate |
-
-The former `rdrobust` nearest-neighbor discrepancy on repeated mass points was
-fixed in 1.2.0 and is not a known limitation.
 
 ## Unsupported Surfaces
 

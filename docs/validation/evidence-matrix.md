@@ -146,7 +146,7 @@ Known difference:
 ## Historical Out-of-Sample Validation Evidence
 
 Validation Package 001 在额外公开真实数据上记录了历史 OOS 比较。
-这些记录独立于 2026 年 7 月冻结的 1.2.0 发布汇总。
+这些记录独立于 2026 年 7 月冻结的验证快照。
 
 ### OOS Summary
 

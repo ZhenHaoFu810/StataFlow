@@ -57,11 +57,12 @@ inspection to make a test pass.
 - Public evidence (validation summaries, exported test fixtures, public
   datasets) must be reproducible from the public repository and must not
   reference private machine paths or proprietary data.
-- Internal audit artifacts, Stata execution logs with local paths, and
-  proprietary datasets stay out of the public export. The export is governed
-  by `scripts/release/open_source_manifest.yml` and checked by
-  `tests/test_export_safety.py`.
-- Do not commit Stata license information or proprietary datasets.
+- Do not commit internal audit artifacts, raw Stata logs containing local
+  paths, proprietary datasets, credentials, tokens, or Stata license
+  information.
+- Before opening a pull request, inspect the tracked files and public diff for
+  private paths, generated logs, local environment details, and files unrelated
+  to the proposed change.
 
 ## Code conventions
 

@@ -2,14 +2,16 @@
 
 [简体中文](docs/validation/README.zh-CN.md)
 
-The July 2026 table is the "1.2.0 estimator-validation snapshot retained for 1.3.0".
-The actual comparison environment was Stata 17. Each supported path is
+The table below is the estimator-validation snapshot frozen in July 2026. It
+is the current numerical baseline for the estimator and inference behavior
+covered by the snapshot. The actual comparison environment was Stata 17. Each
+supported path is
 exercised on the same data in Stata and Python, then compared field by field.
 Evidence combines controlled synthetic cases with public real-data cases;
 community commands are described only for their implemented subsets.
 
-The retained snapshot covers the coefficient and standard-error comparisons reported below.
-It does not cover result statistics first added in 1.3.0.
+The snapshot covers the coefficient and standard-error comparisons reported
+below. Display-only result fields introduced in 1.3.0 are outside its scope.
 
 ## July 2026 Snapshot
 
