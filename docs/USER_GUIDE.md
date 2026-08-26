@@ -33,7 +33,7 @@ pip install -e .
 
 ```python
 import stataflow
-print(stataflow.__version__)  # "1.3.0"
+print(stataflow.__version__)
 ```
 
 > **Note:** A local Stata 17 installation is needed only to run the reproducible validation cases. The package itself does not require Stata for normal use.

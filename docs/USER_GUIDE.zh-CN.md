@@ -33,7 +33,7 @@ pip install -e .
 
 ```python
 import stataflow
-print(stataflow.__version__)  # "1.3.0"
+print(stataflow.__version__)
 ```
 
 > 仅当需要本地运行可复现验证用例时才需安装 Stata 17。包本身在正常使用中不依赖 Stata。

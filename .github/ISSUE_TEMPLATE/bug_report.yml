@@ -12,7 +12,8 @@ body:
     id: stataflow_version
     attributes:
       label: StataFlow version
-      placeholder: "For example: 1.3.0"
+      description: Run `python -c "import stataflow; print(stataflow.__version__)"` to find it.
+      placeholder: "Output of stataflow.__version__"
     validations:
       required: true
   - type: input

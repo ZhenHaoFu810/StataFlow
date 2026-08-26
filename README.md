@@ -36,7 +36,7 @@ result.display()
 
 StataFlow is for researchers who want Python workflows without giving up the empirical conventions they rely on in Stata. The project is not a generic statistics library: public capabilities have Stata validation across the documented support surface, backed by synthetic cases, public real-data cases, and field-level comparisons.
 
-The latest release is **1.3.1**, covering 14 Stata-style commands.
+The current release covers 14 Stata-style commands.
 
 ## Features
 
@@ -141,10 +141,12 @@ See the [Command Support Matrix](docs/command-support-matrix/README.md) and [Kno
 
 ## Validation
 
-The July 2026 table is the 1.2.0 estimator-validation snapshot retained for
-1.3.0; the actual comparison environment was Stata 17.
-The retained snapshot covers the coefficient and standard-error comparisons reported below.
-It does not cover result statistics first added in 1.3.0.
+The table below is the estimator-validation snapshot frozen in July 2026; the
+actual comparison environment was Stata 17. It is the current numerical
+baseline for the estimator and inference behavior covered by the snapshot. The
+snapshot reports the coefficient and standard-error comparisons below;
+display-only result fields introduced in 1.3.0 are outside its scope.
+
 Relative deviation is `|Python - Stata| / max(|Stata|, 1e-15)`.
 
 | Family | Covered commands | Stata 17 comparisons | Max coefficient deviation | Max SE deviation |
