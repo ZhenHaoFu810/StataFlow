@@ -185,6 +185,14 @@ pytest tests/stata_validation/ -v -s
 - [安全政策](SECURITY.md) — 支持的版本与私密漏洞报告渠道
 - [行为准则](CODE_OF_CONDUCT.md)
 
+## 项目成长
+
+<p align="center">
+  <a href="https://www.star-history.com/#ZhenHaoFu810/StataFlow&Date">
+    <img src="docs/assets/star-history-2026-08-30.png" alt="截至 2026 年 8 月的 StataFlow GitHub star 历史" width="720">
+  </a>
+</p>
+
 ## 许可证
 
 本项目采用 MIT License。详情见 [LICENSE](LICENSE)。
