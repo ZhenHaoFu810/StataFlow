@@ -188,6 +188,14 @@ pytest tests/stata_validation/ -v -s
 - [Security Policy](SECURITY.md) — supported versions and private vulnerability reporting
 - [Code of Conduct](CODE_OF_CONDUCT.md)
 
+## Project Growth
+
+<p align="center">
+  <a href="https://www.star-history.com/#ZhenHaoFu810/StataFlow&Date">
+    <img src="docs/assets/star-history-2026-08-30.png" alt="StataFlow GitHub star history through August 2026" width="720">
+  </a>
+</p>
+
 ## License
 
 This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
