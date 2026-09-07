@@ -93,7 +93,15 @@ Before opening a PR, please run locally:
 pip install -e ".[dev]"
 pytest tests/ -v
 pytest tests/stata_validation/ -v -s  # requires local Stata 17
-for d in examples/demo_*.py; do python "$d"; done
+python examples/demo_regress.py
+python examples/demo_panel_fe.py
+python examples/demo_reghdfe.py
+python examples/demo_ivregress_2sls.py
+python examples/demo_ivreghdfe.py
+python examples/demo_glm.py
+python examples/demo_ppmlhdfe.py
+python examples/demo_did.py
+python examples/demo_rdrobust.py
 ```
 
 ## Reporting issues

@@ -159,6 +159,8 @@ html = result.to_html()                 # 用于报告或 Notebook 的安全 HTM
 完整本地 Stata 验证检查结果为 `856 passed, 12 skipped`；公开、自包含的
 验证套件在 Stata 17 上通过 `10/10` 个可复现验证用例。以上数值存储在
 [`evidence-summary.json`](research/results/validation/evidence-summary.json) 中。
+上述最大偏差仅适用于 2026 年 7 月冻结的发布验证快照。已记录的数值差异及
+不在该聚合范围内的路径见[已知问题](docs/release/known-issues.md)。
 
 ## 文档
 

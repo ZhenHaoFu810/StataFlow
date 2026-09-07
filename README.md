@@ -162,6 +162,9 @@ Full local Stata validation checks: `856 passed, 12 skipped`. The public,
 self-contained suite passes `10/10` reproducible validation cases with Stata
 17. The values above are stored in
 [`evidence-summary.json`](research/results/validation/evidence-summary.json).
+The maxima above apply only to the July 2026 release snapshot. Documented
+numerical differences and paths outside this aggregate scope are listed in
+[Known Issues](docs/release/known-issues.md).
 
 ## Documentation
 
