@@ -195,7 +195,7 @@ pytest tests/stata_validation/ -v -s
 
 <p align="center">
   <a href="https://www.star-history.com/#ZhenHaoFu810/StataFlow&Date">
-    <img src="docs/assets/star-history-2026-08-30.png" alt="StataFlow GitHub star history through August 2026" width="720">
+    <img src="docs/assets/star-history-2026-10-09.png" alt="StataFlow GitHub star history through October 2026" width="720">
   </a>
 </p>
 
